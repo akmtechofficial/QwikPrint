@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+
+{% block title %}{{ shop.name }} - Shopkeeper SaaS Control Panel{% endblock %}
+
+{% block content %}
+<!-- Top Identity Banner -->
+<div class="glass-card" style="padding: 24px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+        <div>
+            <span class="status-pill pill-success" style="margin-bottom: 6px;">🏬 Store ID: {{ shop.shop_id }}</span>
+            <h2 style="font-size: 26px; margin-top: 4px;">{{ shop.name }}</h2>
+            <p style="color: var(--text-muted); font-size: 14px; margin-top: 2px;">📍 {{ shop.address or 'Main Market' }} • 📞 {{ shop.phone or 'Not Set' }} • 👤 {{ shop.owner_name or 'Shop Owner' }}</p>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <a href="/s/{{ shop.shop_id }}" target="_blank" class="btn-secondary" style="font-size: 13px; padding: 10px 18px;">📱 Customer Portal</a>
+            <a href="/logout" class="btn-secondary" style="font-size: 13px; padding: 10px 18px; color: var(--rose-danger); border-color: rgba(244, 63, 94, 0.3);">🚪 Logout</a>
+        </div>
+    </div>
+</div>
+
+<!-- 🔑 1-Click Desktop Software API Key Card (1 API = 1 PC) -->
+<div class="glass-card" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(6, 182, 212, 0.15) 100%); border: 1px solid var(--primary-light);">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 14px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 28px;">🔑</span>
+            <div>
+                <h3 style="font-size: 18px; color: #ffffff;">Desktop Software Pairing API Key</h3>
+                <p style="font-size: 13px; color: var(--text-muted);">Copy this key and paste it in your Windows Desktop Print Agent to connect instantly.</p>
+            </div>
+        </div>
+        <span class="status-pill pill-success" style="font-size: 12px;">🔒 1 API Key = 1 PC Bound License</span>
+    </div>
+
+    <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+        <input type="text" id="api-key-input" class="form-input" value="{{ api_key }}" readonly style="flex: 1; font-family: monospace; font-size: 16px; font-weight: 700; color: var(--cyan-accent); background: rgba(15, 23, 42, 0.9); border-color: var(--primary-light); text-align: center;">
+        <button onclick="navigator.clipboard.writeText('{{ api_key }}'); alert('API Key copied to clipboard! Paste it into Desktop Agent.');" class="btn-primary" style="width: auto; padding: 12px 24px;">📋 Copy API Key</button>
+        <form action="/api/shop/regenerate-key" method="POST" style="margin: 0;">
+            <input type="hidden" name="shop_id" value="{{ shop.shop_id }}">
+            <button type="submit" class="btn-secondary" style="width: auto; padding: 12px 18px; font-size: 13px;">🔄 Regenerate Key</button>
+        </form>
+    </div>
+</div>
+
+<!-- Revenue Stats Cards -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;">
+    <div class="glass-card" style="margin: 0; padding: 20px; text-align: center;">
+        <p style="font-size: 13px; color: var(--text-muted); font-weight: 600;">Total Revenue Collected</p>
+        <p style="font-size: 32px; font-weight: 800; color: var(--emerald-success); margin-top: 6px;">₹{{ "%.2f"|format(total_revenue) }}</p>
+    </div>
+    <div class="glass-card" style="margin: 0; padding: 20px; text-align: center;">
+        <p style="font-size: 13px; color: var(--text-muted); font-weight: 600;">Total Print Jobs</p>
+        <p style="font-size: 32px; font-weight: 800; color: var(--primary-light); margin-top: 6px;">{{ total_jobs }}</p>
+    </div>
+    <div class="glass-card" style="margin: 0; padding: 20px; text-align: center;">
+        <p style="font-size: 13px; color: var(--text-muted); font-weight: 600;">Total Pages Printed</p>
+        <p style="font-size: 32px; font-weight: 800; color: #ffffff; margin-top: 6px;">{{ total_pages }}</p>
+    </div>
+</div>
+
+<!-- Store Settings & QR Code Grid -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 24px;">
+    
+    <!-- Store Details & Profile Form -->
+    <div class="glass-card">
+        <h3 style="font-size: 18px; margin-bottom: 18px;">🏪 Store Profile & Identity Settings</h3>
+        <form action="/api/shop/details" method="POST">
+            <input type="hidden" name="shop_id" value="{{ shop.shop_id }}">
+            <div class="form-group">
+                <label class="form-label">Store ID (Read-only):</label>
+                <input type="text" class="form-input" value="{{ shop.shop_id }}" readonly style="background: rgba(15, 23, 42, 0.9); color: var(--primary-light); font-weight: 700;">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Store Name:</label>
+                <input type="text" name="name" class="form-input" value="{{ shop.name }}" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Owner Full Name:</label>
+                <input type="text" name="owner_name" class="form-input" value="{{ shop.owner_name or '' }}" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Phone / WhatsApp Number:</label>
+                <input type="text" name="phone" class="form-input" value="{{ shop.phone or '' }}" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Store Address / Location:</label>
+                <input type="text" name="address" class="form-input" value="{{ shop.address or '' }}" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Email Address:</label>
+                <input type="email" name="email" class="form-input" value="{{ shop.email or '' }}" required>
+            </div>
+            <button type="submit" class="btn-primary" style="width: 100%;">Save Store Details</button>
+        </form>
+    </div>
+
+    <!-- Print Pricing & Rates Form -->
+    <div class="glass-card">
+        <h3 style="font-size: 18px; margin-bottom: 14px;">📜 Manage Paper Types & Per-Paper Rates (Max 5)</h3>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">Configure up to 5 paper sheet sizes (A4, A3, Legal, etc.) and individual B&W and Color rates.</p>
+        
+        <form action="/api/shop/paper-rates" method="POST" id="paper-rates-form">
+            <input type="hidden" name="shop_id" value="{{ shop.shop_id }}">
+            <input type="hidden" name="paper_rates_json" id="paper_rates_json_input">
+
+            <div style="overflow-x: auto; margin-bottom: 16px;">
+                <table class="data-table" style="font-size: 13px;">
+                    <thead>
+                        <tr>
+                            <th>Active</th>
+                            <th>Paper Size</th>
+                            <th>B&W Rate (₹)</th>
+                            <th>Color Rate (₹)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="paper-table-body">
+                        {% for p in paper_rates %}
+                        <tr>
+                            <td style="text-align: center;">
+                                <input type="checkbox" class="paper-enabled-chk" {% if p.enabled %}checked{% endif %}>
+                            </td>
+                            <td>
+                                <input type="text" class="form-input paper-name-input" value="{{ p.name }}" style="padding: 6px 10px;">
+                            </td>
+                            <td>
+                                <input type="number" step="0.5" class="form-input paper-bw-input" value="{{ p.bw_rate }}" style="padding: 6px 10px;">
+                            </td>
+                            <td>
+                                <input type="number" step="0.5" class="form-input paper-color-input" value="{{ p.color_rate }}" style="padding: 6px 10px;">
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <button type="submit" onclick="buildPaperRatesJson()" class="btn-primary btn-success" style="width: 100%;">💾 Save Paper Sizes & Rates</button>
+        </form>
+
+        <script>
+            function buildPaperRatesJson() {
+                const rows = document.querySelectorAll('#paper-table-body tr');
+                const rates = [];
+                rows.forEach(r => {
+                    const enabled = r.querySelector('.paper-enabled-chk').checked;
+                    const name = r.querySelector('.paper-name-input').value.trim();
+                    const bw = parseFloat(r.querySelector('.paper-bw-input').value) || 2.0;
+                    const color = parseFloat(r.querySelector('.paper-color-input').value) || 10.0;
+                    if (name) {
+                        rates.push({ name: name, bw_rate: bw, color_rate: color, enabled: enabled });
+                    }
+                });
+                document.getElementById('paper_rates_json_input').value = JSON.stringify(rates.slice(0, 5));
+            }
+        </script>
+    </div>
+
+</div>
+
+<!-- QR Code Sticker Box -->
+<div class="glass-card" style="text-align: center;">
+    <h3 style="font-size: 18px; margin-bottom: 16px;">📱 Store Customer QR Sticker</h3>
+    {% if qr_base64 %}
+    <div style="background: white; padding: 16px; display: inline-block; border-radius: 20px; box-shadow: var(--shadow-sm);">
+        <img src="{{ qr_base64 }}" alt="Shop QR Code" style="width: 200px; height: 200px; display: block;">
+    </div>
+    {% endif %}
+    <p style="font-size: 13px; color: var(--text-muted); margin: 12px 0 16px 0; word-break: break-all; font-family: monospace;">{{ customer_url }}</p>
+    <div style="display: flex; gap: 12px; justify-content: center; max-width: 500px; margin: 0 auto;">
+        <a href="{{ customer_url }}" target="_blank" class="btn-secondary" style="flex: 1; font-size: 14px;">🔗 Open Customer Portal</a>
+        <button onclick="navigator.clipboard.writeText('{{ customer_url }}'); alert('Store URL copied!');" class="btn-primary" style="flex: 1; font-size: 14px;">📋 Copy Store Link</button>
+    </div>
+</div>
+
+<!-- Print Jobs Queue Table -->
+<div class="glass-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+        <h3 style="font-size: 18px;">📋 Live Print Queue & Transactions</h3>
+        <span class="status-pill pill-success">Real-Time Sync</span>
+    </div>
+    
+    <div style="overflow-x: auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Job ID</th>
+                    <th>Document Name</th>
+                    <th>Pages & Copies</th>
+                    <th>Status</th>
+                    <th>Total Cost</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for job in jobs %}
+                <tr>
+                    <td style="font-weight: 700; color: var(--primary-light);">#{{ job.job_id[-8:] }}</td>
+                    <td>{{ job.original_filename }}</td>
+                    <td>{{ job.page_count }} pg × {{ job.copies }} copy</td>
+                    <td>
+                        {% if job.status == 'PRINTED' %}
+                        <span class="status-pill pill-success">PRINTED</span>
+                        {% elif job.status == 'PAYMENT_PENDING' %}
+                        <span class="status-pill pill-warning">CASH PENDING</span>
+                        {% elif job.status == 'QUEUED' %}
+                        <span class="status-pill pill-success">QUEUED</span>
+                        {% else %}
+                        <span class="status-pill pill-danger">{{ job.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-weight: 700; color: #ffffff;">₹{{ "%.2f"|format(job.total_cost) }}</td>
+                    <td>
+                        {% if job.status == 'PAYMENT_PENDING' %}
+                        <button onclick="approveCash('{{ job.job_id }}')" class="btn-primary btn-success" style="padding: 6px 14px; font-size: 12px;">Confirm Cash</button>
+                        {% else %}
+                        <span style="color: var(--text-muted); font-size: 12px;">Completed</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" style="padding: 24px; text-align: center; color: var(--text-muted);">No print transactions found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    function approveCash(jobId) {
+        fetch(`/api/jobs/${jobId}/confirm-cash`, { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert("Failed to confirm cash.");
+                }
+            });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}QwikPrint - Enterprise QR Printing SaaS Platform{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <header class="app-header">
+        <a href="/" class="brand-logo">🖨️ Qwik<span>Print</span></a>
+        <nav class="nav-links">
+            <a href="/" class="nav-link">Home</a>
+            <a href="/s/SHOP_AKM_001" class="nav-link">Customer Demo</a>
+            {% if shop %}
+            <a href="/dashboard" class="nav-link" style="background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3); padding: 6px 14px; border-radius: 8px; color: var(--primary-light);">📊 Dashboard ({{ shop.name }})</a>
+            <a href="/logout" class="nav-link" style="color: var(--rose-danger);">Logout</a>
+            {% else %}
+            <a href="/login" class="nav-link">Login</a>
+            <a href="/register" class="nav-link" style="background: var(--primary); padding: 6px 14px; border-radius: 8px; color: #ffffff;">Register Shop</a>
+            {% endif %}
+        </nav>
+    </header>
+
+    <main class="app-container">
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

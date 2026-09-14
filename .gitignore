@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.db
+*.sqlite3
+.venv/
+env/
+venv/
+build/
+dist/
+*.egg-info/
+.idea/
+.vscode/
+web_server/static/uploads/*
+!web_server/static/uploads/.gitkeep

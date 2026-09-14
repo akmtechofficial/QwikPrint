@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}QwikPrint - Enterprise QR Printing SaaS Platform{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="glass-card hero-banner">
+    <div class="hero-badge">
+        <span class="pulsing-dot"></span> 100% Pure Python Powered • Supabase PostgreSQL & Firebase Auth
+    </div>
+    
+    <h1 class="hero-title">
+        The Ultimate <span class="gradient-text">QR Online Printing</span><br>SaaS Platform for Print Shops
+    </h1>
+    
+    <p class="hero-subtitle">
+        Customers scan QR at your shop, upload documents from mobile, and choose cash or online payment. Connected Windows PCs print automatically in seconds.
+    </p>
+
+    <div class="btn-group">
+        <a href="/dashboard" class="btn-primary">📊 Open Shop Dashboard</a>
+        <a href="/s/SHOP_AKM_001" class="btn-secondary">📱 Try Customer Demo Portal</a>
+    </div>
+</div>
+
+<!-- How It Works Grid -->
+<div style="margin-top: 10px; margin-bottom: 30px;">
+    <h2 style="font-size: 22px; text-align: center; margin-bottom: 24px;">How QwikPrint Automated Printing Works</h2>
+    
+    <div class="grid-3">
+        <div class="feature-card">
+            <div class="feature-icon">📲</div>
+            <h3 style="font-size: 17px; margin-bottom: 8px;">1. Customer Scans QR</h3>
+            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">Customer scans your shop QR code from mobile. Opens instantly without downloading any app.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">📄</div>
+            <h3 style="font-size: 17px; margin-bottom: 8px;">2. Uploads & Customizes</h3>
+            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">Uploads PDF/Images. Automatic page count analyzer calculates exact price per page.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">💵</div>
+            <h3 style="font-size: 17px; margin-bottom: 8px;">3. Cash or Online Pay</h3>
+            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">Counter cash payment triggers a chime sound alert & popup on your desktop app.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">🖨️</div>
+            <h3 style="font-size: 17px; margin-bottom: 8px;">4. Silent Auto-Print</h3>
+            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">Desktop agent spools document to your connected printer silently with exact page options.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Technology & Enterprise Features -->
+<div class="glass-card">
+    <h2 style="font-size: 22px; margin-bottom: 20px;">⚡ High-Performance Architecture Breakdown</h2>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--card-border); padding: 20px; border-radius: 14px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                <span style="font-size: 20px;">🗄️</span>
+                <h4 style="color: var(--primary-light); font-size: 16px;">Supabase PostgreSQL</h4>
+            </div>
+            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">Production-grade PostgreSQL database handling shops, print queue transactions, devices, and audit logs.</p>
+        </div>
+        
+        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--card-border); padding: 20px; border-radius: 14px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                <span style="font-size: 20px;">🔐</span>
+                <h4 style="color: var(--amber-warning); font-size: 16px;">Firebase Auth Only</h4>
+            </div>
+            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">Firebase Admin SDK used exclusively for verifying shop owner authentication tokens while database operations run on Supabase.</p>
+        </div>
+        
+        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--card-border); padding: 20px; border-radius: 14px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                <span style="font-size: 20px;">💻</span>
+                <h4 style="color: var(--emerald-success); font-size: 16px;">PyQt6 Desktop Spooler (.exe)</h4>
+                </div>
+            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">System tray desktop app with real-time queue listener, cash approval sound chime, and SumatraPDF silent printing engine.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

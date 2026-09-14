@@ -1,0 +1,396 @@
+{% extends "base.html" %}
+
+{% block title %}{{ shop.name }} - Instant Online Print Order{% endblock %}
+
+{% block content %}
+<!-- Top Header -->
+<div class="glass-card" style="padding: 20px 28px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+        <div>
+            <h2 style="font-size: 24px; margin-bottom: 4px;">🖨️ {{ shop.name }}</h2>
+            <p style="color: var(--text-muted); font-size: 14px;">Scan QR • Upload Document • Customize Layout & Sheet Size</p>
+        </div>
+        <span class="status-pill pill-success">🟢 Shop Online & Ready</span>
+    </div>
+</div>
+
+<!-- 1. Primary Upload Box (First Step) -->
+<div class="glass-card" id="upload-card">
+    <h3 style="font-size: 18px; margin-bottom: 16px;">1. Select or Drop Your Document</h3>
+    <div id="drop-zone" style="border: 2px dashed rgba(99, 102, 241, 0.4); background: rgba(15, 23, 42, 0.6); border-radius: 16px; padding: 48px 20px; text-align: center; cursor: pointer; transition: all 0.25s ease;">
+        <p style="font-size: 54px; margin-bottom: 12px;">📄</p>
+        <p style="font-size: 18px; font-weight: 700; color: #ffffff;">Tap to Choose File or Drag & Drop Here</p>
+        <p style="font-size: 13px; color: var(--text-muted); margin-top: 6px;">Supports PDF, PNG, JPG, JPEG, Aadhaar/PAN Card scans</p>
+        <input type="file" id="file-input" accept=".pdf,.png,.jpg,.jpeg" style="display: none;">
+    </div>
+</div>
+
+<!-- 🔒 Password Protected PDF Card (Shown if PDF is encrypted) -->
+<div class="glass-card" id="password-card" style="display: none; border: 1px solid #f59e0b; background: rgba(245, 158, 11, 0.1);">
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+        <span style="font-size: 32px;">🔒</span>
+        <div>
+            <h3 style="font-size: 18px; color: #f59e0b;">Password Protected PDF Detected</h3>
+            <p style="font-size: 13px; color: var(--text-muted);">Please enter the PDF password below to unlock page count and live preview.</p>
+        </div>
+    </div>
+    <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+        <input type="password" id="pdf-password-input" class="form-input" placeholder="Enter PDF Password..." style="flex: 1;">
+        <button id="unlock-btn" class="btn-primary" style="width: auto; padding: 12px 24px; background: #f59e0b;">🔓 Unlock & Preview PDF</button>
+    </div>
+    <p id="password-error-lbl" style="color: var(--rose-danger); font-size: 13px; margin-top: 8px; display: none;"></p>
+</div>
+
+<!-- 2. Print Configuration & Live Sheet Layout Preview -->
+<div class="glass-card" id="config-card" style="display: none;">
+    <h3 style="font-size: 18px; margin-bottom: 20px;">2. Interactive Sheet Layout & Print Options</h3>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px;">
+        
+        <!-- Left Column: Controls & Paper Selection -->
+        <div>
+            <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid var(--card-border); padding: 14px; border-radius: 12px; margin-bottom: 16px;">
+                <p id="file-info" style="font-weight: 700; font-size: 15px; color: #ffffff;">FileName.pdf</p>
+                <p id="page-info" style="font-size: 13px; color: var(--primary-light); margin-top: 2px;">Pages: 1</p>
+            </div>
+
+            <!-- Paper Size Selection (Configured by Shopkeeper) -->
+            <div class="form-group">
+                <label class="form-label">📜 Paper Sheet Size (Shopkeeper Configured):</label>
+                <select id="paper-size-select" class="form-input">
+                    {% for p in paper_rates %}
+                    {% if p.enabled %}
+                    <option value="{{ p.name }}" data-bw="{{ p.bw_rate }}" data-color="{{ p.color_rate }}">{{ p.name }} (B&W ₹{{ "%.2f"|format(p.bw_rate) }} | Color ₹{{ "%.2f"|format(p.color_rate) }})</option>
+                    {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Print Color Mode -->
+            <div class="form-group">
+                <label class="form-label">🎨 Print Color Mode:</label>
+                <select id="color-mode" class="form-input">
+                    <option value="bw">Black & White</option>
+                    <option value="color">Color Print</option>
+                </select>
+            </div>
+
+            <!-- Orientation & Multi-Page Grid (Aadhaar / PAN support) -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div class="form-group">
+                    <label class="form-label">📐 Sheet Orientation:</label>
+                    <select id="orientation-select" class="form-input">
+                        <option value="portrait">Portrait (Vertical)</option>
+                        <option value="landscape">Landscape (Horizontal)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">🖼️ Layout Grid (ID Cards):</label>
+                    <select id="layout-grid-select" class="form-input">
+                        <option value="1in1">1 Page / Full Sheet</option>
+                        <option value="2in1">2-in-1 (Aadhaar/PAN Front+Back)</option>
+                        <option value="4in1">4-in-1 Grid Layout</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Scale & Fitting -->
+            <div class="form-group">
+                <label class="form-label">🔍 Scaling & Fitting:</label>
+                <select id="scale-fit-select" class="form-input">
+                    <option value="fit">Fit to Page (Auto Scale)</option>
+                    <option value="100">Original (100% Scale)</option>
+                    <option value="75">Compact (75% Scale)</option>
+                    <option value="50">Mini (50% Scale)</option>
+                </select>
+            </div>
+
+            <!-- Copies & Duplex -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div class="form-group">
+                    <label class="form-label">🔢 Copies:</label>
+                    <input type="number" id="copies" class="form-input" value="1" min="1" max="100">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">📄 Duplex (Sides):</label>
+                    <select id="duplex" class="form-input">
+                        <option value="single">Single Sided</option>
+                        <option value="double_long">Double Sided (Both)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">💵 Payment Method:</label>
+                <select id="payment-method" class="form-input">
+                    <option value="cash">💵 Cash at Shop Counter</option>
+                    <option value="online">💳 Pay Online (UPI / Card / NetBanking)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Right Column: Live Sheet Preview Canvas -->
+        <div style="display: flex; flex-direction: column; align-items: center;">
+            <p style="font-weight: 700; font-size: 14px; color: var(--text-muted); margin-bottom: 8px;">🖼️ Live Sheet Print Preview</p>
+            <div style="border: 2px solid var(--card-border); border-radius: 12px; padding: 12px; background: #0f172a; display: flex; justify-content: center; align-items: center; width: 100%; min-height: 340px;">
+                <canvas id="preview-canvas" width="280" height="380" style="background: #ffffff; border-radius: 4px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); transition: all 0.3s ease;"></canvas>
+            </div>
+            <p id="sheet-spec-lbl" style="font-size: 12px; color: var(--primary-light); margin-top: 8px;">Paper: A4 Portrait | Mode: B&W | Layout: 1-in-1</p>
+        </div>
+
+    </div>
+
+    <!-- Total Cost Display Box -->
+    <div style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(6, 182, 212, 0.15) 100%); border: 1px solid var(--primary-light); padding: 20px; border-radius: 16px; margin: 24px 0; text-align: center;">
+        <p style="font-size: 13px; color: var(--text-muted); font-weight: 600;">Calculated Total Price</p>
+        <p id="total-price" style="font-size: 34px; font-weight: 800; color: #ffffff; margin-top: 4px;">₹0.00</p>
+    </div>
+
+    <button id="submit-btn" class="btn-primary btn-success" style="width: 100%; padding: 16px; font-size: 16px;">✅ Submit Print Order Now</button>
+</div>
+
+<!-- Order Confirmation Modal -->
+<div class="glass-card" id="success-card" style="display: none; text-align: center; padding: 40px 20px;">
+    <p style="font-size: 56px; margin-bottom: 12px;">🎉</p>
+    <h2 style="font-size: 24px; color: var(--emerald-success); margin-bottom: 8px;">Print Order Sent to Counter!</h2>
+    <p style="color: var(--text-muted); font-size: 15px; margin-bottom: 20px;">Order ID: <b id="job-id-lbl" style="color: #ffffff;">#123456</b></p>
+    <p id="status-msg" style="font-size: 15px; background: rgba(15, 23, 42, 0.8); border: 1px solid var(--card-border); padding: 14px; border-radius: 12px; margin-bottom: 24px; color: var(--text-body);">Please pay cash at shop counter to trigger automatic printing.</p>
+    <button onclick="location.reload()" class="btn-secondary">Print Another Document</button>
+</div>
+
+<script>
+    const shopId = "{{ shop.shop_id }}";
+    let uploadedFileMeta = null;
+
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const uploadCard = document.getElementById('upload-card');
+    const configCard = document.getElementById('config-card');
+    const passwordCard = document.getElementById('password-card');
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = '#6366f1'; });
+    dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'rgba(99, 102, 241, 0.4)'; });
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length) handleFile(e.target.files[0]);
+    });
+
+    function handleFile(file) {
+        const formData = new FormData();
+        formData.append('shop_id', shopId);
+        formData.append('file', file);
+
+        dropZone.innerHTML = "<p style='font-size: 16px; font-weight: 600;'>⏳ Uploading & Inspecting Document...</p>";
+
+        fetch('/api/customer/upload', { method: 'POST', body: formData })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    uploadedFileMeta = data;
+                    if (data.is_password_protected) {
+                        passwordCard.style.display = 'block';
+                        uploadCard.style.display = 'none';
+                    } else {
+                        showConfigUI(data);
+                    }
+                } else {
+                    alert(data.error || "Upload failed.");
+                }
+            });
+    }
+
+    document.getElementById('unlock-btn').addEventListener('click', () => {
+        const pass = document.getElementById('pdf-password-input').value.trim();
+        if (!pass) return;
+
+        const formData = new FormData();
+        formData.append('saved_path', uploadedFileMeta.saved_path);
+        formData.append('password', pass);
+
+        fetch('/api/customer/unlock-pdf', { method: 'POST', body: formData })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    uploadedFileMeta.page_count = data.page_count;
+                    uploadedFileMeta.is_password_protected = false;
+                    passwordCard.style.display = 'none';
+                    showConfigUI(uploadedFileMeta);
+                } else {
+                    const errLbl = document.getElementById('password-error-lbl');
+                    errLbl.innerText = data.error || "Incorrect password.";
+                    errLbl.style.display = 'block';
+                }
+            });
+    });
+
+    function showConfigUI(data) {
+        document.getElementById('file-info').innerText = data.filename;
+        document.getElementById('page-info').innerText = `Total Document Pages: ${data.page_count}`;
+        configCard.style.display = 'block';
+        uploadCard.style.display = 'none';
+        calculatePriceAndDrawPreview();
+    }
+
+    function calculatePriceAndDrawPreview() {
+        if (!uploadedFileMeta) return;
+
+        const paperSelect = document.getElementById('paper-size-select');
+        const selectedOpt = paperSelect.options[paperSelect.selectedIndex];
+        
+        const bwRate = parseFloat(selectedOpt.getAttribute('data-bw')) || 2.0;
+        const colorRate = parseFloat(selectedOpt.getAttribute('data-color')) || 10.0;
+        
+        const pages = uploadedFileMeta.page_count || 1;
+        const copies = parseInt(document.getElementById('copies').value) || 1;
+        const mode = document.getElementById('color-mode').value;
+        const rate = (mode === 'color') ? colorRate : bwRate;
+
+        const total = pages * copies * rate;
+        document.getElementById('total-price').innerText = `₹${total.toFixed(2)}`;
+
+        drawLivePreviewCanvas();
+        return total;
+    }
+
+    function drawLivePreviewCanvas() {
+        const canvas = document.getElementById('preview-canvas');
+        const ctx = canvas.getContext('2d');
+
+        const paperSize = document.getElementById('paper-size-select').value;
+        const orientation = document.getElementById('orientation-select').value;
+        const layoutGrid = document.getElementById('layout-grid-select').value;
+        const colorMode = document.getElementById('color-mode').value;
+        const scaleVal = document.getElementById('scale-fit-select').value;
+
+        // Set Canvas Aspect Ratio based on orientation
+        if (orientation === 'landscape') {
+            canvas.width = 380;
+            canvas.height = 260;
+        } else {
+            canvas.width = 270;
+            canvas.height = 380;
+        }
+
+        // Draw Paper Sheet
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(0, 0, canvas.width, canvas.height);
+
+        // Draw Margin Lines
+        ctx.strokeStyle = '#f1f5f9';
+        ctx.setLineDash([4, 4]);
+        ctx.strokeRect(12, 12, canvas.width - 24, canvas.height - 24);
+        ctx.setLineDash([]);
+
+        // Determine Document Colors
+        const docBg = (colorMode === 'color') ? '#3b82f6' : '#475569';
+        const textClr = (colorMode === 'color') ? '#93c5fd' : '#94a3b8';
+
+        let scaleFactor = 1.0;
+        if (scaleVal === '75') scaleFactor = 0.75;
+        if (scaleVal === '50') scaleFactor = 0.5;
+
+        // Draw Document Pages according to Grid Layout
+        if (layoutGrid === '1in1') {
+            const w = (canvas.width - 40) * scaleFactor;
+            const h = (canvas.height - 40) * scaleFactor;
+            const x = (canvas.width - w) / 2;
+            const y = (canvas.height - h) / 2;
+
+            ctx.fillStyle = docBg;
+            ctx.roundRect(x, y, w, h, 6);
+            ctx.fill();
+
+            // Text placeholder lines
+            ctx.fillStyle = textClr;
+            ctx.fillRect(x + 16, y + 20, w - 32, 6);
+            ctx.fillRect(x + 16, y + 34, w - 48, 6);
+            ctx.fillRect(x + 16, y + 48, w - 40, 6);
+        } else if (layoutGrid === '2in1') {
+            // ID Card 2-in-1 Front + Back Side Layout
+            const cardW = (canvas.width - 36) * scaleFactor;
+            const cardH = (canvas.height / 2 - 24) * scaleFactor;
+
+            // Card 1 (Front)
+            const x1 = (canvas.width - cardW) / 2;
+            const y1 = 20;
+            ctx.fillStyle = docBg;
+            ctx.roundRect(x1, y1, cardW, cardH, 6);
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillText("🪪 ID Card - Front", x1 + 12, y1 + 22);
+
+            // Card 2 (Back)
+            const y2 = y1 + cardH + 16;
+            ctx.fillStyle = docBg;
+            ctx.roundRect(x1, y2, cardW, cardH, 6);
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillText("🪪 ID Card - Back", x1 + 12, y2 + 22);
+        } else if (layoutGrid === '4in1') {
+            // 4-in-1 Grid Layout
+            const w = (canvas.width / 2 - 18) * scaleFactor;
+            const h = (canvas.height / 2 - 18) * scaleFactor;
+
+            const positions = [
+                [12, 12], [canvas.width / 2 + 6, 12],
+                [12, canvas.height / 2 + 6], [canvas.width / 2 + 6, canvas.height / 2 + 6]
+            ];
+
+            positions.forEach((pos, idx) => {
+                ctx.fillStyle = docBg;
+                ctx.roundRect(pos[0], pos[1], w, h, 4);
+                ctx.fill();
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 9px sans-serif';
+                ctx.fillText(`P.${idx+1}`, pos[0] + 6, pos[1] + 16);
+            });
+        }
+
+        document.getElementById('sheet-spec-lbl').innerText = `Paper: ${paperSize} ${orientation.toUpperCase()} | Mode: ${colorMode.toUpperCase()} | Grid: ${layoutGrid}`;
+    }
+
+    ['paper-size-select', 'color-mode', 'orientation-select', 'layout-grid-select', 'scale-fit-select', 'copies', 'duplex'].forEach(id => {
+        document.getElementById(id).addEventListener('change', calculatePriceAndDrawPreview);
+        document.getElementById(id).addEventListener('input', calculatePriceAndDrawPreview);
+    });
+
+    document.getElementById('submit-btn').addEventListener('click', () => {
+        if (!uploadedFileMeta) return;
+
+        const totalCost = calculatePriceAndDrawPreview();
+        const formData = new FormData();
+        formData.append('shop_id', shopId);
+        formData.append('original_filename', uploadedFileMeta.filename);
+        formData.append('file_path', uploadedFileMeta.saved_path);
+        formData.append('page_count', uploadedFileMeta.page_count);
+        formData.append('copies', document.getElementById('copies').value);
+        formData.append('color_mode', document.getElementById('color-mode').value);
+        formData.append('duplex', document.getElementById('duplex').value);
+        formData.append('page_range', document.getElementById('paper-size-select').value + " / " + document.getElementById('layout-grid-select').value);
+        formData.append('payment_method', document.getElementById('payment-method').value);
+        formData.append('total_cost', totalCost);
+
+        fetch('/api/customer/submit-job', { method: 'POST', body: formData })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    configCard.style.display = 'none';
+                    document.getElementById('success-card').style.display = 'block';
+                    document.getElementById('job-id-lbl').innerText = `#${data.job_id.slice(-8)}`;
+                }
+            });
+    });
+</script>
+{% endblock %}

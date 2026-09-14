@@ -143,6 +143,18 @@ class APIClient:
         except Exception as e:
             return False, f"Network error: {str(e)}"
 
+    def reject_cash_payment(self, job_id: str) -> tuple[bool, str]:
+        """Rejects cash payment for a job."""
+        url = f"{self.server_url}/api/jobs/{job_id}/reject-cash"
+        try:
+            res = requests.post(url, headers=self.headers, timeout=8)
+            data = res.json()
+            if res.status_code == 200 and data.get("success"):
+                return True, "Cash payment rejected"
+            return False, data.get("error", "Cash rejection failed")
+        except Exception as e:
+            return False, f"Network error: {str(e)}"
+
     def update_pricing(self, bw_rate: float, color_rate: float, duplex_discount: float) -> tuple[bool, str]:
         """Updates shop pricing rates on server."""
         url = f"{self.server_url}/api/agent/pricing"
@@ -166,6 +178,7 @@ class APIClient:
                     "color_rate": color_rate,
                     "duplex_discount": duplex_discount
                 })
+                return True, data.get("message", "Pricing updated successfully!")
             return False, data.get("error", "Pricing update failed")
         except Exception as e:
             return False, f"Network error: {str(e)}"

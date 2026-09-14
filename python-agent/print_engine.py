@@ -4,7 +4,7 @@ import requests
 import subprocess
 import time
 from config_manager import config_mgr
-from printer_service import HAS_WIN32
+from printer_service import HAS_WIN32, printer_service
 
 if HAS_WIN32:
     import win32api
@@ -43,7 +43,7 @@ class PrintEngine:
         return ""
 
     def cleanup(self, *paths):
-        """Removes one or more local temp files silently."""
+        """Removes one or more local temp files silently on successful print."""
         for p in paths:
             try:
                 if p and os.path.exists(p):
@@ -62,15 +62,12 @@ class PrintEngine:
         local_path = os.path.join(self.temp_dir, local_filename)
 
         if not download_url.startswith("http"):
-            # Fallback: write a dummy placeholder (for local-path based storage)
             # If the download_url IS a local filesystem path, copy it instead
             if os.path.exists(download_url):
                 import shutil
                 shutil.copy2(download_url, local_path)
                 return local_path
-            with open(local_path, "wb") as f:
-                f.write(b"%PDF-1.4 Mock PDF Content")
-            return local_path
+            raise RuntimeError(f"Invalid download URL or file path: {download_url}")
 
         res = requests.get(download_url, timeout=30, stream=True)
         if res.status_code == 200:
@@ -79,7 +76,7 @@ class PrintEngine:
                     f.write(chunk)
             return local_path
         else:
-            raise Exception(f"File download failed with HTTP {res.status_code}")
+            raise RuntimeError(f"File download failed with HTTP status {res.status_code}")
 
     # ──────────────────────────────────────────────────────────
     #  Image → PDF Conversion  (for rendered canvas PNG files)
@@ -142,6 +139,16 @@ class PrintEngine:
         Spools a file (PDF or image) to the target printer.
         Images are auto-converted to PDF via Pillow before printing.
         """
+        if not printer_name:
+            raise RuntimeError("No usable printer detected. Please configure a valid printer.")
+
+        allow_virtual = config_mgr.get("allow_virtual_printers", True)
+        if printer_service.is_virtual_printer(printer_name) and not allow_virtual:
+            raise RuntimeError(f"Cannot print to virtual printer '{printer_name}'. Please connect a physical hardware printer or enable Virtual Printers in settings.")
+
+        if not printer_service.validate_printer_exists(printer_name):
+            raise RuntimeError(f"Target printer '{printer_name}' is not installed or available on this system.")
+
         copies     = int(options.get("copies", 1))
         color_mode = options.get("colorMode", "bw")   # "color" | "bw"
         duplex     = options.get("duplex", "single")   # "single" | "double_long" | "double_short"
@@ -200,43 +207,53 @@ class PrintEngine:
                     "-silent",
                     file_path,
                 ]
-                print(f"[PrintEngine] SumatraPDF: {' '.join(cmd)}")
+                print(f"[PrintEngine] SumatraPDF command: {' '.join(cmd)}")
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
 
                 if result.returncode == 0:
+                    print(f"[PrintEngine Success] SumatraPDF printed '{os.path.basename(file_path)}' to '{printer_name}'")
                     self.cleanup(file_path, original_image_path)
                     return True
                 else:
                     print(
                         f"[PrintEngine Warning] SumatraPDF exit={result.returncode}: {result.stderr.strip()}"
                     )
-                    # Fall through to Win32 ShellExecute
+                    # Fall through to Win32 ShellExecute / win32print
 
-            # ── Method 2: Win32 ShellExecute fallback ──
+            # ── Method 2: Win32 printing path with verification ──
             if HAS_WIN32:
+                import win32api
+                import win32print
+
+                # Verify printer is accessible
+                try:
+                    h_printer = win32print.OpenPrinter(printer_name)
+                    win32print.ClosePrinter(h_printer)
+                except Exception as open_err:
+                    raise RuntimeError(f"Cannot open printer '{printer_name}': {open_err}")
+
                 try:
                     for _ in range(copies):
-                        win32api.ShellExecute(0, "printto", file_path, f'"{printer_name}"', ".", 0)
+                        res_code = win32api.ShellExecute(0, "printto", file_path, f'"{printer_name}"', ".", 0)
+                        if isinstance(res_code, int) and res_code <= 32:
+                            raise RuntimeError(f"ShellExecute failed with OS error code {res_code}")
                         time.sleep(1.5)
+
+                    print(f"[PrintEngine Success] Document spooled to '{printer_name}' via Windows Shell")
                     self.cleanup(file_path, original_image_path)
                     return True
                 except Exception as e:
-                    self.cleanup(file_path, original_image_path)
-                    raise RuntimeError(
-                        f"Printer error — is '{printer_name}' online?\n"
-                        f"Make sure the printer is powered on and set as default.\n"
-                        f"Detail: {e}"
-                    )
+                    raise RuntimeError(f"Windows print spooling failed for '{printer_name}': {e}")
 
             # ── No method available ──
-            self.cleanup(file_path, original_image_path)
-            raise RuntimeError(
-                "No print method available. Install SumatraPDF or pywin32."
-            )
+            raise RuntimeError("No valid print method available. Install SumatraPDF or pywin32.")
 
-        except Exception:
-            self.cleanup(file_path, original_image_path)
+        except Exception as err:
+            # Preserve local file on failure for diagnostics/retry
+            print(f"[PrintEngine Diagnostic] Print failed for file '{file_path}': {err}")
+            print(f"[PrintEngine Diagnostic] Preserved local file for diagnostics: {file_path}")
             raise
 
 
 print_engine = PrintEngine()
+

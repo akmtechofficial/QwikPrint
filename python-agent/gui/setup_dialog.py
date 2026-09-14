@@ -78,38 +78,50 @@ class SetupDialog(QDialog):
         layout.addLayout(btn_layout)
 
     def save_and_pair(self):
-        server_url = self.url_input.text().strip()
-        api_key = self.api_key_input.text().strip()
-        selected_printer = self.printer_combo.currentText()
+        sender = self.sender()
+        if sender and isinstance(sender, QPushButton):
+            sender.setEnabled(False)
+            sender.setText("⏳ Connecting & Pairing...")
+            from PyQt6.QtWidgets import QApplication
+            QApplication.processEvents()
 
-        if not server_url or not api_key:
-            QMessageBox.warning(self, "Missing API Key", "Please paste your Secret API Key from your Web Dashboard.")
-            return
+        try:
+            server_url = self.url_input.text().strip()
+            api_key = self.api_key_input.text().strip()
+            selected_printer = self.printer_combo.currentText()
 
-        # Call verify_api_key endpoint
-        success, msg, data = api_client.verify_api_key(server_url, api_key)
-        
-        if success:
-            config_mgr.save_config({
-                "server_url": server_url,
-                "api_key": api_key,
-                "shop_id": data.get("shopId"),
-                "shop_name": data.get("shopName"),
-                "device_id": data.get("deviceId"),
-                "device_token": data.get("deviceToken"),
-                "bw_rate": data.get("bwRate", 2.0),
-                "color_rate": data.get("colorRate", 10.0),
-                "duplex_discount": data.get("duplexDiscount", 0.5),
-                "device_name": "Windows Desktop PC",
-                "selected_printer": selected_printer
-            })
+            if not server_url or not api_key:
+                QMessageBox.warning(self, "Missing API Key", "Please paste your Secret API Key from your Web Dashboard.")
+                return
 
-            QMessageBox.information(self, "Paired Successfully 🎉", 
-                                    f"{msg}\n\n"
-                                    f"Store: {data.get('shopName')}\n"
-                                    f"Shop ID: {data.get('shopId')}\n"
-                                    f"Selected Printer: {selected_printer}\n"
-                                    f"License: 1 API Key = 1 PC Bound")
-            self.accept()
-        else:
-            QMessageBox.critical(self, "Pairing Error ❌", f"{msg}\n\nPlease verify your API Key in your Web Dashboard.")
+            # Call verify_api_key endpoint
+            success, msg, data = api_client.verify_api_key(server_url, api_key)
+            
+            if success:
+                config_mgr.save_config({
+                    "server_url": server_url,
+                    "api_key": api_key,
+                    "shop_id": data.get("shopId"),
+                    "shop_name": data.get("shopName"),
+                    "device_id": data.get("deviceId"),
+                    "device_token": data.get("deviceToken"),
+                    "bw_rate": data.get("bwRate", 2.0),
+                    "color_rate": data.get("colorRate", 10.0),
+                    "duplex_discount": data.get("duplexDiscount", 0.5),
+                    "device_name": "Windows Desktop PC",
+                    "selected_printer": selected_printer
+                })
+
+                QMessageBox.information(self, "Paired Successfully 🎉", 
+                                        f"{msg}\n\n"
+                                        f"Store: {data.get('shopName')}\n"
+                                        f"Shop ID: {data.get('shopId')}\n"
+                                        f"Selected Printer: {selected_printer}\n"
+                                        f"License: 1 API Key = 1 PC Bound")
+                self.accept()
+            else:
+                QMessageBox.critical(self, "Pairing Error ❌", f"{msg}\n\nPlease verify your API Key in your Web Dashboard.")
+        finally:
+            if sender and isinstance(sender, QPushButton):
+                sender.setEnabled(True)
+                sender.setText("🔗 Connect & Pair Software")

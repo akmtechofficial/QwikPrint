@@ -92,6 +92,120 @@
         padding: 8px 12px;
         margin-bottom: 8px;
     }
+    /* PDF Page Thumbnail Strip */
+    .page-strip-section {
+        background: rgba(15, 23, 42, 0.9);
+        border: 1px solid rgba(99,102,241,0.3);
+        border-radius: 12px;
+        padding: 12px 14px;
+        margin-top: 12px;
+    }
+    .page-strip-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    .page-strip-header p {
+        font-size: 12px;
+        font-weight: 700;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .page-strip-actions {
+        display: flex;
+        gap: 6px;
+    }
+    .page-strip-btn {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 3px 10px;
+        border-radius: 6px;
+        border: 1px solid rgba(99,102,241,0.4);
+        background: rgba(99,102,241,0.15);
+        color: #818cf8;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+    .page-strip-btn:hover { background: rgba(99,102,241,0.3); }
+    .page-strip-btn.active {
+        background: rgba(99,102,241,0.4);
+        border-color: #6366f1;
+        color: #ffffff;
+    }
+    .page-thumbs-row {
+        display: flex;
+        flex-direction: row;
+        gap: 8px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        scroll-snap-type: x mandatory;
+    }
+    .page-thumbs-row::-webkit-scrollbar { height: 4px; }
+    .page-thumbs-row::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    .page-thumb-item {
+        flex-shrink: 0;
+        scroll-snap-align: start;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        cursor: pointer;
+        user-select: none;
+    }
+    .page-thumb-wrap {
+        position: relative;
+        width: 60px;
+        height: 82px;
+        border-radius: 5px;
+        overflow: hidden;
+        border: 2px solid #334155;
+        background: #ffffff;
+        transition: border-color 0.15s;
+    }
+    .page-thumb-wrap.selected {
+        border-color: #6366f1;
+        box-shadow: 0 0 8px rgba(99,102,241,0.5);
+    }
+    .page-thumb-wrap canvas {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+    }
+    .page-thumb-check {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        width: 16px; height: 16px;
+        border-radius: 50%;
+        background: #6366f1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 9px;
+        color: white;
+        font-weight: 800;
+    }
+    .page-thumb-lbl {
+        font-size: 10px;
+        color: #64748b;
+        font-weight: 600;
+    }
+    .page-thumb-lbl.selected { color: #818cf8; }
+    .size-error-msg {
+        background: rgba(239, 68, 68, 0.12);
+        border: 1px solid rgba(239, 68, 68, 0.4);
+        border-radius: 8px;
+        padding: 8px 14px;
+        color: #f87171;
+        font-size: 13px;
+        font-weight: 600;
+        margin-top: 10px;
+        display: none;
+    }
+
     /* Crop & Preview Modal */
     .modal-backdrop {
         position: fixed;
@@ -140,10 +254,11 @@
     <h3 style="font-size: 18px; margin-bottom: 16px;">1. Select or Drop Your Documents / Images</h3>
     <div id="drop-zone" style="border: 2px dashed rgba(99, 102, 241, 0.4); background: rgba(15, 23, 42, 0.6); border-radius: 16px; padding: 48px 20px; text-align: center; cursor: pointer; transition: all 0.25s ease;">
         <p style="font-size: 54px; margin-bottom: 12px;">📑</p>
-        <p style="font-size: 18px; font-weight: 700; color: #ffffff;">Tap to Choose Files or Drag & Drop Here</p>
-        <p style="font-size: 13px; color: var(--text-muted); margin-top: 6px;">Select single or multiple files (PDF, PNG, JPG, Aadhaar/PAN Card front & back)</p>
+        <p style="font-size: 18px; font-weight: 700; color: #ffffff;">Tap to Choose Files or Drag &amp; Drop Here</p>
+        <p style="font-size: 13px; color: var(--text-muted); margin-top: 6px;">PDF, PNG, JPG — Max <b style="color:#f87171;">25 MB</b> per file</p>
         <input type="file" id="file-input" accept=".pdf,.png,.jpg,.jpeg" multiple style="display: none;">
     </div>
+    <div id="size-error-msg" style="display:none; background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.4); border-radius: 8px; padding: 8px 14px; color: #f87171; font-size: 13px; font-weight: 600; margin-top: 10px;"></div>
 </div>
 
 <!-- 🔒 Password Protected PDF Card (Shown if encrypted PDF is detected) -->
@@ -283,7 +398,20 @@
                 <div class="preview-overlay-hint">🔍 Click to Enlarge / Crop</div>
                 <canvas id="preview-canvas" width="280" height="380" style="background: #ffffff; border-radius: 4px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); transition: all 0.3s ease;"></canvas>
             </div>
-            <p id="sheet-spec-lbl" style="font-size: 12px; color: var(--primary-light); margin-top: 8px; text-align: center;">Paper: A4 Portrait | Mode: B&W | Grid: 1-in-1</p>
+            <p id="sheet-spec-lbl" style="font-size: 12px; color: var(--primary-light); margin-top: 8px; text-align: center;">Paper: A4 Portrait | Mode: B&amp;W | Grid: 1-in-1</p>
+
+            <!-- PDF Page Thumbnail Strip (shown for multi-page PDFs) -->
+            <div id="page-strip-section" class="page-strip-section" style="display:none; width:100%; box-sizing:border-box;">
+                <div class="page-strip-header">
+                    <p>📄 Pages to Print</p>
+                    <div class="page-strip-actions">
+                        <button class="page-strip-btn active" id="strip-all-btn" onclick="setPageSelectionMode('all')">All Pages</button>
+                        <button class="page-strip-btn" id="strip-custom-btn" onclick="setPageSelectionMode('custom')">Custom Select</button>
+                    </div>
+                </div>
+                <div id="page-thumbs-row" class="page-thumbs-row"></div>
+                <p id="page-sel-summary" style="font-size: 11px; color: #64748b; margin-top: 8px; text-align: center;"></p>
+            </div>
         </div>
 
     </div>
@@ -589,6 +717,8 @@
     let uploadedFiles = [];
     let activeModalFileIdx = 0;
     let gridSlotMapping = [0, 1, 2, 3];
+    let pageSelectionMode = 'all';   // 'all' | 'custom'
+    let selectedPageMap   = {};      // { fileId: Set<pageNumber> }
 
     const dropZone = document.getElementById('drop-zone');
     const fileInput = document.getElementById('file-input');
@@ -714,6 +844,13 @@
             try {
                 const res = await fetch('/api/customer/upload', { method: 'POST', body: formData });
                 const data = await res.json();
+                if (!data.success && data.error) {
+                    // Server-side error (e.g. 413 file too large)
+                    const errEl = document.getElementById('size-error-msg');
+                    errEl.innerText = `⚠️ ${data.error}`;
+                    errEl.style.display = 'block';
+                    continue;
+                }
                 if (data.success) {
                     if (data.is_password_protected) {
                         uploadedFiles.push({ ...data, is_pdf: true });
@@ -723,17 +860,22 @@
                     }
 
                     const isPdf = data.filename.toLowerCase().endsWith('.pdf');
+                    const fileId = 'file_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+                    const pageCount = data.page_count || 1;
                     const fileObj = {
-                        id: 'file_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                        id: fileId,
                         filename: data.filename,
                         saved_path: data.saved_path,
                         preview_url: data.preview_url,
-                        page_count: data.page_count || 1,
+                        page_count: pageCount,
                         is_pdf: isPdf,
                         imgObj: null,
                         pdfDoc: null,
                         crop: { x: 0, y: 0, w: 100, h: 100 }
                     };
+
+                    // Init selected pages: all selected by default
+                    selectedPageMap[fileId] = new Set(Array.from({length: pageCount}, (_, i) => i + 1));
 
                     if (isPdf && window.pdfjsLib) {
                         try {
@@ -756,10 +898,12 @@
             } catch (err) {
                 console.error("Upload error:", err);
             }
+
         }
 
         renderFileListUI();
         renderGridSlotCustomizerUI();
+        await renderPageThumbnailStrip();
         configCard.style.display = 'block';
         uploadCard.style.display = 'none';
         calculatePriceAndDrawPreview();
@@ -792,19 +936,158 @@
     }
 
     function removeFile(index) {
+        const removed = uploadedFiles[index];
+        if (removed) delete selectedPageMap[removed.id];
         uploadedFiles.splice(index, 1);
         if (uploadedFiles.length === 0) {
             configCard.style.display = 'none';
             uploadCard.style.display = 'block';
+            document.getElementById('page-strip-section').style.display = 'none';
             dropZone.innerHTML = `
                 <p style="font-size: 54px; margin-bottom: 12px;">📑</p>
-                <p style="font-size: 18px; font-weight: 700; color: #ffffff;">Tap to Choose Files or Drag & Drop Here</p>
-                <p style="font-size: 13px; color: var(--text-muted); margin-top: 6px;">Select single or multiple files (PDF, PNG, JPG, Aadhaar/PAN Card front & back)</p>
+                <p style="font-size: 18px; font-weight: 700; color: #ffffff;">Tap to Choose Files or Drag &amp; Drop Here</p>
+                <p style="font-size: 13px; color: var(--text-muted); margin-top: 6px;">PDF, PNG, JPG — Max <b style="color:#f87171;">25 MB</b> per file</p>
+                <input type="file" id="file-input" accept=".pdf,.png,.jpg,.jpeg" multiple style="display: none;">
             `;
+            document.getElementById('file-input').addEventListener('change', (e) => {
+                if (e.target.files.length) processSelectedFiles(Array.from(e.target.files));
+            });
+            dropZone.addEventListener('click', () => document.getElementById('file-input').click());
         } else {
             renderFileListUI();
             renderGridSlotCustomizerUI();
+            renderPageThumbnailStrip();
             calculatePriceAndDrawPreview();
+        }
+    }
+
+    // ── Page Selection Mode ──
+    function setPageSelectionMode(mode) {
+        pageSelectionMode = mode;
+        document.getElementById('strip-all-btn').classList.toggle('active', mode === 'all');
+        document.getElementById('strip-custom-btn').classList.toggle('active', mode === 'custom');
+        if (mode === 'all') {
+            uploadedFiles.forEach(f => {
+                selectedPageMap[f.id] = new Set(Array.from({length: f.page_count}, (_, i) => i + 1));
+            });
+        }
+        renderPageThumbnailStrip();
+        calculatePriceAndDrawPreview();
+    }
+
+    function togglePageSelection(fileId, pageNum) {
+        if (pageSelectionMode !== 'custom') return;
+        const sel = selectedPageMap[fileId];
+        if (!sel) return;
+        if (sel.has(pageNum)) {
+            if (sel.size > 1) sel.delete(pageNum);
+        } else {
+            sel.add(pageNum);
+        }
+        renderPageThumbnailStrip();
+        calculatePriceAndDrawPreview();
+    }
+
+    function getSelectedPageCount() {
+        let total = 0;
+        uploadedFiles.forEach(f => {
+            if (f.imgObj) {
+                total += 1;
+            } else {
+                const sel = selectedPageMap[f.id];
+                total += sel ? sel.size : (f.page_count || 1);
+            }
+        });
+        return Math.max(1, total);
+    }
+
+    async function renderPageThumbnailStrip() {
+        const section = document.getElementById('page-strip-section');
+        const row     = document.getElementById('page-thumbs-row');
+        const summary = document.getElementById('page-sel-summary');
+        if (!section || !row) return;
+
+        const hasPdfWithMultiplePages = uploadedFiles.some(f => f.is_pdf && f.page_count > 1);
+        if (!hasPdfWithMultiplePages) {
+            section.style.display = 'none';
+            return;
+        }
+        section.style.display = 'block';
+        row.innerHTML = '';
+
+        let totalSelected = 0;
+        let totalPages    = 0;
+
+        for (const file of uploadedFiles) {
+            if (!file.is_pdf || file.page_count <= 1) {
+                if (file.imgObj) totalSelected++;
+                continue;
+            }
+
+            const sel = selectedPageMap[file.id] || new Set();
+            totalPages    += file.page_count;
+            totalSelected += (pageSelectionMode === 'all') ? file.page_count : sel.size;
+
+            // File name label if multiple files
+            if (uploadedFiles.filter(f => f.is_pdf && f.page_count > 1).length > 1) {
+                const fileLbl = document.createElement('div');
+                fileLbl.style.cssText = 'display:flex;align-items:center;flex-shrink:0;';
+                fileLbl.innerHTML = `<span style="font-size:10px;color:#64748b;white-space:nowrap;writing-mode:vertical-rl;transform:rotate(180deg);padding:4px 2px;">${file.filename.slice(0,10)}</span>`;
+                row.appendChild(fileLbl);
+            }
+
+            for (let p = 1; p <= file.page_count; p++) {
+                const isSelected = (pageSelectionMode === 'all') || sel.has(p);
+
+                const item = document.createElement('div');
+                item.className = 'page-thumb-item';
+                item.title = `Page ${p} — click to ${isSelected ? 'deselect' : 'select'}`;
+                item.onclick = () => togglePageSelection(file.id, p);
+
+                const wrap = document.createElement('div');
+                wrap.className = 'page-thumb-wrap' + (isSelected ? ' selected' : '');
+
+                if (file.pdfDoc) {
+                    try {
+                        const pdfPage = await file.pdfDoc.getPage(p);
+                        const vp = pdfPage.getViewport({ scale: 0.18 });
+                        const thumbC = document.createElement('canvas');
+                        thumbC.width  = vp.width;
+                        thumbC.height = vp.height;
+                        await pdfPage.render({ canvasContext: thumbC.getContext('2d'), viewport: vp }).promise;
+                        thumbC.style.cssText = 'width:100%;height:100%;object-fit:contain;display:block;';
+                        wrap.appendChild(thumbC);
+                    } catch (e) {
+                        wrap.innerHTML = `<span style="font-size:20px;display:flex;align-items:center;justify-content:center;height:100%;">📄</span>`;
+                    }
+                } else {
+                    wrap.innerHTML = `<span style="font-size:20px;display:flex;align-items:center;justify-content:center;height:100%;">📄</span>`;
+                }
+
+                if (pageSelectionMode === 'custom') {
+                    const chk = document.createElement('div');
+                    chk.className = 'page-thumb-check';
+                    chk.style.display = isSelected ? 'flex' : 'none';
+                    chk.innerText = '✔';
+                    wrap.appendChild(chk);
+                }
+
+                const lbl = document.createElement('span');
+                lbl.className = 'page-thumb-lbl' + (isSelected ? ' selected' : '');
+                lbl.innerText = `Pg ${p}`;
+
+                item.appendChild(wrap);
+                item.appendChild(lbl);
+                row.appendChild(item);
+            }
+        }
+
+        if (summary) {
+            if (pageSelectionMode === 'custom') {
+                summary.innerText = `${totalSelected} of ${totalPages} pages selected for printing`;
+            } else {
+                summary.innerText = `All ${totalPages} pages will be printed`;
+            }
         }
     }
 
@@ -815,8 +1098,8 @@
         const bwRate = activePaperPill ? (parseFloat(activePaperPill.getAttribute('data-bw')) || 2.0) : 2.0;
         const colorRate = activePaperPill ? (parseFloat(activePaperPill.getAttribute('data-color')) || 10.0) : 10.0;
         
-        let totalRawPages = 0;
-        uploadedFiles.forEach(f => totalRawPages += (f.page_count || 1));
+        // Use selected pages count (respects custom page selection)
+        const totalRawPages = getSelectedPageCount();
 
         const layoutGrid = document.getElementById('layout-grid-val') ? document.getElementById('layout-grid-val').value : '1in1';
         let printedSheets = totalRawPages;
@@ -836,7 +1119,7 @@
 
         const totalPagesLbl = document.getElementById('total-pages-lbl');
         if (totalPagesLbl) {
-            totalPagesLbl.innerText = `Items: ${totalRawPages} (${printedSheets} Sheet${printedSheets > 1 ? 's' : ''})`;
+            totalPagesLbl.innerText = `Items: ${totalRawPages} pg (${printedSheets} Sheet${printedSheets > 1 ? 's' : ''})`;
         }
 
         drawLivePreviewCanvas();
@@ -880,19 +1163,23 @@
         if (scaleVal === '75') scaleFactor = 0.75;
         if (scaleVal === '50') scaleFactor = 0.5;
 
-        // Collect item preview sources
+        // Collect item preview sources (only selected pages)
         const renderSlots = [];
         for (const file of uploadedFiles) {
             if (file.is_pdf && file.pdfDoc) {
-                for (let p = 1; p <= Math.min(file.page_count, 4); p++) {
-                    const page = await file.pdfDoc.getPage(p);
-                    const viewport = page.getViewport({ scale: 0.5 });
-                    const tempCanvas = document.createElement('canvas');
-                    tempCanvas.width = viewport.width;
-                    tempCanvas.height = viewport.height;
-                    const tempCtx = tempCanvas.getContext('2d');
-                    await page.render({ canvasContext: tempCtx, viewport: viewport }).promise;
-                    renderSlots.push({ img: tempCanvas, crop: file.crop });
+                const sel = (pageSelectionMode === 'all')
+                    ? Array.from({length: file.page_count}, (_, i) => i + 1)
+                    : Array.from(selectedPageMap[file.id] || new Set([1])).sort((a,b)=>a-b);
+                for (const pn of sel) {
+                    try {
+                        const page = await file.pdfDoc.getPage(pn);
+                        const viewport = page.getViewport({ scale: 0.5 });
+                        const tempCanvas = document.createElement('canvas');
+                        tempCanvas.width = viewport.width;
+                        tempCanvas.height = viewport.height;
+                        await page.render({ canvasContext: tempCanvas.getContext('2d'), viewport }).promise;
+                        renderSlots.push({ img: tempCanvas, crop: file.crop });
+                    } catch(e) { /* skip bad page */ }
                 }
             } else if (file.imgObj) {
                 renderSlots.push({ img: file.imgObj, crop: file.crop });
@@ -1175,18 +1462,23 @@
             if (scaleVal === '75') scaleFactor = 0.75;
             if (scaleVal === '50') scaleFactor = 0.5;
 
-            // Collect render sources
+            // Collect render sources (only selected pages, same as live preview)
             const renderSlots = [];
             for (const file of uploadedFiles) {
                 if (file.is_pdf && file.pdfDoc) {
-                    for (let p = 1; p <= Math.min(file.page_count, 4); p++) {
-                        const page = await file.pdfDoc.getPage(p);
-                        const viewport = page.getViewport({ scale: 1.5 });
-                        const tmpC = document.createElement('canvas');
-                        tmpC.width  = viewport.width;
-                        tmpC.height = viewport.height;
-                        await page.render({ canvasContext: tmpC.getContext('2d'), viewport }).promise;
-                        renderSlots.push({ img: tmpC, crop: file.crop });
+                    const sel = (pageSelectionMode === 'all')
+                        ? Array.from({length: file.page_count}, (_, i) => i + 1)
+                        : Array.from(selectedPageMap[file.id] || new Set([1])).sort((a,b)=>a-b);
+                    for (const pn of sel) {
+                        try {
+                            const page = await file.pdfDoc.getPage(pn);
+                            const viewport = page.getViewport({ scale: 1.5 });
+                            const tmpC = document.createElement('canvas');
+                            tmpC.width  = viewport.width;
+                            tmpC.height = viewport.height;
+                            await page.render({ canvasContext: tmpC.getContext('2d'), viewport }).promise;
+                            renderSlots.push({ img: tmpC, crop: file.crop });
+                        } catch(e) { /* skip bad page */ }
                     }
                 } else if (file.imgObj) {
                     renderSlots.push({ img: file.imgObj, crop: file.crop });
@@ -1354,38 +1646,65 @@
             c3.className = 'step-circle done'; c3.innerText = '✔'; t3.className = '';
             c4.className = 'step-circle done'; c4.innerText = '✔'; t4.className = '';
             document.querySelector('.cancel-btn').style.display = 'none';
-        } else if (status === 'CANCELLED' || status === 'EXPIRED') {
+        } else if (status === 'CANCELLED' || status === 'EXPIRED' || status === 'PRINT_FAILED' || status === 'REJECTED') {
             statusBox.style.borderColor = 'rgba(239, 68, 68, 0.4)';
             icon.setAttribute('stroke', '#ef4444');
-            mainTitle.innerText = status === 'EXPIRED' ? 'Order Expired' : 'Order Cancelled';
-            subText.innerText   = 'This print order was ' + (status === 'EXPIRED' ? 'expired' : 'cancelled') + '. Start a new order if needed.';
-            document.querySelector('.cancel-btn').style.display = 'none';
+            let mainTxt = 'Order Cancelled';
+            let subTxt  = 'This print order was cancelled.';
+            if (status === 'EXPIRED') {
+                mainTxt = 'Order Expired';
+                subTxt  = 'This print order has expired.';
+            } else if (status === 'PRINT_FAILED') {
+                mainTxt = 'Print Failed';
+                subTxt  = 'Printing encountered an issue at the shop printer. Please speak with the shopkeeper.';
+            } else if (status === 'REJECTED') {
+                mainTxt = '❌ Order Rejected';
+                subTxt  = 'Cash payment was rejected by the shop counter. Please contact the shop owner.';
+            }
+            mainTitle.innerText = mainTxt;
+            subText.innerText   = subTxt;
+            const cancelBtn = document.querySelector('.cancel-btn');
+            if (cancelBtn) cancelBtn.style.display = 'none';
         }
     }
 
     let _pollTimer = null;
 
     function startStatusPolling(jobId) {
+        if (_pollTimer) {
+            clearTimeout(_pollTimer);
+            _pollTimer = null;
+        }
+
         let pollCount = 0;
-        const MAX_POLLS = 60; // 5 min max
+        const MAX_POLLS = 120; // 10 min max
 
         function poll() {
-            if (pollCount++ > MAX_POLLS) return;
+            if (pollCount++ > MAX_POLLS) {
+                _pollTimer = null;
+                return;
+            }
+
             fetch(`/api/customer/job-status/${jobId}`)
                 .then(r => r.json())
                 .then(d => {
                     if (d.status) {
                         updateTicketStatus(d.status, d.total_cost);
-                        if (['PRINTED', 'CANCELLED', 'EXPIRED'].includes(d.status)) {
-                            clearTimeout(_pollTimer);
+                        if (['PRINTED', 'CANCELLED', 'EXPIRED', 'PRINT_FAILED', 'REJECTED'].includes(d.status)) {
+                            if (_pollTimer) clearTimeout(_pollTimer);
+                            _pollTimer = null;
                             return;
                         }
                     }
-                    _pollTimer = setTimeout(poll, 5000);
+                    // Adaptive polling: 2.5s while active/transitioning, 5s normal
+                    const interval = (d.status === 'DOWNLOADING' || d.status === 'PRINTING') ? 2500 : 5000;
+                    _pollTimer = setTimeout(poll, interval);
                 })
-                .catch(() => { _pollTimer = setTimeout(poll, 8000); });
+                .catch(() => {
+                    _pollTimer = setTimeout(poll, 10000);
+                });
         }
-        _pollTimer = setTimeout(poll, 5000);
+        _pollTimer = setTimeout(poll, 2500);
     }
 
     function cancelOrder() {

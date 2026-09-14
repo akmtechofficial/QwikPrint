@@ -26,5 +26,28 @@
     <main class="app-container">
         {% block content %}{% endblock %}
     </main>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Auto loading-spinner state for all form submissions across all pages
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', function() {
+                const btn = this.querySelector('button[type="submit"], input[type="submit"], .btn-primary, .btn-success');
+                if (btn && !btn.classList.contains('no-spin')) {
+                    btn.classList.add('btn-loading');
+                    btn.style.pointerEvents = 'none';
+                }
+            });
+        });
+
+        // Instant click feedback ripple for interactive elements
+        document.querySelectorAll('button, .btn, .select-pill, .nav-link').forEach(el => {
+            el.addEventListener('click', function() {
+                this.style.transform = 'scale(0.96)';
+                setTimeout(() => { this.style.transform = ''; }, 120);
+            });
+        });
+    });
+    </script>
 </body>
 </html>

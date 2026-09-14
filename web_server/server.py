@@ -63,4 +63,6 @@ async def health():
     return {"status": "ok", "app": "QwikPrint Pure Python Engine", "file_retention_policy": "10_minutes_max"}
 
 if __name__ == "__main__":
-    uvicorn.run("web_server.server:app", host="0.0.0.0", port=8000, reload=True)
+    is_dev = "--dev" in sys.argv or "--reload" in sys.argv or os.getenv("QWIKPRINT_ENV", "").lower() in ("dev", "development")
+    uvicorn.run("web_server.server:app", host="0.0.0.0", port=8000, reload=is_dev)
+

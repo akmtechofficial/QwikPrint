@@ -505,4 +505,15 @@ class SupabaseDatabase:
         conn.close()
         return True
 
+    def reject_cash_payment(self, job_id: str) -> bool:
+        conn, is_pg = self.get_connection()
+        cursor = conn.cursor()
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        query = "UPDATE print_jobs SET status = 'REJECTED', payment_status = 'rejected', error = 'Cash payment rejected by shop counter', updated_at = %s WHERE job_id = %s;" if is_pg \
+            else "UPDATE print_jobs SET status = 'REJECTED', payment_status = 'rejected', error = 'Cash payment rejected by shop counter', updated_at = ? WHERE job_id = ?;"
+        cursor.execute(query, (now, job_id))
+        conn.commit()
+        conn.close()
+        return True
+
 db = SupabaseDatabase()

@@ -85,6 +85,27 @@ async def update_agent_paper_rates(payload: dict, x_device_id: str = Header(None
     updated = db.update_shop_paper_rates(shop_id, paper_rates)
     return {"success": True, "message": "Paper sizes & rates updated successfully!", "paperRates": updated}
 
+@router.post("/api/agent/pricing")
+async def update_agent_pricing(payload: dict, x_device_id: str = Header(None), x_device_token: str = Header(None)):
+    validate_agent_auth(x_device_id, x_device_token)
+    shop_id = payload.get("shopId")
+    bw_rate = payload.get("bwRate")
+    color_rate = payload.get("colorRate")
+    duplex_discount = payload.get("duplexDiscount")
+
+    if not shop_id or bw_rate is None or color_rate is None or duplex_discount is None:
+        raise HTTPException(status_code=400, detail="shopId, bwRate, colorRate, and duplexDiscount are required")
+
+    try:
+        bw_rate = float(bw_rate)
+        color_rate = float(color_rate)
+        duplex_discount = float(duplex_discount)
+    except (ValueError, TypeError):
+        return JSONResponse({"success": False, "error": "Invalid pricing numbers"}, status_code=400)
+
+    db.update_shop_pricing(shop_id, bw_rate, color_rate, duplex_discount)
+    return {"success": True, "message": "Shop pricing rates updated & synced successfully!"}
+
 @router.post("/api/agent/heartbeat")
 async def heartbeat(payload: dict, x_device_id: str = Header(None), x_device_token: str = Header(None)):
     device = validate_agent_auth(x_device_id, x_device_token)
@@ -189,7 +210,7 @@ async def update_status(payload: dict, x_device_id: str = Header(None), x_device
     db.update_job_status(job_id, status, error)
 
     # File lifecycle: Auto-delete print file from disk immediately post successful printing or cancellation
-    if status.upper() in ["PRINTED", "CANCELLED", "EXPIRED"]:
+    if status.upper() in ["PRINTED", "CANCELLED", "EXPIRED", "REJECTED"]:
         job = db.get_job(job_id)
         if job and job.get("file_path"):
             fp = job["file_path"]
@@ -217,3 +238,17 @@ async def confirm_cash(request: Request, job_id: str, x_device_id: str = Header(
             
     db.confirm_cash_payment(job_id)
     return {"success": True, "message": "Cash payment confirmed!"}
+
+@router.post("/api/jobs/{job_id}/reject-cash")
+async def reject_cash(request: Request, job_id: str, x_device_id: str = Header(None), x_device_token: str = Header(None)):
+    # Authenticate via Device token OR session cookie
+    if x_device_id and x_device_token:
+        validate_agent_auth(x_device_id, x_device_token)
+    else:
+        from web_server.auth import get_current_user_and_shop
+        user, shop = get_current_user_and_shop(request)
+        if not user or not shop:
+            raise HTTPException(status_code=401, detail="Unauthorized shopkeeper session")
+            
+    db.reject_cash_payment(job_id)
+    return {"success": True, "message": "Cash payment rejected"}

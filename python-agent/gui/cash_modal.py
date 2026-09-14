@@ -188,7 +188,7 @@ class CashApprovalDialog(QDialog):
         reject_btn.setObjectName("reject_btn")
         reject_btn.setMinimumHeight(46)
         reject_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        reject_btn.clicked.connect(self.reject)
+        reject_btn.clicked.connect(self.reject_cash)
 
         approve_btn = QPushButton(f"✔  APPROVE CASH")
         approve_btn.setObjectName("approve_btn")
@@ -206,10 +206,38 @@ class CashApprovalDialog(QDialog):
         url = f"{server_url}/api/agent/download-file/{self.job_id}"
         QDesktopServices.openUrl(QUrl(url))
 
+    def reject_cash(self):
+        sender = self.sender()
+        if sender and isinstance(sender, QPushButton):
+            sender.setEnabled(False)
+            sender.setText("⏳ Rejecting...")
+            from PyQt6.QtWidgets import QApplication
+            QApplication.processEvents()
+
+        try:
+            api_client.reject_cash_payment(self.job_id)
+            self.reject()
+        finally:
+            if sender and isinstance(sender, QPushButton):
+                sender.setEnabled(True)
+                sender.setText("✕  REJECT")
+
     def approve_cash(self):
-        success, msg = api_client.confirm_cash_payment(self.job_id)
-        if success:
-            self.accept()
-        else:
-            print(f"[Cash Approval Error] {msg}")
-            self.accept()
+        sender = self.sender()
+        if sender and isinstance(sender, QPushButton):
+            sender.setEnabled(False)
+            sender.setText("⏳ Approving...")
+            from PyQt6.QtWidgets import QApplication
+            QApplication.processEvents()
+
+        try:
+            success, msg = api_client.confirm_cash_payment(self.job_id)
+            if success:
+                self.accept()
+            else:
+                print(f"[Cash Approval Error] {msg}")
+                self.accept()
+        finally:
+            if sender and isinstance(sender, QPushButton):
+                sender.setEnabled(True)
+                sender.setText("✔  APPROVE CASH")

@@ -19,18 +19,27 @@ async def customer_portal(request: Request, shop_id: str):
     paper_rates = db.get_shop_paper_rates(shop_id)
     return templates.TemplateResponse(request=request, name="customer.html", context={"shop": shop, "paper_rates": paper_rates})
 
+MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024  # 25 MB
+
 @router.post("/api/customer/upload")
 async def upload_document(shop_id: str = Form(...), file: UploadFile = File(...)):
     shop = db.get_shop(shop_id)
     if not shop:
         return JSONResponse({"error": "Invalid Shop ID"}, status_code=404)
 
+    content = await file.read()
+
+    # Server-side 25 MB size limit
+    if len(content) > MAX_FILE_SIZE_BYTES:
+        return JSONResponse({
+            "error": f"File '{file.filename}' is too large ({len(content) // (1024*1024)} MB). Maximum allowed size is 25 MB."
+        }, status_code=413)
+
     ext = os.path.splitext(file.filename)[1] or ".pdf"
     unique_filename = f"upload_{uuid.uuid4().hex[:8]}{ext}"
     saved_path = os.path.join(UPLOAD_DIR, unique_filename)
 
     with open(saved_path, "wb") as f:
-        content = await file.read()
         f.write(content)
 
     pdf_info = get_pdf_info(saved_path)

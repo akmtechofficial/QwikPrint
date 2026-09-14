@@ -282,16 +282,28 @@ class MainWindow(QMainWindow):
         layout.addStretch()
 
     def save_pricing_rates(self):
-        bw = self.bw_spin.value()
-        color = self.color_spin.value()
-        duplex = self.duplex_spin.value()
+        sender = self.sender()
+        if sender and isinstance(sender, QPushButton):
+            sender.setEnabled(False)
+            sender.setText("⏳ Saving & Syncing Rates...")
+            from PyQt6.QtWidgets import QApplication
+            QApplication.processEvents()
 
-        success, msg = api_client.update_pricing(bw, color, duplex)
-        if success:
-            self.log_message(f"Pricing updated: B&W ₹{bw}/pg, Color ₹{color}/pg, Duplex -₹{duplex}")
-            QMessageBox.information(self, "Pricing Updated 🎉", f"{msg}\n\n• B&W Rate: ₹{bw:.2f}/page\n• Color Rate: ₹{color:.2f}/page\n• Duplex Discount: ₹{duplex:.2f}")
-        else:
-            QMessageBox.warning(self, "Update Failed ❌", f"Could not sync pricing: {msg}")
+        try:
+            bw = self.bw_spin.value()
+            color = self.color_spin.value()
+            duplex = self.duplex_spin.value()
+
+            success, msg = api_client.update_pricing(bw, color, duplex)
+            if success:
+                self.log_message(f"Pricing updated: B&W ₹{bw}/pg, Color ₹{color}/pg, Duplex -₹{duplex}")
+                QMessageBox.information(self, "Pricing Updated 🎉", f"{msg}\n\n• B&W Rate: ₹{bw:.2f}/page\n• Color Rate: ₹{color:.2f}/page\n• Duplex Discount: ₹{duplex:.2f}")
+            else:
+                QMessageBox.warning(self, "Update Failed ❌", f"Could not sync pricing: {msg}")
+        finally:
+            if sender and isinstance(sender, QPushButton):
+                sender.setEnabled(True)
+                sender.setText("💾 Save & Sync Print Rates")
 
     def init_printers_tab(self, tab: QWidget):
         layout = QVBoxLayout(tab)
@@ -301,11 +313,16 @@ class MainWindow(QMainWindow):
         p_card.setProperty("class", "card")
         p_layout = QVBoxLayout(p_card)
 
-        p_layout.addWidget(QLabel("<b>Target Windows Hardware Printer:</b>"))
+        p_layout.addWidget(QLabel("<b>Target Windows Printer:</b>"))
         self.printer_combo = QComboBox()
         self.reload_printers()
         self.printer_combo.currentTextChanged.connect(self.on_printer_changed)
         p_layout.addWidget(self.printer_combo)
+
+        self.virtual_chk = QCheckBox("🧪 Enable Virtual / Software Printers (Testing & Demo Mode)")
+        self.virtual_chk.setChecked(bool(config_mgr.get("allow_virtual_printers", True)))
+        self.virtual_chk.toggled.connect(self.on_virtual_printer_toggled)
+        p_layout.addWidget(self.virtual_chk)
 
         test_btn = QPushButton("📄 Send Test Print Page")
         test_btn.clicked.connect(self.send_test_print)
@@ -313,6 +330,12 @@ class MainWindow(QMainWindow):
 
         layout.addWidget(p_card)
         layout.addStretch()
+
+    def on_virtual_printer_toggled(self, checked: bool):
+        config_mgr.set("allow_virtual_printers", checked)
+        self.reload_printers()
+        status_str = "ENABLED" if checked else "DISABLED"
+        self.log_message(f"Virtual Printer testing mode {status_str}.")
 
     def reload_printers(self):
         self.printer_combo.blockSignals(True)

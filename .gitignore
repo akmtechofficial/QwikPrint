@@ -18,4 +18,6 @@ web_server/static/uploads/*
 .env
 .env.local
 run_e2e_test.py
+*.spec
+
 

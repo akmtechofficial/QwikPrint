@@ -56,6 +56,9 @@ class PrinterService:
             elif status & win32print.PRINTER_STATUS_OFFLINE:
                 return "offline"
             return "busy"
+        except Exception:
+            return "ready"
+
     def select_best_printer(self, color_mode: str = "bw", paper_size: str = "A4", override_printer: str = "") -> str:
         """Selects the best printer based on color mode and shop overrides."""
         installed = self.get_installed_printers()

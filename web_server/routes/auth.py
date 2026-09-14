@@ -66,6 +66,31 @@ async def login_submit(
     redirect_resp.set_cookie(key="qwikprint_session", value=session_token, httponly=True, max_age=86400 * 30)
     return redirect_resp
 
+@router.post("/auth/google")
+@router.post("/api/auth/google")
+async def google_auth(
+    request: Request,
+    email: str = Form(...),
+    full_name: str = Form("Google User"),
+    shop_name: str = Form("")
+):
+    existing_user = db.get_user_by_email(email)
+    if existing_user:
+        user = existing_user
+        shop = db.get_user_shop(user["user_id"])
+        if not shop:
+            s_name = shop_name or f"{user.get('full_name', 'My')} Print Hub"
+            shop = db.create_user_and_shop(user["full_name"], email, "", s_name, "GOOGLE_AUTH_USER")[1]
+    else:
+        s_name = shop_name or f"{full_name}'s Print Hub"
+        pwd_hash = hash_password(f"GOOGLE_AUTH_{email}")
+        user, shop = db.create_user_and_shop(full_name, email, "+91 0000000000", s_name, pwd_hash)
+
+    session_token = create_session_data(user["user_id"], shop["shop_id"])
+    redirect_resp = RedirectResponse(url="/dashboard", status_code=303)
+    redirect_resp.set_cookie(key="qwikprint_session", value=session_token, httponly=True, max_age=86400 * 30)
+    return redirect_resp
+
 @router.get("/logout")
 async def logout():
     redirect_resp = RedirectResponse(url="/login", status_code=302)

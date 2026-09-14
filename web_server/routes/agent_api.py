@@ -7,13 +7,24 @@ router = APIRouter()
 
 def validate_agent_auth(x_device_id: str = Header(None), x_device_token: str = Header(None)):
     if not x_device_id or not x_device_token:
-        return {"device_id": "DEV_PY_001", "shop_id": "SHOP_AKM_001"}
+        raise HTTPException(status_code=401, detail="Authentication headers X-Device-Id and X-Device-Token are required")
     
     device = db.get_device(x_device_id)
     if not device or device["secret_token"] != x_device_token:
         raise HTTPException(status_code=401, detail="Unauthorized device credentials")
     
     return device
+
+@router.get("/api/agent/version-check")
+async def version_check(current_version: str = "1.0.0"):
+    latest_version = "4.0.5"
+    return {
+        "success": True,
+        "currentVersion": current_version,
+        "latestVersion": latest_version,
+        "updateAvailable": current_version != latest_version,
+        "downloadUrl": "https://github.com/akmtechofficial/QwikPrint/releases/latest"
+    }
 
 @router.post("/api/agent/verify-key")
 async def verify_api_key(request: Request, payload: dict):
@@ -53,12 +64,14 @@ async def verify_api_key(request: Request, payload: dict):
     }
 
 @router.get("/api/agent/paper-rates")
-async def get_agent_paper_rates(shop_id: str):
+async def get_agent_paper_rates(shop_id: str, x_device_id: str = Header(None), x_device_token: str = Header(None)):
+    validate_agent_auth(x_device_id, x_device_token)
     rates = db.get_shop_paper_rates(shop_id)
     return {"success": True, "paperRates": rates}
 
 @router.post("/api/agent/paper-rates")
-async def update_agent_paper_rates(payload: dict):
+async def update_agent_paper_rates(payload: dict, x_device_id: str = Header(None), x_device_token: str = Header(None)):
+    validate_agent_auth(x_device_id, x_device_token)
     shop_id = payload.get("shopId")
     paper_rates = payload.get("paperRates", [])
     if not shop_id:
@@ -70,9 +83,9 @@ async def update_agent_paper_rates(payload: dict):
     return {"success": True, "message": "Paper sizes & rates updated successfully!", "paperRates": updated}
 
 @router.post("/api/agent/heartbeat")
-async def heartbeat(payload: dict, x_device_id: str = Header(None)):
-    device_id = payload.get("deviceId") or x_device_id or "DEV_PY_001"
-    db.update_device_last_seen(device_id)
+async def heartbeat(payload: dict, x_device_id: str = Header(None), x_device_token: str = Header(None)):
+    device = validate_agent_auth(x_device_id, x_device_token)
+    db.update_device_last_seen(device["device_id"])
     return {"success": True, "status": "online"}
 
 @router.get("/api/agent/queue")
@@ -127,7 +140,8 @@ async def claim_job(payload: dict, x_device_id: str = Header(None), x_device_tok
 
 @router.get("/api/agent/download-url")
 @router.post("/api/agent/download-url")
-async def get_download_url(request: Request, jobId: str = None, payload: dict = None):
+async def get_download_url(request: Request, jobId: str = None, payload: dict = None, x_device_id: str = Header(None), x_device_token: str = Header(None)):
+    validate_agent_auth(x_device_id, x_device_token)
     j_id = jobId or (payload.get("jobId") if payload else None)
     if not j_id:
         raise HTTPException(status_code=400, detail="jobId required")
@@ -149,7 +163,8 @@ async def download_file(job_id: str):
     )
 
 @router.post("/api/agent/update-status")
-async def update_status(payload: dict):
+async def update_status(payload: dict, x_device_id: str = Header(None), x_device_token: str = Header(None)):
+    validate_agent_auth(x_device_id, x_device_token)
     job_id = payload.get("jobId")
     status = payload.get("status")
     error = payload.get("error")
@@ -161,6 +176,15 @@ async def update_status(payload: dict):
     return {"success": True, "status": status}
 
 @router.post("/api/jobs/{job_id}/confirm-cash")
-async def confirm_cash(job_id: str):
+async def confirm_cash(request: Request, job_id: str, x_device_id: str = Header(None), x_device_token: str = Header(None)):
+    # Authenticate via Device token OR session cookie
+    if x_device_id and x_device_token:
+        validate_agent_auth(x_device_id, x_device_token)
+    else:
+        from web_server.auth import get_current_user_and_shop
+        user, shop = get_current_user_and_shop(request)
+        if not user or not shop:
+            raise HTTPException(status_code=401, detail="Unauthorized shopkeeper session")
+            
     db.confirm_cash_payment(job_id)
     return {"success": True, "message": "Cash payment confirmed!"}

@@ -107,13 +107,13 @@ class PrintEngine:
                 self.cleanup(file_path)
                 return True
             except Exception as e:
-                print(f"[PrintEngine Error] ShellExecute failed: {e}")
-                raise e
+                print(f"[PrintEngine Error] ShellExecute printto failed: {e}")
+                self.cleanup(file_path)
+                raise RuntimeError(f"Windows printer spooler error: {e}")
 
-        # 3. Non-Windows / Simulated Fallback
-        print(f"[PrintEngine Simulation] Printed successfully to '{printer_name}'.")
+        # Real Hardware Printing Required - No Simulation
         self.cleanup(file_path)
-        return True
+        raise RuntimeError(f"Real Windows printing failed. Target printer '{printer_name}' is offline or win32 print API is unavailable.")
 
     def cleanup(self, file_path: str):
         """Removes local temp file."""

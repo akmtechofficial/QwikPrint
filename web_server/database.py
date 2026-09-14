@@ -22,30 +22,39 @@ SQLITE_DB_PATH = os.path.join(os.path.dirname(__file__), "qwikprint.db")
 class SupabaseDatabase:
     def __init__(self):
         self.db_url = os.getenv("DATABASE_URL")
-        self.host = os.getenv("SUPABASE_DB_HOST", "db.exhdvckgpkuxpaitgzba.supabase.co")
+        self.host = os.getenv("SUPABASE_DB_HOST", "")
         self.port = int(os.getenv("SUPABASE_DB_PORT", "5432"))
         self.dbname = os.getenv("SUPABASE_DB_NAME", "postgres")
         self.user = os.getenv("SUPABASE_DB_USER", "postgres")
-        self.password = os.getenv("SUPABASE_DB_PASSWORD", "@QwikPrintsoft")
+        self.password = os.getenv("SUPABASE_DB_PASSWORD", "")
+        self.allow_sqlite_dev = os.getenv("ALLOW_SQLITE_DEV", "true").lower() == "true"
         
         self.use_postgres = False
         self.init_db()
 
     def get_connection(self):
-        if HAS_POSTGRES:
+        if HAS_POSTGRES and (self.db_url or self.password or self.host):
             try:
-                conn = psycopg2.connect(
-                    host=self.host,
-                    port=self.port,
-                    dbname=self.dbname,
-                    user=self.user,
-                    password=self.password,
-                    connect_timeout=5
-                )
+                if self.db_url:
+                    conn = psycopg2.connect(self.db_url, connect_timeout=5)
+                else:
+                    conn = psycopg2.connect(
+                        host=self.host,
+                        port=self.port,
+                        dbname=self.dbname,
+                        user=self.user,
+                        password=self.password,
+                        connect_timeout=5
+                    )
                 self.use_postgres = True
                 return conn, True
             except Exception as e:
-                print(f"[Supabase Warning] Could not connect to PostgreSQL: {e}. Falling back to SQLite.")
+                if not self.allow_sqlite_dev:
+                    raise RuntimeError(f"[Database Error] Production PostgreSQL connection failed: {e}. Set ALLOW_SQLITE_DEV=true in .env.local for local dev testing.")
+                print(f"[Supabase Warning] Could not connect to PostgreSQL: {e}. Using local SQLite fallback for dev environment.")
+
+        if not self.allow_sqlite_dev:
+            raise RuntimeError("[Database Error] PostgreSQL credentials not configured. Please set DATABASE_URL or SUPABASE_DB_PASSWORD in .env.local.")
 
         conn = sqlite3.connect(SQLITE_DB_PATH)
         conn.row_factory = sqlite3.Row
@@ -434,24 +443,20 @@ class SupabaseDatabase:
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
         cursor = conn.cursor(cursor_factory=RealDictCursor) if is_pg else conn.cursor()
         
-        q_select = "SELECT * FROM print_jobs WHERE job_id = %s;" if is_pg else "SELECT * FROM print_jobs WHERE job_id = ?;"
-        cursor.execute(q_select, (job_id,))
-        row = cursor.fetchone()
-        if not row:
-            conn.close()
-            return False, {}
-        
-        job = dict(row)
-        if job["status"] != "QUEUED":
-            conn.close()
-            return False, job
-
-        q_update = "UPDATE print_jobs SET status = 'CLAIMED', device_id = %s, updated_at = %s WHERE job_id = %s;" if is_pg \
-            else "UPDATE print_jobs SET status = 'CLAIMED', device_id = ?, updated_at = ? WHERE job_id = ?;"
+        # Atomic Update: Only updates if status is currently 'QUEUED'
+        q_update = "UPDATE print_jobs SET status = 'CLAIMED', device_id = %s, updated_at = %s WHERE job_id = %s AND status = 'QUEUED';" if is_pg \
+            else "UPDATE print_jobs SET status = 'CLAIMED', device_id = ?, updated_at = ? WHERE job_id = ? AND status = 'QUEUED';"
         cursor.execute(q_update, (device_id, now, job_id))
         conn.commit()
+        
+        updated_rows = cursor.rowcount
         conn.close()
-        return True, self.get_job(job_id)
+        
+        if updated_rows == 1:
+            return True, self.get_job(job_id)
+        else:
+            # Already claimed or not queued
+            return False, self.get_job(job_id) or {}
 
     def update_job_status(self, job_id: str, status: str, error: str = None) -> bool:
         conn, is_pg = self.get_connection()

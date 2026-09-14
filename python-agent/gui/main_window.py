@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
     QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, 
     QFrame, QComboBox, QCheckBox, QMessageBox, QTabWidget, 
-    QTextEdit, QSplitter, QDoubleSpinBox
+    QTextEdit, QSplitter, QDoubleSpinBox, QScrollArea
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPixmap, QImage
@@ -105,12 +105,18 @@ class MainWindow(QMainWindow):
         # Pricing & Rates Tab
         pricing_tab = QWidget()
         self.init_pricing_tab(pricing_tab)
-        self.tabs.addTab(pricing_tab, "💰 Pricing & Rates")
+        pricing_scroll = QScrollArea()
+        pricing_scroll.setWidgetResizable(True)
+        pricing_scroll.setWidget(pricing_tab)
+        self.tabs.addTab(pricing_scroll, "💰 Pricing & Rates")
         
         # Printers Tab
         printers_tab = QWidget()
         self.init_printers_tab(printers_tab)
-        self.tabs.addTab(printers_tab, "🖨️ Printers")
+        printers_scroll = QScrollArea()
+        printers_scroll.setWidgetResizable(True)
+        printers_scroll.setWidget(printers_tab)
+        self.tabs.addTab(printers_scroll, "🖨️ Printers")
         
         self.tabs.addTab(QWidget(), "💬 WhatsApp")
         

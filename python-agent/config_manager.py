@@ -15,12 +15,10 @@ DEFAULT_CONFIG = {
     "device_token": "",
     "device_name": "Windows Desktop Agent",
     "selected_printer": "",
-    "bw_rate": 2.0,
-    "color_rate": 10.0,
-    "duplex_discount": 0.5,
     "auto_print": True,
     "sound_enabled": True,
-    "auto_start": True
+    "auto_start": True,
+    "last_sync_at": None
 }
 
 class ConfigManager:

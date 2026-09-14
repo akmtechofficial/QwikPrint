@@ -15,3 +15,7 @@ dist/
 .vscode/
 web_server/static/uploads/*
 !web_server/static/uploads/.gitkeep
+.env
+.env.local
+run_e2e_test.py
+

@@ -149,7 +149,7 @@ class SupabaseDatabase:
                     cursor.execute(f"ALTER TABLE shops ADD COLUMN {col_def[0]} {col_def[1]};")
                 except Exception:
                     pass
-            cursor.execute("""
+            cursor.executescript("""
             CREATE TABLE IF NOT EXISTS users (
                 user_id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL,
                 full_name TEXT, phone TEXT, role TEXT DEFAULT 'shop_owner', created_at TEXT

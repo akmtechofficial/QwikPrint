@@ -79,17 +79,29 @@ async def unlock_pdf(saved_path: str = Form(...), password: str = Form(...)):
     else:
         return JSONResponse({"success": False, "error": "Incorrect password. Please try again."}, status_code=400)
 
-@router.post("/api/customer/calculate-price")
-async def calculate_price(
+@router.post("/api/customer/upload-rendered")
+async def upload_rendered_canvas(
     shop_id: str = Form(...),
-    paper_size: str = Form("A4"),
-    page_count: int = Form(1),
-    copies: int = Form(1),
-    color_mode: str = Form("bw"),
-    duplex: str = Form("single")
+    rendered_file: UploadFile = File(...)
 ):
-    cost = db.calculate_print_cost(shop_id, paper_size, page_count, copies, color_mode, duplex)
-    return {"success": True, "total_cost": cost}
+    """Accepts the rendered canvas PNG blob and saves it as the print file."""
+    shop = db.get_shop(shop_id)
+    if not shop:
+        return JSONResponse({"error": "Invalid Shop ID"}, status_code=404)
+
+    unique_filename = f"rendered_{uuid.uuid4().hex[:10]}.png"
+    saved_path = os.path.join(UPLOAD_DIR, unique_filename)
+
+    with open(saved_path, "wb") as f:
+        content = await rendered_file.read()
+        f.write(content)
+
+    return {
+        "success": True,
+        "saved_path": saved_path,
+        "filename": unique_filename
+    }
+
 
 @router.post("/api/customer/submit-job")
 async def submit_print_job(
@@ -135,3 +147,30 @@ async def submit_print_job(
         "total_cost": server_calculated_cost,
         "message": "Print job submitted successfully!"
     }
+
+
+@router.get("/api/customer/job-status/{job_id}")
+async def get_job_status(job_id: str):
+    """Customer-facing: poll live status of a submitted print job."""
+    job = db.get_job(job_id)
+    if not job:
+        return {"success": False, "error": "Job not found"}
+    return {
+        "success": True,
+        "status": job["status"],
+        "total_cost": job.get("total_cost", 0),
+        "job_id": job["job_id"]
+    }
+
+
+@router.post("/api/customer/cancel-job/{job_id}")
+async def cancel_job(job_id: str):
+    """Customer-facing: cancel a pending (PENDING_CASH / QUEUED) job."""
+    job = db.get_job(job_id)
+    if not job:
+        return {"success": False, "error": "Job not found"}
+    # Only allow cancellation if job hasn't started printing
+    if job["status"] not in ("PENDING_CASH", "QUEUED"):
+        return {"success": False, "error": "Job cannot be cancelled at this stage"}
+    ok = db.update_job_status(job_id, "CANCELLED")
+    return {"success": ok}

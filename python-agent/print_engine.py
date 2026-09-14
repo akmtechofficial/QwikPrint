@@ -1,5 +1,4 @@
 import os
-import sys
 import tempfile
 import requests
 import subprocess
@@ -10,37 +9,67 @@ from printer_service import HAS_WIN32
 if HAS_WIN32:
     import win32api
 
+# Paper size in points (1 inch = 72 pt)
+PAPER_SIZES_PT = {
+    "A4":     (595, 842),
+    "A3":     (842, 1191),
+    "LETTER": (612, 792),
+    "LEGAL":  (612, 1008),
+}
+
+
 class PrintEngine:
     def __init__(self):
         self.temp_dir = os.path.join(tempfile.gettempdir(), "PrintSoftAgent")
         os.makedirs(self.temp_dir, exist_ok=True)
         self.sumatra_path = self._find_sumatra()
 
+    # ──────────────────────────────────────────────────────────
+    #  Internal Helpers
+    # ──────────────────────────────────────────────────────────
+
     def _find_sumatra(self) -> str:
         """Finds SumatraPDF executable if available."""
         local_bin = os.path.join(os.path.dirname(__file__), "bin", "SumatraPDF.exe")
         if os.path.exists(local_bin):
             return local_bin
-        
         system_paths = [
             r"C:\Program Files\SumatraPDF\SumatraPDF.exe",
-            r"C:\Program Files (x86)\SumatraPDF\SumatraPDF.exe"
+            r"C:\Program Files (x86)\SumatraPDF\SumatraPDF.exe",
         ]
         for path in system_paths:
             if os.path.exists(path):
                 return path
         return ""
 
+    def cleanup(self, *paths):
+        """Removes one or more local temp files silently."""
+        for p in paths:
+            try:
+                if p and os.path.exists(p):
+                    os.remove(p)
+            except Exception:
+                pass
+
+    # ──────────────────────────────────────────────────────────
+    #  File Download
+    # ──────────────────────────────────────────────────────────
+
     def download_file(self, download_url: str, job_id: str, original_filename: str) -> str:
-        """Downloads document file to local temp path."""
+        """Downloads a document file to a local temp path and returns the path."""
         ext = os.path.splitext(original_filename)[1] or ".pdf"
         local_filename = f"job_{job_id[-8:]}_{int(time.time())}{ext}"
         local_path = os.path.join(self.temp_dir, local_filename)
 
-        if download_url.startswith("mock-r2.storage") or not download_url.startswith("http"):
-            # Mock placeholder file for testing
+        if not download_url.startswith("http"):
+            # Fallback: write a dummy placeholder (for local-path based storage)
+            # If the download_url IS a local filesystem path, copy it instead
+            if os.path.exists(download_url):
+                import shutil
+                shutil.copy2(download_url, local_path)
+                return local_path
             with open(local_path, "wb") as f:
-                f.write(b"%PDF-1.4 Mock PDF Content for Print Soft Agent Test")
+                f.write(b"%PDF-1.4 Mock PDF Content")
             return local_path
 
         res = requests.get(download_url, timeout=30, stream=True)
@@ -50,77 +79,164 @@ class PrintEngine:
                     f.write(chunk)
             return local_path
         else:
-            raise Exception(f"File download failed with status code {res.status_code}")
+            raise Exception(f"File download failed with HTTP {res.status_code}")
+
+    # ──────────────────────────────────────────────────────────
+    #  Image → PDF Conversion  (for rendered canvas PNG files)
+    # ──────────────────────────────────────────────────────────
+
+    def image_to_pdf(self, image_path: str, paper_size_key: str = "A4",
+                     orientation: str = "portrait") -> str:
+        """
+        Converts a PNG/JPG image to a properly sized single-page PDF
+        at 150 DPI so SumatraPDF can silently print it.
+        """
+        try:
+            from PIL import Image
+
+            img = Image.open(image_path).convert("RGB")
+            pw, ph = PAPER_SIZES_PT.get(paper_size_key.upper(), PAPER_SIZES_PT["A4"])
+
+            img_w, img_h = img.size
+            # Auto-detect landscape from image ratio or explicit orientation
+            if orientation == "landscape" or (img_w > img_h and pw < ph):
+                pw, ph = ph, pw  # swap to landscape
+
+            dpi = 150
+            page_w_px = int(pw / 72 * dpi)
+            page_h_px = int(ph / 72 * dpi)
+
+            # Leave a small margin (0.15 inch)
+            margin = int(dpi * 0.15)
+            avail_w = page_w_px - 2 * margin
+            avail_h = page_h_px - 2 * margin
+
+            scale = min(avail_w / img_w, avail_h / img_h)
+            new_w = max(1, int(img_w * scale))
+            new_h = max(1, int(img_h * scale))
+            img = img.resize((new_w, new_h), Image.LANCZOS)
+
+            page = Image.new("RGB", (page_w_px, page_h_px), "white")
+            x_off = (page_w_px - new_w) // 2
+            y_off = (page_h_px - new_h) // 2
+            page.paste(img, (x_off, y_off))
+
+            pdf_path = image_path.rsplit(".", 1)[0] + "_print.pdf"
+            page.save(pdf_path, "PDF", resolution=dpi)
+            print(f"[PrintEngine] Image→PDF: {pdf_path}")
+            return pdf_path
+
+        except ImportError:
+            raise RuntimeError(
+                "Pillow not installed. Please run: pip install Pillow"
+            )
+        except Exception as e:
+            raise RuntimeError(f"Image→PDF conversion failed: {e}")
+
+    # ──────────────────────────────────────────────────────────
+    #  Main Print Entry Point
+    # ──────────────────────────────────────────────────────────
 
     def print_file(self, file_path: str, printer_name: str, options: dict) -> bool:
-        """Spools file to target printer with options (copies, color, duplex, pages)."""
-        copies = int(options.get("copies", 1))
-        color_mode = options.get("colorMode", "bw") # "color" or "bw"
-        duplex = options.get("duplex", "single") # "single", "double_long", "double_short"
-        page_range = options.get("pageRange", "") # "1-5,7"
+        """
+        Spools a file (PDF or image) to the target printer.
+        Images are auto-converted to PDF via Pillow before printing.
+        """
+        copies     = int(options.get("copies", 1))
+        color_mode = options.get("colorMode", "bw")   # "color" | "bw"
+        duplex     = options.get("duplex", "single")   # "single" | "double_long" | "double_short"
+        page_range = options.get("pageRange", "")      # "A4 / 4in1" style or numeric range
 
-        print(f"[PrintEngine] Printing '{file_path}' on '{printer_name}' | Copies: {copies} | Mode: {color_mode} | Duplex: {duplex}")
+        print(
+            f"[PrintEngine] '{os.path.basename(file_path)}' → '{printer_name}' "
+            f"| copies={copies} mode={color_mode} duplex={duplex}"
+        )
 
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"Local print file not found: {file_path}")
 
-        # 1. SumatraPDF Printing (Best for Windows PDF Silent Printing)
-        if self.sumatra_path and file_path.lower().endswith(".pdf"):
-            settings = [f"{copies}x"]
-            if color_mode == "bw":
-                settings.append("monochrome")
-            elif color_mode == "color":
-                settings.append("color")
-                
-            if duplex in ["double_long", "duplex", "double"]:
-                settings.append("duplexlong")
-            elif duplex == "double_short":
-                settings.append("duplexshort")
-            else:
-                settings.append("simplex")
+        # Parse paper size and orientation from page_range metadata
+        paper_size_key = "A4"
+        orientation = "portrait"
+        if page_range and "/" in page_range:
+            parts = [p.strip() for p in page_range.split("/")]
+            paper_size_key = parts[0].upper() if parts[0] else "A4"
+        if "landscape" in page_range.lower():
+            orientation = "landscape"
 
-            if page_range and page_range.lower() != "all":
-                settings.append(page_range)
-
-            settings_str = ",".join(settings)
-            cmd = [
-                self.sumatra_path,
-                "-print-to", printer_name,
-                "-print-settings", settings_str,
-                "-silent",
-                file_path
-            ]
-            print(f"[PrintEngine] Executing SumatraPDF: {' '.join(cmd)}")
-            result = subprocess.run(cmd, capture_output=True, text=True)
-            if result.returncode == 0:
-                self.cleanup(file_path)
-                return True
-            else:
-                print(f"[PrintEngine Error] SumatraPDF exit code {result.returncode}: {result.stderr}")
-
-        # 2. Win32 API Fallback (ShellExecute printto)
-        if HAS_WIN32:
+        # Auto-convert image files → PDF before printing
+        original_image_path = None
+        img_exts = (".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp", ".tiff")
+        if file_path.lower().endswith(img_exts):
+            print("[PrintEngine] Image file detected — converting to PDF…")
+            original_image_path = file_path
             try:
-                for i in range(copies):
-                    win32api.ShellExecute(0, "printto", file_path, f'"{printer_name}"', ".", 0)
-                    time.sleep(1)
-                self.cleanup(file_path)
-                return True
-            except Exception as e:
-                print(f"[PrintEngine Error] ShellExecute printto failed: {e}")
-                self.cleanup(file_path)
-                raise RuntimeError(f"Windows printer spooler error: {e}")
+                file_path = self.image_to_pdf(file_path, paper_size_key, orientation)
+            except Exception as conv_err:
+                raise RuntimeError(f"Cannot print image: {conv_err}")
 
-        # Real Hardware Printing Required - No Simulation
-        self.cleanup(file_path)
-        raise RuntimeError(f"Real Windows printing failed. Target printer '{printer_name}' is offline or win32 print API is unavailable.")
-
-    def cleanup(self, file_path: str):
-        """Removes local temp file."""
         try:
-            if os.path.exists(file_path):
-                os.remove(file_path)
+            # ── Method 1: SumatraPDF (silent, best quality) ──
+            if self.sumatra_path and file_path.lower().endswith(".pdf"):
+                settings_parts = [f"{copies}x"]
+
+                if color_mode == "bw":
+                    settings_parts.append("monochrome")
+                else:
+                    settings_parts.append("color")
+
+                if duplex in ("double_long", "duplex", "double"):
+                    settings_parts.append("duplexlong")
+                elif duplex == "double_short":
+                    settings_parts.append("duplexshort")
+                else:
+                    settings_parts.append("simplex")
+
+                settings_str = ",".join(settings_parts)
+                cmd = [
+                    self.sumatra_path,
+                    "-print-to", printer_name,
+                    "-print-settings", settings_str,
+                    "-silent",
+                    file_path,
+                ]
+                print(f"[PrintEngine] SumatraPDF: {' '.join(cmd)}")
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
+
+                if result.returncode == 0:
+                    self.cleanup(file_path, original_image_path)
+                    return True
+                else:
+                    print(
+                        f"[PrintEngine Warning] SumatraPDF exit={result.returncode}: {result.stderr.strip()}"
+                    )
+                    # Fall through to Win32 ShellExecute
+
+            # ── Method 2: Win32 ShellExecute fallback ──
+            if HAS_WIN32:
+                try:
+                    for _ in range(copies):
+                        win32api.ShellExecute(0, "printto", file_path, f'"{printer_name}"', ".", 0)
+                        time.sleep(1.5)
+                    self.cleanup(file_path, original_image_path)
+                    return True
+                except Exception as e:
+                    self.cleanup(file_path, original_image_path)
+                    raise RuntimeError(
+                        f"Printer error — is '{printer_name}' online?\n"
+                        f"Make sure the printer is powered on and set as default.\n"
+                        f"Detail: {e}"
+                    )
+
+            # ── No method available ──
+            self.cleanup(file_path, original_image_path)
+            raise RuntimeError(
+                "No print method available. Install SumatraPDF or pywin32."
+            )
+
         except Exception:
-            pass
+            self.cleanup(file_path, original_image_path)
+            raise
+
 
 print_engine = PrintEngine()

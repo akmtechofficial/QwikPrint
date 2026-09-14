@@ -135,6 +135,22 @@
             <button type="submit" onclick="buildPaperRatesJson()" class="btn-primary btn-success" style="width: 100%;">💾 Save Paper Sizes & Rates</button>
         </form>
 
+        <!-- Duplex Settings Card -->
+        <div style="margin-top: 20px; border-top: 1px solid var(--card-border); padding-top: 16px;">
+            <h4 style="font-size: 15px; margin-bottom: 8px;">📄 Duplex (Both-Sided) Printing Settings</h4>
+            <form action="/api/shop/pricing" method="POST" style="display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;">
+                <input type="hidden" name="shop_id" value="{{ shop.shop_id }}">
+                <input type="hidden" name="bw_rate" value="{{ shop.bw_rate or 2.0 }}">
+                <input type="hidden" name="color_rate" value="{{ shop.color_rate or 10.0 }}">
+                <div style="flex: 1; min-width: 180px;">
+                    <label class="form-label">Duplex Discount per sheet (₹):</label>
+                    <input type="number" step="0.1" name="duplex_discount" class="form-input" value="{{ shop.duplex_discount if shop.duplex_discount is defined else 0.5 }}" placeholder="0 to disable duplex">
+                </div>
+                <button type="submit" class="btn-primary" style="width: auto; padding: 12px 18px;">💾 Save Duplex Setting</button>
+            </form>
+            <p style="font-size: 12px; color: var(--text-muted); margin-top: 6px;">💡 Setting discount &gt; 0 enables Duplex selection option on the Customer Portal. Set to 0 to disable double-sided printing.</p>
+        </div>
+
         <script>
             function buildPaperRatesJson() {
                 const rows = document.querySelectorAll('#paper-table-body tr');

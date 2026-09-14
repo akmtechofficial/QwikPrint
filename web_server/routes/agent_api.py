@@ -156,11 +156,22 @@ async def get_download_url(request: Request, jobId: str = None, payload: dict = 
 @router.get("/api/agent/download-file/{job_id}")
 async def download_file(job_id: str):
     job = db.get_job(job_id)
-    if not job or not os.path.exists(job["file_path"]):
-        raise HTTPException(status_code=404, detail="File not found")
+    if not job:
+        raise HTTPException(status_code=404, detail="Job record not found")
     
+    file_path = job.get("file_path", "")
+    if not file_path or not os.path.exists(file_path):
+        filename = os.path.basename(file_path)
+        alt_path = os.path.join(os.path.dirname(__file__), "..", "static", "uploads", filename)
+        if os.path.exists(alt_path):
+            file_path = alt_path
+
+    if not file_path or not os.path.exists(file_path):
+        print(f"[Download 404] File for job {job_id} not found at {file_path}")
+        raise HTTPException(status_code=404, detail="Print file not found on server")
+
     return FileResponse(
-        path=job["file_path"],
+        path=file_path,
         filename=job["original_filename"],
         media_type="application/octet-stream"
     )
@@ -177,15 +188,19 @@ async def update_status(payload: dict, x_device_id: str = Header(None), x_device
 
     db.update_job_status(job_id, status, error)
 
-    # File lifecycle: Auto-delete printed file from disk post printing
-    if status.upper() == "PRINTED":
+    # File lifecycle: Auto-delete print file from disk immediately post successful printing or cancellation
+    if status.upper() in ["PRINTED", "CANCELLED", "EXPIRED"]:
         job = db.get_job(job_id)
-        if job and job.get("file_path") and os.path.exists(job["file_path"]):
-            try:
-                os.remove(job["file_path"])
-                print(f"[File Lifecycle] Auto-deleted temporary file after printing: {job['file_path']}")
-            except Exception as clean_err:
-                print(f"[File Lifecycle Warning] Could not remove file: {clean_err}")
+        if job and job.get("file_path"):
+            fp = job["file_path"]
+            if not os.path.exists(fp):
+                fp = os.path.join(os.path.dirname(__file__), "..", "static", "uploads", os.path.basename(fp))
+            if os.path.exists(fp):
+                try:
+                    os.remove(fp)
+                    print(f"[File Lifecycle] Auto-deleted temporary file ({status}): {fp}")
+                except Exception as clean_err:
+                    print(f"[File Lifecycle Warning] Could not remove file: {clean_err}")
 
     return {"success": True, "status": status}
 

@@ -11,8 +11,19 @@ from web_server.database import db
 
 SESSION_SECRET = os.environ.get("SESSION_SECRET")
 if not SESSION_SECRET:
-    SESSION_SECRET = secrets.token_hex(32)
-    print("[Auth Warning] SESSION_SECRET not set in environment. Generated transient session secret key.")
+    for env_name in [".env.local", ".env"]:
+        env_path = os.path.join(os.path.dirname(__file__), "..", env_name)
+        if os.path.exists(env_path):
+            with open(env_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    if line.startswith("SESSION_SECRET="):
+                        SESSION_SECRET = line.split("=", 1)[1].strip()
+                        break
+        if SESSION_SECRET:
+            break
+
+if not SESSION_SECRET:
+    SESSION_SECRET = "qwikprint_static_persistent_session_secret_key_2026"
 
 def hash_password(password: str) -> str:
     """Hashes password using PBKDF2 HMAC SHA-256 with salt."""

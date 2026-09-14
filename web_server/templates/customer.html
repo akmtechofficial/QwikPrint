@@ -3,29 +3,150 @@
 {% block title %}{{ shop.name }} - Instant Online Print Order{% endblock %}
 
 {% block content %}
+<!-- PDF.js CDN for client-side rendering of PDF previews -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+    if (window.pdfjsLib) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+</script>
+
+<style>
+    /* Visual Select Pills & Cards */
+    .pill-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 6px;
+    }
+    .select-pill {
+        flex: 1;
+        min-width: 100px;
+        background: rgba(15, 23, 42, 0.8);
+        border: 1px solid var(--card-border);
+        border-radius: 10px;
+        padding: 10px 14px;
+        text-align: center;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-muted);
+        transition: all 0.2s ease;
+        user-select: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+    }
+    .select-pill:hover {
+        border-color: var(--primary-light);
+        color: #ffffff;
+    }
+    .select-pill.active {
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(6, 182, 212, 0.25) 100%);
+        border-color: #6366f1;
+        color: #ffffff;
+        box-shadow: 0 0 14px rgba(99, 102, 241, 0.35);
+    }
+
+    .preview-canvas-container {
+        position: relative;
+        cursor: pointer;
+        border: 2px dashed rgba(99, 102, 241, 0.5);
+        border-radius: 12px;
+        padding: 12px;
+        background: #0f172a;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        min-height: 380px;
+        transition: all 0.3s ease;
+    }
+    .preview-canvas-container:hover {
+        border-color: #6366f1;
+        box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+    }
+    .preview-overlay-hint {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        background: rgba(15, 23, 42, 0.85);
+        color: #6366f1;
+        border: 1px solid rgba(99, 102, 241, 0.4);
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 700;
+        pointer-events: none;
+        backdrop-filter: blur(4px);
+    }
+    .file-badge-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: rgba(30, 41, 59, 0.8);
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+        padding: 8px 12px;
+        margin-bottom: 8px;
+    }
+    /* Crop & Preview Modal */
+    .modal-backdrop {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(15, 23, 42, 0.85);
+        backdrop-filter: blur(8px);
+        z-index: 9999;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+    }
+    .modal-card {
+        background: #1e293b;
+        border: 1px solid var(--card-border);
+        border-radius: 20px;
+        max-width: 900px;
+        width: 100%;
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+    }
+    .crop-box {
+        position: absolute;
+        border: 2px dashed #38bdf8;
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6);
+        cursor: move;
+    }
+</style>
+
 <!-- Top Header -->
 <div class="glass-card" style="padding: 20px 28px;">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
         <div>
             <h2 style="font-size: 24px; margin-bottom: 4px;">🖨️ {{ shop.name }}</h2>
-            <p style="color: var(--text-muted); font-size: 14px;">Scan QR • Upload Document • Customize Layout & Sheet Size</p>
+            <p style="color: var(--text-muted); font-size: 14px;">Scan QR • Upload Documents • Visual Layout Selection & Instant Order</p>
         </div>
         <span class="status-pill pill-success">🟢 Shop Online & Ready</span>
     </div>
 </div>
 
-<!-- 1. Primary Upload Box (First Step) -->
+<!-- 1. Primary Multi-File Upload Box -->
 <div class="glass-card" id="upload-card">
-    <h3 style="font-size: 18px; margin-bottom: 16px;">1. Select or Drop Your Document</h3>
+    <h3 style="font-size: 18px; margin-bottom: 16px;">1. Select or Drop Your Documents / Images</h3>
     <div id="drop-zone" style="border: 2px dashed rgba(99, 102, 241, 0.4); background: rgba(15, 23, 42, 0.6); border-radius: 16px; padding: 48px 20px; text-align: center; cursor: pointer; transition: all 0.25s ease;">
-        <p style="font-size: 54px; margin-bottom: 12px;">📄</p>
-        <p style="font-size: 18px; font-weight: 700; color: #ffffff;">Tap to Choose File or Drag & Drop Here</p>
-        <p style="font-size: 13px; color: var(--text-muted); margin-top: 6px;">Supports PDF, PNG, JPG, JPEG, Aadhaar/PAN Card scans</p>
-        <input type="file" id="file-input" accept=".pdf,.png,.jpg,.jpeg" style="display: none;">
+        <p style="font-size: 54px; margin-bottom: 12px;">📑</p>
+        <p style="font-size: 18px; font-weight: 700; color: #ffffff;">Tap to Choose Files or Drag & Drop Here</p>
+        <p style="font-size: 13px; color: var(--text-muted); margin-top: 6px;">Select single or multiple files (PDF, PNG, JPG, Aadhaar/PAN Card front & back)</p>
+        <input type="file" id="file-input" accept=".pdf,.png,.jpg,.jpeg" multiple style="display: none;">
     </div>
 </div>
 
-<!-- 🔒 Password Protected PDF Card (Shown if PDF is encrypted) -->
+<!-- 🔒 Password Protected PDF Card (Shown if encrypted PDF is detected) -->
 <div class="glass-card" id="password-card" style="display: none; border: 1px solid #f59e0b; background: rgba(245, 158, 11, 0.1);">
     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
         <span style="font-size: 32px;">🔒</span>
@@ -43,233 +164,696 @@
 
 <!-- 2. Print Configuration & Live Sheet Layout Preview -->
 <div class="glass-card" id="config-card" style="display: none;">
-    <h3 style="font-size: 18px; margin-bottom: 20px;">2. Interactive Sheet Layout & Print Options</h3>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+        <h3 style="font-size: 18px;">2. Visual Sheet Layout & Print Options</h3>
+        <button id="add-more-btn" class="btn-secondary" style="padding: 8px 16px; font-size: 13px;">➕ Add More Documents / Images</button>
+        <input type="file" id="add-more-input" accept=".pdf,.png,.jpg,.jpeg" multiple style="display: none;">
+    </div>
     
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px;">
         
-        <!-- Left Column: Controls & Paper Selection -->
+        <!-- Left Column: Visual Selectors & File List -->
         <div>
+            <!-- Active Files Summary List -->
             <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid var(--card-border); padding: 14px; border-radius: 12px; margin-bottom: 16px;">
-                <p id="file-info" style="font-weight: 700; font-size: 15px; color: #ffffff;">FileName.pdf</p>
-                <p id="page-info" style="font-size: 13px; color: var(--primary-light); margin-top: 2px;">Pages: 1</p>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <p style="font-weight: 700; font-size: 14px; color: #ffffff;">📄 Uploaded Files (<span id="file-count-lbl">0</span>)</p>
+                    <span id="total-pages-lbl" style="font-size: 12px; color: var(--primary-light);">Total Pages: 0</span>
+                </div>
+                <div id="file-list-container">
+                    <!-- File items injected here -->
+                </div>
             </div>
 
-            <!-- Paper Size Selection (Configured by Shopkeeper) -->
+            <!-- Paper Size Visual Selectable Pills -->
             <div class="form-group">
-                <label class="form-label">📜 Paper Sheet Size (Shopkeeper Configured):</label>
-                <select id="paper-size-select" class="form-input">
+                <label class="form-label">📜 Paper Sheet Size:</label>
+                <div class="pill-group" id="paper-size-pills">
                     {% for p in paper_rates %}
                     {% if p.enabled %}
-                    <option value="{{ p.name }}" data-bw="{{ p.bw_rate }}" data-color="{{ p.color_rate }}">{{ p.name }} (B&W ₹{{ "%.2f"|format(p.bw_rate) }} | Color ₹{{ "%.2f"|format(p.color_rate) }})</option>
+                    <div class="select-pill {% if loop.first %}active{% endif %}" data-val="{{ p.name }}" data-bw="{{ p.bw_rate }}" data-color="{{ p.color_rate }}" onclick="selectPill('paper-size-pills', this)">
+                        📜 {{ p.name }} <small style="opacity: 0.8;">(₹{{ "%.1f"|format(p.bw_rate) }})</small>
+                    </div>
                     {% endif %}
                     {% endfor %}
-                </select>
+                </div>
+                <input type="hidden" id="paper-size-val" value="{{ paper_rates[0].name if paper_rates else 'A4' }}">
             </div>
 
-            <!-- Print Color Mode -->
+            <!-- Print Color Mode Visual Select Pills -->
             <div class="form-group">
                 <label class="form-label">🎨 Print Color Mode:</label>
-                <select id="color-mode" class="form-input">
-                    <option value="bw">Black & White</option>
-                    <option value="color">Color Print</option>
-                </select>
+                <div class="pill-group" id="color-mode-pills">
+                    <div class="select-pill active" data-val="bw" onclick="selectPill('color-mode-pills', this)">⬛ Black & White</div>
+                    <div class="select-pill" data-val="color" onclick="selectPill('color-mode-pills', this)">🎨 Color Print</div>
+                </div>
+                <input type="hidden" id="color-mode-val" value="bw">
             </div>
 
-            <!-- Orientation & Multi-Page Grid (Aadhaar / PAN support) -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                <div class="form-group">
-                    <label class="form-label">📐 Sheet Orientation:</label>
-                    <select id="orientation-select" class="form-input">
-                        <option value="portrait">Portrait (Vertical)</option>
-                        <option value="landscape">Landscape (Horizontal)</option>
-                    </select>
+            <!-- Sheet Orientation Visual Select Cards -->
+            <div class="form-group">
+                <label class="form-label">📐 Sheet Orientation:</label>
+                <div class="pill-group" id="orientation-pills">
+                    <div class="select-pill active" data-val="portrait" onclick="selectPill('orientation-pills', this)">📄 Portrait (Vertical)</div>
+                    <div class="select-pill" data-val="landscape" onclick="selectPill('orientation-pills', this)">🖼️ Landscape (Horizontal)</div>
                 </div>
+                <input type="hidden" id="orientation-val" value="portrait">
+            </div>
 
-                <div class="form-group">
-                    <label class="form-label">🖼️ Layout Grid (ID Cards):</label>
-                    <select id="layout-grid-select" class="form-input">
-                        <option value="1in1">1 Page / Full Sheet</option>
-                        <option value="2in1">2-in-1 (Aadhaar/PAN Front+Back)</option>
-                        <option value="4in1">4-in-1 Grid Layout</option>
-                    </select>
+            <!-- Layout Grid Visual Select Cards (ID Cards / Aadhaar Support) -->
+            <div class="form-group">
+                <label class="form-label">🖼️ Layout Grid (ID Cards / Scans):</label>
+                <div class="pill-group" id="layout-grid-pills">
+                    <div class="select-pill active" data-val="1in1" onclick="selectPill('layout-grid-pills', this)">📄 1 Page / Full Sheet</div>
+                    <div class="select-pill" data-val="2in1" onclick="selectPill('layout-grid-pills', this)">🪪 2-in-1 (Aadhaar/PAN Front+Back)</div>
+                    <div class="select-pill" data-val="4in1" onclick="selectPill('layout-grid-pills', this)">🔲 4-in-1 Grid Layout</div>
+                </div>
+                <input type="hidden" id="layout-grid-val" value="1in1">
+            </div>
+
+            <!-- Dynamic Grid Slot Customizer (Shown when 2-in-1 or 4-in-1 is active) -->
+            <div id="grid-slot-customizer" style="display: none; background: rgba(15, 23, 42, 0.9); border: 1px solid var(--primary-light); border-radius: 12px; padding: 14px; margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <p style="font-weight: 700; font-size: 13px; color: var(--cyan-accent);">🧩 Grid Slot Positioning (Assign Photo to Position)</p>
+                    <button type="button" onclick="swapGridSlots()" class="btn-secondary" style="padding: 4px 10px; font-size: 11px;">🔄 Swap Slots</button>
+                </div>
+                <div id="grid-slot-inputs" style="display: flex; flex-direction: column; gap: 8px;">
+                    <!-- Injected JS select inputs per slot -->
                 </div>
             </div>
 
-            <!-- Scale & Fitting -->
+            <!-- Scaling & Fitting Visual Select Pills -->
             <div class="form-group">
                 <label class="form-label">🔍 Scaling & Fitting:</label>
-                <select id="scale-fit-select" class="form-input">
-                    <option value="fit">Fit to Page (Auto Scale)</option>
-                    <option value="100">Original (100% Scale)</option>
-                    <option value="75">Compact (75% Scale)</option>
-                    <option value="50">Mini (50% Scale)</option>
-                </select>
+                <div class="pill-group" id="scale-fit-pills">
+                    <div class="select-pill active" data-val="fit" onclick="selectPill('scale-fit-pills', this)">🎯 Fit to Page</div>
+                    <div class="select-pill" data-val="100" onclick="selectPill('scale-fit-pills', this)">100% Original</div>
+                    <div class="select-pill" data-val="75" onclick="selectPill('scale-fit-pills', this)">75% Compact</div>
+                    <div class="select-pill" data-val="50" onclick="selectPill('scale-fit-pills', this)">50% Mini</div>
+                </div>
+                <input type="hidden" id="scale-fit-val" value="fit">
             </div>
 
-            <!-- Copies & Duplex -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <!-- Copies & Duplex (Duplex rendered conditionally if shopkeeper has enabled duplex discount) -->
+            <div style="display: grid; grid-template-columns: 1fr {% if shop.duplex_discount is defined and shop.duplex_discount > 0 %}1fr{% else %}0fr{% endif %}; gap: 12px;">
                 <div class="form-group">
                     <label class="form-label">🔢 Copies:</label>
                     <input type="number" id="copies" class="form-input" value="1" min="1" max="100">
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label">📄 Duplex (Sides):</label>
-                    <select id="duplex" class="form-input">
-                        <option value="single">Single Sided</option>
-                        <option value="double_long">Double Sided (Both)</option>
-                    </select>
+                {% if shop.duplex_discount is defined and shop.duplex_discount > 0 %}
+                <div class="form-group" id="duplex-container">
+                    <label class="form-label">📄 Duplex (Both Sides):</label>
+                    <div class="pill-group" id="duplex-pills">
+                        <div class="select-pill active" data-val="single" onclick="selectPill('duplex-pills', this)">📄 Single</div>
+                        <div class="select-pill" data-val="double_long" onclick="selectPill('duplex-pills', this)">📖 Double</div>
+                    </div>
+                    <input type="hidden" id="duplex-val" value="single">
                 </div>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">💵 Payment Method:</label>
-                <select id="payment-method" class="form-input">
-                    <option value="cash">💵 Cash at Shop Counter</option>
-                    <option value="online">💳 Pay Online (UPI / Card / NetBanking)</option>
-                </select>
+                {% else %}
+                <input type="hidden" id="duplex-val" value="single">
+                {% endif %}
             </div>
         </div>
 
-        <!-- Right Column: Live Sheet Preview Canvas -->
+        <!-- Right Column: Live Sheet Preview Canvas with Click-to-Enlarge & Crop -->
         <div style="display: flex; flex-direction: column; align-items: center;">
             <p style="font-weight: 700; font-size: 14px; color: var(--text-muted); margin-bottom: 8px;">🖼️ Live Sheet Print Preview</p>
-            <div style="border: 2px solid var(--card-border); border-radius: 12px; padding: 12px; background: #0f172a; display: flex; justify-content: center; align-items: center; width: 100%; min-height: 340px;">
+            <div class="preview-canvas-container" id="preview-container" title="Click to enlarge & crop document area">
+                <div class="preview-overlay-hint">🔍 Click to Enlarge / Crop</div>
                 <canvas id="preview-canvas" width="280" height="380" style="background: #ffffff; border-radius: 4px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); transition: all 0.3s ease;"></canvas>
             </div>
-            <p id="sheet-spec-lbl" style="font-size: 12px; color: var(--primary-light); margin-top: 8px;">Paper: A4 Portrait | Mode: B&W | Layout: 1-in-1</p>
+            <p id="sheet-spec-lbl" style="font-size: 12px; color: var(--primary-light); margin-top: 8px; text-align: center;">Paper: A4 Portrait | Mode: B&W | Grid: 1-in-1</p>
         </div>
 
     </div>
 
-    <!-- Total Cost Display Box -->
-    <div style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(6, 182, 212, 0.15) 100%); border: 1px solid var(--primary-light); padding: 20px; border-radius: 16px; margin: 24px 0; text-align: center;">
+    <!-- Total Price Banner -->
+    <div style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(6, 182, 212, 0.15) 100%); border: 1px solid var(--primary-light); padding: 18px; border-radius: 16px; margin: 24px 0; text-align: center;">
         <p style="font-size: 13px; color: var(--text-muted); font-weight: 600;">Calculated Total Price</p>
-        <p id="total-price" style="font-size: 34px; font-weight: 800; color: #ffffff; margin-top: 4px;">₹0.00</p>
+        <p id="total-price" style="font-size: 36px; font-weight: 800; color: #ffffff; margin-top: 2px;">₹0.00</p>
     </div>
 
-    <button id="submit-btn" class="btn-primary btn-success" style="width: 100%; padding: 16px; font-size: 16px;">✅ Submit Print Order Now</button>
+    <!-- Direct Action Payment Buttons (Cash or Online) -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+        <button id="pay-cash-btn" onclick="submitOrder('cash')" class="btn-primary" style="padding: 16px; font-size: 16px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none;">
+            💵 Pay Cash at Counter
+        </button>
+        <button id="pay-online-btn" onclick="submitOrder('online')" class="btn-primary" style="padding: 16px; font-size: 16px; background: linear-gradient(135deg, #6366f1 0%, #06b6d4 100%); border: none;">
+            💳 Pay Online (UPI / QR / Card)
+        </button>
+    </div>
 </div>
 
-<!-- Order Confirmation Modal -->
-<div class="glass-card" id="success-card" style="display: none; text-align: center; padding: 40px 20px;">
-    <p style="font-size: 56px; margin-bottom: 12px;">🎉</p>
-    <h2 style="font-size: 24px; color: var(--emerald-success); margin-bottom: 8px;">Print Order Sent to Counter!</h2>
-    <p style="color: var(--text-muted); font-size: 15px; margin-bottom: 20px;">Order ID: <b id="job-id-lbl" style="color: #ffffff;">#123456</b></p>
-    <p id="status-msg" style="font-size: 15px; background: rgba(15, 23, 42, 0.8); border: 1px solid var(--card-border); padding: 14px; border-radius: 12px; margin-bottom: 24px; color: var(--text-body);">Please pay cash at shop counter to trigger automatic printing.</p>
-    <button onclick="location.reload()" class="btn-secondary">Print Another Document</button>
+<!-- Enlarge & Crop Modal -->
+<div id="crop-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card">
+        <div style="padding: 16px 24px; border-bottom: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="font-size: 18px; color: #ffffff;">🔍 Sheet Enlarge & Image Crop Studio</h3>
+            <button onclick="closeCropModal()" style="background: none; border: none; color: var(--text-muted); font-size: 24px; cursor: pointer;">✕</button>
+        </div>
+        
+        <div style="display: flex; flex: 1; overflow: hidden; flex-wrap: wrap;">
+            <!-- Modal Canvas Container -->
+            <div style="flex: 1; padding: 20px; background: #0f172a; display: flex; justify-content: center; align-items: center; position: relative; min-height: 350px; overflow: auto;">
+                <div id="modal-canvas-wrapper" style="position: relative; max-width: 100%; max-height: 100%;">
+                    <canvas id="modal-canvas" style="background: #ffffff; border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); display: block;"></canvas>
+                    <div id="crop-box" class="crop-box" style="display: none;"></div>
+                </div>
+            </div>
+            
+            <!-- Controls Sidebar -->
+            <div style="width: 280px; padding: 20px; border-left: 1px solid var(--card-border); background: #1e293b; display: flex; flex-direction: column; gap: 16px;">
+                <div>
+                    <label class="form-label">📂 Select File to Crop:</label>
+                    <select id="modal-file-select" class="form-input" onchange="loadModalFile(this.value)">
+                        <!-- Injected JS options -->
+                    </select>
+                </div>
+
+                <div>
+                    <label class="form-label">✂️ Preset Crop Aspect Ratio:</label>
+                    <select id="crop-preset-select" class="form-input" onchange="applyCropPreset(this.value)">
+                        <option value="full">Full Page (Reset Crop)</option>
+                        <option value="id_card">🪪 ID Card / Aadhaar (85:55)</option>
+                        <option value="passport">📷 Passport Photo (35:45)</option>
+                        <option value="custom">Custom Area Drag</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="form-label">🔍 Zoom Level:</label>
+                    <input type="range" id="crop-zoom" min="100" max="300" value="100" class="form-input" style="padding: 0;" oninput="updateModalCanvas()">
+                </div>
+
+                <div style="margin-top: auto; display: flex; flex-direction: column; gap: 10px;">
+                    <button onclick="resetCurrentCrop()" class="btn-secondary" style="font-size: 13px;">🔄 Reset Crop</button>
+                    <button onclick="applyAndSaveCrop()" class="btn-primary" style="padding: 12px; font-size: 14px;">✅ Apply Crop & Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Print Ticket Status Page (shown after order submission) -->
+<div id="success-card" style="display: none; max-width: 480px; margin: 0 auto;">
+
+    <style>
+        .ticket-header {
+            text-align: center;
+            padding: 20px 0 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            margin-bottom: 20px;
+        }
+        .ticket-header h2 {
+            font-size: 20px;
+            font-weight: 800;
+            color: #ffffff;
+            margin-bottom: 4px;
+        }
+        .ticket-header p {
+            font-size: 13px;
+            color: #64748b;
+        }
+        .status-icon-box {
+            width: 72px; height: 72px;
+            border-radius: 50%;
+            background: rgba(99, 102, 241, 0.15);
+            border: 2px solid rgba(99, 102, 241, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+        }
+        .status-icon-box svg { width: 34px; height: 34px; }
+        .status-title-box {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 14px;
+            padding: 22px 20px;
+            text-align: center;
+            margin-bottom: 18px;
+        }
+        .status-title-box h3 {
+            font-size: 20px;
+            font-weight: 800;
+            color: #ffffff;
+            margin-bottom: 8px;
+        }
+        .status-title-box p {
+            font-size: 14px;
+            color: #94a3b8;
+        }
+        .tracking-card {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(51, 65, 85, 0.7);
+            border-radius: 14px;
+            padding: 18px 20px;
+            margin-bottom: 16px;
+        }
+        .tracking-card h4 {
+            font-size: 11px;
+            letter-spacing: 1.5px;
+            color: #475569;
+            text-transform: uppercase;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        .step-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+        .step-row:last-child { margin-bottom: 0; }
+        .step-circle {
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 700;
+            flex-shrink: 0;
+            background: #1e293b;
+            border: 2px solid #334155;
+            color: #475569;
+        }
+        .step-circle.active {
+            background: rgba(99, 102, 241, 0.2);
+            border-color: #6366f1;
+            color: #818cf8;
+        }
+        .step-circle.done {
+            background: rgba(34, 197, 94, 0.15);
+            border-color: #22c55e;
+            color: #22c55e;
+        }
+        .step-text { flex: 1; padding-top: 2px; }
+        .step-text strong {
+            display: block;
+            font-size: 14px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 2px;
+        }
+        .step-text strong.muted { color: #475569; }
+        .step-text span {
+            font-size: 12px;
+            color: #64748b;
+        }
+        .details-card {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(51, 65, 85, 0.7);
+            border-radius: 14px;
+            padding: 18px 20px;
+            margin-bottom: 16px;
+        }
+        .details-card h4 {
+            font-size: 13px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 14px;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+        .detail-row span:first-child { color: #64748b; }
+        .detail-row span:last-child { color: #ffffff; font-weight: 600; }
+        .total-row {
+            border-top: 1px solid rgba(255,255,255,0.08);
+            margin-top: 10px;
+            padding-top: 10px;
+        }
+        .total-row span:first-child { color: #ffffff; font-weight: 700; }
+        .total-row span:last-child { color: #38bdf8; font-size: 18px; font-weight: 800; }
+        .cancel-btn {
+            width: 100%;
+            padding: 14px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.35);
+            border-radius: 12px;
+            color: #f87171;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .cancel-btn:hover { background: rgba(239, 68, 68, 0.2); }
+    </style>
+
+    <div class="ticket-header">
+        <h2>Print Ticket <span id="ticket-number">#00000000</span></h2>
+        <p>Live Status Updates</p>
+    </div>
+
+    <!-- Status Icon + Title -->
+    <div class="status-title-box" id="status-title-box">
+        <div class="status-icon-box">
+            <svg id="status-svg-icon" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+            </svg>
+        </div>
+        <h3 id="status-main-title">Cash Payment Pending</h3>
+        <p id="status-sub-text">Please pay ₹0 at the shop counter to start printing.</p>
+    </div>
+
+    <!-- Progress Steps -->
+    <div class="tracking-card">
+        <h4>Progress Tracking</h4>
+
+        <div class="step-row">
+            <div class="step-circle done" id="step1-circle">✔</div>
+            <div class="step-text">
+                <strong id="step1-title">Order Submitted</strong>
+                <span id="step1-sub">Waiting for cash payment confirmation at shop counter</span>
+            </div>
+        </div>
+
+        <div class="step-row">
+            <div class="step-circle" id="step2-circle">2</div>
+            <div class="step-text">
+                <strong class="muted" id="step2-title">In Print Queue</strong>
+                <span id="step2-sub">Payment confirmed! Job queued for shop printer</span>
+            </div>
+        </div>
+
+        <div class="step-row">
+            <div class="step-circle" id="step3-circle">3</div>
+            <div class="step-text">
+                <strong class="muted" id="step3-title">Printing Document</strong>
+                <span id="step3-sub">Printer is processing and printing your pages</span>
+            </div>
+        </div>
+
+        <div class="step-row">
+            <div class="step-circle" id="step4-circle">4</div>
+            <div class="step-text">
+                <strong class="muted" id="step4-title">Printing Completed!</strong>
+                <span id="step4-sub">Your document has been printed. Collect from counter.</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Details -->
+    <div class="details-card">
+        <h4>Order Details</h4>
+        <div class="detail-row">
+            <span>Document:</span>
+            <span id="detail-filename">—</span>
+        </div>
+        <div class="detail-row">
+            <span>Pages & Copies:</span>
+            <span id="detail-pages">—</span>
+        </div>
+        <div class="detail-row">
+            <span>Print Options:</span>
+            <span id="detail-opts">—</span>
+        </div>
+        <div class="detail-row total-row">
+            <span>Total Paid/Due:</span>
+            <span id="detail-amount">₹0</span>
+        </div>
+    </div>
+
+    <!-- Cancel Button -->
+    <button class="cancel-btn" onclick="cancelOrder()">✕ Cancel Order</button>
 </div>
 
 <script>
     const shopId = "{{ shop.shop_id }}";
-    let uploadedFileMeta = null;
+    let uploadedFiles = [];
+    let activeModalFileIdx = 0;
+    let gridSlotMapping = [0, 1, 2, 3];
 
     const dropZone = document.getElementById('drop-zone');
     const fileInput = document.getElementById('file-input');
+    const addMoreBtn = document.getElementById('add-more-btn');
+    const addMoreInput = document.getElementById('add-more-input');
+
     const uploadCard = document.getElementById('upload-card');
     const configCard = document.getElementById('config-card');
     const passwordCard = document.getElementById('password-card');
+
+    function selectPill(groupId, element) {
+        const pills = document.querySelectorAll(`#${groupId} .select-pill`);
+        pills.forEach(p => p.classList.remove('active'));
+        element.classList.add('active');
+
+        const val = element.getAttribute('data-val');
+        if (groupId === 'paper-size-pills') document.getElementById('paper-size-val').value = val;
+        if (groupId === 'color-mode-pills') document.getElementById('color-mode-val').value = val;
+        if (groupId === 'orientation-pills') document.getElementById('orientation-val').value = val;
+        if (groupId === 'layout-grid-pills') {
+            document.getElementById('layout-grid-val').value = val;
+            renderGridSlotCustomizerUI();
+        }
+        if (groupId === 'scale-fit-pills') document.getElementById('scale-fit-val').value = val;
+        if (groupId === 'duplex-pills') document.getElementById('duplex-val').value = val;
+
+        calculatePriceAndDrawPreview();
+    }
+
+    function renderGridSlotCustomizerUI() {
+        const customizer = document.getElementById('grid-slot-customizer');
+        const inputsContainer = document.getElementById('grid-slot-inputs');
+        const layoutGrid = document.getElementById('layout-grid-val') ? document.getElementById('layout-grid-val').value : '1in1';
+
+        if (layoutGrid === '1in1' || uploadedFiles.length <= 1) {
+            if (customizer) customizer.style.display = 'none';
+            return;
+        }
+
+        if (customizer) customizer.style.display = 'block';
+        if (!inputsContainer) return;
+
+        inputsContainer.innerHTML = '';
+
+        const slotCount = (layoutGrid === '2in1') ? 2 : 4;
+        const slotLabels2in1 = ["Top Slot (Front)", "Bottom Slot (Back)"];
+        const slotLabels4in1 = ["Slot 1 (Top-Left)", "Slot 2 (Top-Right)", "Slot 3 (Bottom-Left)", "Slot 4 (Bottom-Right)"];
+        const labels = (layoutGrid === '2in1') ? slotLabels2in1 : slotLabels4in1;
+
+        for (let i = 0; i < slotCount; i++) {
+            const div = document.createElement('div');
+            div.style.cssText = "display: flex; align-items: center; justify-content: space-between; gap: 8px;";
+
+            const lbl = document.createElement('span');
+            lbl.style.cssText = "font-size: 12px; font-weight: 600; color: #ffffff;";
+            lbl.innerText = labels[i] + ":";
+
+            const select = document.createElement('select');
+            select.className = "form-input";
+            select.style.cssText = "padding: 4px 8px; font-size: 12px; flex: 1; max-width: 220px;";
+
+            uploadedFiles.forEach((file, fIdx) => {
+                const opt = document.createElement('option');
+                opt.value = fIdx;
+                opt.innerText = file.filename;
+                const assignedIdx = (gridSlotMapping[i] !== undefined) ? gridSlotMapping[i] : (fIdx === i ? i : 0);
+                if (assignedIdx === fIdx) {
+                    opt.selected = true;
+                }
+                select.appendChild(opt);
+            });
+
+            select.addEventListener('change', (e) => {
+                gridSlotMapping[i] = parseInt(e.target.value) || 0;
+                drawLivePreviewCanvas();
+            });
+
+            div.appendChild(lbl);
+            div.appendChild(select);
+            inputsContainer.appendChild(div);
+        }
+    }
+
+    function swapGridSlots() {
+        const layoutGrid = document.getElementById('layout-grid-val').value;
+        if (layoutGrid === '2in1') {
+            const temp = gridSlotMapping[0];
+            gridSlotMapping[0] = gridSlotMapping[1];
+            gridSlotMapping[1] = temp;
+        } else if (layoutGrid === '4in1') {
+            const first = gridSlotMapping.shift();
+            gridSlotMapping.push(first);
+        }
+        renderGridSlotCustomizerUI();
+        drawLivePreviewCanvas();
+    }
 
     dropZone.addEventListener('click', () => fileInput.click());
     dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = '#6366f1'; });
     dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'rgba(99, 102, 241, 0.4)'; });
     dropZone.addEventListener('drop', (e) => {
         e.preventDefault();
-        if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+        if (e.dataTransfer.files.length) processSelectedFiles(Array.from(e.dataTransfer.files));
     });
 
     fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length) handleFile(e.target.files[0]);
+        if (e.target.files.length) processSelectedFiles(Array.from(e.target.files));
     });
 
-    function handleFile(file) {
-        const formData = new FormData();
-        formData.append('shop_id', shopId);
-        formData.append('file', file);
+    addMoreBtn.addEventListener('click', () => addMoreInput.click());
+    addMoreInput.addEventListener('change', (e) => {
+        if (e.target.files.length) processSelectedFiles(Array.from(e.target.files));
+    });
 
-        dropZone.innerHTML = "<p style='font-size: 16px; font-weight: 600;'>⏳ Uploading & Inspecting Document...</p>";
+    async function processSelectedFiles(files) {
+        dropZone.innerHTML = "<p style='font-size: 16px; font-weight: 600;'>⏳ Uploading & Rendering Preview...</p>";
+        
+        for (const file of files) {
+            const formData = new FormData();
+            formData.append('shop_id', shopId);
+            formData.append('file', file);
 
-        fetch('/api/customer/upload', { method: 'POST', body: formData })
-            .then(res => res.json())
-            .then(data => {
+            try {
+                const res = await fetch('/api/customer/upload', { method: 'POST', body: formData });
+                const data = await res.json();
                 if (data.success) {
-                    uploadedFileMeta = data;
                     if (data.is_password_protected) {
+                        uploadedFiles.push({ ...data, is_pdf: true });
                         passwordCard.style.display = 'block';
                         uploadCard.style.display = 'none';
-                    } else {
-                        showConfigUI(data);
+                        return;
                     }
-                } else {
-                    alert(data.error || "Upload failed.");
+
+                    const isPdf = data.filename.toLowerCase().endsWith('.pdf');
+                    const fileObj = {
+                        id: 'file_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                        filename: data.filename,
+                        saved_path: data.saved_path,
+                        preview_url: data.preview_url,
+                        page_count: data.page_count || 1,
+                        is_pdf: isPdf,
+                        imgObj: null,
+                        pdfDoc: null,
+                        crop: { x: 0, y: 0, w: 100, h: 100 }
+                    };
+
+                    if (isPdf && window.pdfjsLib) {
+                        try {
+                            fileObj.pdfDoc = await pdfjsLib.getDocument(data.preview_url).promise;
+                        } catch (err) {
+                            console.log("PDF.js render error:", err);
+                        }
+                    } else if (!isPdf) {
+                        await new Promise((resolve) => {
+                            const img = new Image();
+                            img.crossOrigin = "anonymous";
+                            img.onload = () => { fileObj.imgObj = img; resolve(); };
+                            img.onerror = () => resolve();
+                            img.src = data.preview_url;
+                        });
+                    }
+
+                    uploadedFiles.push(fileObj);
                 }
-            });
-    }
+            } catch (err) {
+                console.error("Upload error:", err);
+            }
+        }
 
-    document.getElementById('unlock-btn').addEventListener('click', () => {
-        const pass = document.getElementById('pdf-password-input').value.trim();
-        if (!pass) return;
-
-        const formData = new FormData();
-        formData.append('saved_path', uploadedFileMeta.saved_path);
-        formData.append('password', pass);
-
-        fetch('/api/customer/unlock-pdf', { method: 'POST', body: formData })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    uploadedFileMeta.page_count = data.page_count;
-                    uploadedFileMeta.is_password_protected = false;
-                    passwordCard.style.display = 'none';
-                    showConfigUI(uploadedFileMeta);
-                } else {
-                    const errLbl = document.getElementById('password-error-lbl');
-                    errLbl.innerText = data.error || "Incorrect password.";
-                    errLbl.style.display = 'block';
-                }
-            });
-    });
-
-    function showConfigUI(data) {
-        document.getElementById('file-info').innerText = data.filename;
-        document.getElementById('page-info').innerText = `Total Document Pages: ${data.page_count}`;
+        renderFileListUI();
+        renderGridSlotCustomizerUI();
         configCard.style.display = 'block';
         uploadCard.style.display = 'none';
         calculatePriceAndDrawPreview();
     }
 
-    function calculatePriceAndDrawPreview() {
-        if (!uploadedFileMeta) return;
+    function renderFileListUI() {
+        const container = document.getElementById('file-list-container');
+        container.innerHTML = '';
 
-        const paperSelect = document.getElementById('paper-size-select');
-        const selectedOpt = paperSelect.options[paperSelect.selectedIndex];
-        
-        const bwRate = parseFloat(selectedOpt.getAttribute('data-bw')) || 2.0;
-        const colorRate = parseFloat(selectedOpt.getAttribute('data-color')) || 10.0;
-        
-        const pages = uploadedFileMeta.page_count || 1;
-        const copies = parseInt(document.getElementById('copies').value) || 1;
-        const mode = document.getElementById('color-mode').value;
-        const rate = (mode === 'color') ? colorRate : bwRate;
+        let totalPages = 0;
+        uploadedFiles.forEach((file, index) => {
+            totalPages += (file.page_count || 1);
+            const div = document.createElement('div');
+            div.className = 'file-badge-item';
+            div.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span>${file.is_pdf ? '📄' : '🖼️'}</span>
+                    <div>
+                        <p style="font-weight: 600; font-size: 13px; color: #ffffff;">${file.filename}</p>
+                        <p style="font-size: 11px; color: var(--text-muted);">${file.is_pdf ? file.page_count + ' Pages' : 'Image document'}</p>
+                    </div>
+                </div>
+                <button onclick="removeFile(${index})" style="background: none; border: none; color: #ef4444; font-size: 16px; cursor: pointer;">🗑️</button>
+            `;
+            container.appendChild(div);
+        });
 
-        const total = pages * copies * rate;
-        document.getElementById('total-price').innerText = `₹${total.toFixed(2)}`;
-
-        drawLivePreviewCanvas();
-        return total;
+        document.getElementById('file-count-lbl').innerText = uploadedFiles.length;
+        document.getElementById('total-pages-lbl').innerText = `Total Pages: ${totalPages}`;
     }
 
-    function drawLivePreviewCanvas() {
+    function removeFile(index) {
+        uploadedFiles.splice(index, 1);
+        if (uploadedFiles.length === 0) {
+            configCard.style.display = 'none';
+            uploadCard.style.display = 'block';
+            dropZone.innerHTML = `
+                <p style="font-size: 54px; margin-bottom: 12px;">📑</p>
+                <p style="font-size: 18px; font-weight: 700; color: #ffffff;">Tap to Choose Files or Drag & Drop Here</p>
+                <p style="font-size: 13px; color: var(--text-muted); margin-top: 6px;">Select single or multiple files (PDF, PNG, JPG, Aadhaar/PAN Card front & back)</p>
+            `;
+        } else {
+            renderFileListUI();
+            renderGridSlotCustomizerUI();
+            calculatePriceAndDrawPreview();
+        }
+    }
+
+    function calculatePriceAndDrawPreview() {
+        if (!uploadedFiles.length) return { total: 0, printedSheets: 0 };
+
+        const activePaperPill = document.querySelector('#paper-size-pills .select-pill.active');
+        const bwRate = activePaperPill ? (parseFloat(activePaperPill.getAttribute('data-bw')) || 2.0) : 2.0;
+        const colorRate = activePaperPill ? (parseFloat(activePaperPill.getAttribute('data-color')) || 10.0) : 10.0;
+        
+        let totalRawPages = 0;
+        uploadedFiles.forEach(f => totalRawPages += (f.page_count || 1));
+
+        const layoutGrid = document.getElementById('layout-grid-val') ? document.getElementById('layout-grid-val').value : '1in1';
+        let printedSheets = totalRawPages;
+        if (layoutGrid === '2in1') {
+            printedSheets = Math.ceil(totalRawPages / 2);
+        } else if (layoutGrid === '4in1') {
+            printedSheets = Math.ceil(totalRawPages / 4);
+        }
+        printedSheets = Math.max(1, printedSheets);
+
+        const copies = parseInt(document.getElementById('copies').value) || 1;
+        const mode = document.getElementById('color-mode-val').value;
+        const rate = (mode === 'color') ? colorRate : bwRate;
+
+        const total = printedSheets * copies * rate;
+        document.getElementById('total-price').innerText = `₹${total.toFixed(2)}`;
+
+        const totalPagesLbl = document.getElementById('total-pages-lbl');
+        if (totalPagesLbl) {
+            totalPagesLbl.innerText = `Items: ${totalRawPages} (${printedSheets} Sheet${printedSheets > 1 ? 's' : ''})`;
+        }
+
+        drawLivePreviewCanvas();
+        return { total: total, printedSheets: printedSheets };
+    }
+
+    async function drawLivePreviewCanvas() {
         const canvas = document.getElementById('preview-canvas');
         const ctx = canvas.getContext('2d');
 
-        const paperSize = document.getElementById('paper-size-select').value;
-        const orientation = document.getElementById('orientation-select').value;
-        const layoutGrid = document.getElementById('layout-grid-select').value;
-        const colorMode = document.getElementById('color-mode').value;
-        const scaleVal = document.getElementById('scale-fit-select').value;
+        const paperSize = document.getElementById('paper-size-val').value;
+        const orientation = document.getElementById('orientation-val').value;
+        const layoutGrid = document.getElementById('layout-grid-val').value;
+        const colorMode = document.getElementById('color-mode-val').value;
+        const scaleVal = document.getElementById('scale-fit-val').value;
 
-        // Set Canvas Aspect Ratio based on orientation
+        // Set Aspect Ratio
         if (orientation === 'landscape') {
             canvas.width = 380;
             canvas.height = 260;
@@ -278,119 +862,545 @@
             canvas.height = 380;
         }
 
-        // Draw Paper Sheet
+        // Clear Canvas & Draw Paper Sheet Background
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.strokeStyle = '#cbd5e1';
         ctx.lineWidth = 2;
         ctx.strokeRect(0, 0, canvas.width, canvas.height);
 
-        // Draw Margin Lines
-        ctx.strokeStyle = '#f1f5f9';
-        ctx.setLineDash([4, 4]);
-        ctx.strokeRect(12, 12, canvas.width - 24, canvas.height - 24);
-        ctx.setLineDash([]);
-
-        // Determine Document Colors
-        const docBg = (colorMode === 'color') ? '#3b82f6' : '#475569';
-        const textClr = (colorMode === 'color') ? '#93c5fd' : '#94a3b8';
+        // Apply Color Mode Filter
+        if (colorMode === 'bw') {
+            ctx.filter = 'grayscale(100%) contrast(125%)';
+        } else {
+            ctx.filter = 'none';
+        }
 
         let scaleFactor = 1.0;
         if (scaleVal === '75') scaleFactor = 0.75;
         if (scaleVal === '50') scaleFactor = 0.5;
 
-        // Draw Document Pages according to Grid Layout
+        // Collect item preview sources
+        const renderSlots = [];
+        for (const file of uploadedFiles) {
+            if (file.is_pdf && file.pdfDoc) {
+                for (let p = 1; p <= Math.min(file.page_count, 4); p++) {
+                    const page = await file.pdfDoc.getPage(p);
+                    const viewport = page.getViewport({ scale: 0.5 });
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = viewport.width;
+                    tempCanvas.height = viewport.height;
+                    const tempCtx = tempCanvas.getContext('2d');
+                    await page.render({ canvasContext: tempCtx, viewport: viewport }).promise;
+                    renderSlots.push({ img: tempCanvas, crop: file.crop });
+                }
+            } else if (file.imgObj) {
+                renderSlots.push({ img: file.imgObj, crop: file.crop });
+            }
+        }
+
+        if (renderSlots.length === 0) {
+            ctx.fillStyle = '#64748b';
+            ctx.font = '12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText("Rendering Document Preview...", canvas.width / 2, canvas.height / 2);
+            ctx.filter = 'none';
+            document.getElementById('sheet-spec-lbl').innerText = `Paper: ${paperSize} ${orientation.toUpperCase()} | Mode: ${colorMode.toUpperCase()} | Grid: ${layoutGrid}`;
+            return;
+        }
+
+        // Draw Slots according to Layout Grid
         if (layoutGrid === '1in1') {
-            const w = (canvas.width - 40) * scaleFactor;
-            const h = (canvas.height - 40) * scaleFactor;
+            const w = (canvas.width - 24) * scaleFactor;
+            const h = (canvas.height - 24) * scaleFactor;
             const x = (canvas.width - w) / 2;
             const y = (canvas.height - h) / 2;
 
-            ctx.fillStyle = docBg;
-            ctx.roundRect(x, y, w, h, 6);
-            ctx.fill();
-
-            // Text placeholder lines
-            ctx.fillStyle = textClr;
-            ctx.fillRect(x + 16, y + 20, w - 32, 6);
-            ctx.fillRect(x + 16, y + 34, w - 48, 6);
-            ctx.fillRect(x + 16, y + 48, w - 40, 6);
+            drawCroppedSource(ctx, renderSlots[0].img, renderSlots[0].crop, x, y, w, h);
         } else if (layoutGrid === '2in1') {
-            // ID Card 2-in-1 Front + Back Side Layout
-            const cardW = (canvas.width - 36) * scaleFactor;
-            const cardH = (canvas.height / 2 - 24) * scaleFactor;
+            const slotW = (canvas.width - 24) * scaleFactor;
+            const slotH = (canvas.height / 2 - 16) * scaleFactor;
+            const x = (canvas.width - slotW) / 2;
 
-            // Card 1 (Front)
-            const x1 = (canvas.width - cardW) / 2;
-            const y1 = 20;
-            ctx.fillStyle = docBg;
-            ctx.roundRect(x1, y1, cardW, cardH, 6);
-            ctx.fill();
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 11px sans-serif';
-            ctx.fillText("🪪 ID Card - Front", x1 + 12, y1 + 22);
+            // Slot 1 (Top / Front)
+            const idx1 = (gridSlotMapping[0] !== undefined) ? gridSlotMapping[0] : 0;
+            const item1 = renderSlots[idx1] || renderSlots[0];
+            if (item1) {
+                drawCroppedSource(ctx, item1.img, item1.crop, x, 12, slotW, slotH);
+            }
 
-            // Card 2 (Back)
-            const y2 = y1 + cardH + 16;
-            ctx.fillStyle = docBg;
-            ctx.roundRect(x1, y2, cardW, cardH, 6);
-            ctx.fill();
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 11px sans-serif';
-            ctx.fillText("🪪 ID Card - Back", x1 + 12, y2 + 22);
+            // Slot 2 (Bottom / Back)
+            const idx2 = (gridSlotMapping[1] !== undefined) ? gridSlotMapping[1] : (renderSlots.length > 1 ? 1 : 0);
+            const item2 = renderSlots[idx2] || renderSlots[0];
+            if (item2) {
+                drawCroppedSource(ctx, item2.img, item2.crop, x, canvas.height / 2 + 6, slotW, slotH);
+            }
         } else if (layoutGrid === '4in1') {
-            // 4-in-1 Grid Layout
-            const w = (canvas.width / 2 - 18) * scaleFactor;
-            const h = (canvas.height / 2 - 18) * scaleFactor;
+            const w = (canvas.width / 2 - 16) * scaleFactor;
+            const h = (canvas.height / 2 - 16) * scaleFactor;
 
-            const positions = [
-                [12, 12], [canvas.width / 2 + 6, 12],
-                [12, canvas.height / 2 + 6], [canvas.width / 2 + 6, canvas.height / 2 + 6]
+            const coords = [
+                [10, 10], [canvas.width / 2 + 4, 10],
+                [10, canvas.height / 2 + 4], [canvas.width / 2 + 4, canvas.height / 2 + 4]
             ];
 
-            positions.forEach((pos, idx) => {
-                ctx.fillStyle = docBg;
-                ctx.roundRect(pos[0], pos[1], w, h, 4);
-                ctx.fill();
-                ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 9px sans-serif';
-                ctx.fillText(`P.${idx+1}`, pos[0] + 6, pos[1] + 16);
+            coords.forEach((pos, idx) => {
+                const targetIdx = (gridSlotMapping[idx] !== undefined) ? gridSlotMapping[idx] : (idx % renderSlots.length);
+                const item = renderSlots[targetIdx] || renderSlots[0];
+                if (item) {
+                    drawCroppedSource(ctx, item.img, item.crop, pos[0], pos[1], w, h);
+                }
             });
         }
 
+        ctx.filter = 'none';
         document.getElementById('sheet-spec-lbl').innerText = `Paper: ${paperSize} ${orientation.toUpperCase()} | Mode: ${colorMode.toUpperCase()} | Grid: ${layoutGrid}`;
     }
 
-    ['paper-size-select', 'color-mode', 'orientation-select', 'layout-grid-select', 'scale-fit-select', 'copies', 'duplex'].forEach(id => {
-        document.getElementById(id).addEventListener('change', calculatePriceAndDrawPreview);
-        document.getElementById(id).addEventListener('input', calculatePriceAndDrawPreview);
+    function drawCroppedSource(ctx, src, crop, dx, dy, dw, dh) {
+        const sw = src.width;
+        const sh = src.height;
+        
+        const sx = (crop.x / 100) * sw;
+        const sy = (crop.y / 100) * sh;
+        const sSubW = (crop.w / 100) * sw;
+        const sSubH = (crop.h / 100) * sh;
+
+        ctx.drawImage(src, sx, sy, sSubW, sSubH, dx, dy, dw, dh);
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(dx, dy, dw, dh);
+    }
+
+    // Modal Enlarge & Crop Studio Logic
+    document.getElementById('preview-container').addEventListener('click', () => {
+        if (!uploadedFiles.length) return;
+        
+        const select = document.getElementById('modal-file-select');
+        select.innerHTML = '';
+        uploadedFiles.forEach((f, idx) => {
+            const opt = document.createElement('option');
+            opt.value = idx;
+            opt.innerText = f.filename;
+            select.appendChild(opt);
+        });
+
+        loadModalFile(0);
+        document.getElementById('crop-modal').style.display = 'flex';
     });
 
-    document.getElementById('submit-btn').addEventListener('click', () => {
-        if (!uploadedFileMeta) return;
+    function closeCropModal() {
+        document.getElementById('crop-modal').style.display = 'none';
+        drawLivePreviewCanvas();
+    }
 
-        const totalCost = calculatePriceAndDrawPreview();
+    function loadModalFile(idx) {
+        activeModalFileIdx = parseInt(idx) || 0;
+        const file = uploadedFiles[activeModalFileIdx];
+        if (!file) return;
+
+        updateModalCanvas();
+    }
+
+    function updateModalCanvas() {
+        const file = uploadedFiles[activeModalFileIdx];
+        if (!file) return;
+
+        const canvas = document.getElementById('modal-canvas');
+        const ctx = canvas.getContext('2d');
+        const zoom = (parseInt(document.getElementById('crop-zoom').value) || 100) / 100;
+
+        let srcImg = file.imgObj;
+        if (file.is_pdf && file.pdfDoc) {
+            file.pdfDoc.getPage(1).then(page => {
+                const viewport = page.getViewport({ scale: 1.0 * zoom });
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                page.render({ canvasContext: ctx, viewport: viewport });
+            });
+            return;
+        }
+
+        if (!srcImg) return;
+
+        canvas.width = srcImg.width * (300 / srcImg.height) * zoom;
+        canvas.height = 300 * zoom;
+
+        ctx.drawImage(srcImg, 0, 0, canvas.width, canvas.height);
+        positionCropBox();
+    }
+
+    function positionCropBox() {
+        const file = uploadedFiles[activeModalFileIdx];
+        if (!file) return;
+
+        const cropBox = document.getElementById('crop-box');
+        const canvas = document.getElementById('modal-canvas');
+        
+        const left = (file.crop.x / 100) * canvas.offsetWidth;
+        const top = (file.crop.y / 100) * canvas.offsetHeight;
+        const width = (file.crop.w / 100) * canvas.offsetWidth;
+        const height = (file.crop.h / 100) * canvas.offsetHeight;
+
+        cropBox.style.left = left + 'px';
+        cropBox.style.top = top + 'px';
+        cropBox.style.width = width + 'px';
+        cropBox.style.height = height + 'px';
+        cropBox.style.display = 'block';
+    }
+
+    function applyCropPreset(preset) {
+        const file = uploadedFiles[activeModalFileIdx];
+        if (!file) return;
+
+        if (preset === 'full') {
+            file.crop = { x: 0, y: 0, w: 100, h: 100 };
+        } else if (preset === 'id_card') {
+            file.crop = { x: 10, y: 20, w: 80, h: 50 };
+        } else if (preset === 'passport') {
+            file.crop = { x: 25, y: 15, w: 50, h: 65 };
+        }
+        positionCropBox();
+    }
+
+    function resetCurrentCrop() {
+        applyCropPreset('full');
+    }
+
+    function applyAndSaveCrop() {
+        closeCropModal();
+    }
+
+    document.getElementById('copies').addEventListener('input', calculatePriceAndDrawPreview);
+    document.getElementById('copies').addEventListener('change', calculatePriceAndDrawPreview);
+
+    let isSubmitting = false;
+
+    function submitOrder(paymentMethod) {
+        if (isSubmitting || !uploadedFiles.length) return;
+        isSubmitting = true;
+
+        const cashBtn   = document.getElementById('pay-cash-btn');
+        const onlineBtn = document.getElementById('pay-online-btn');
+
+        if (cashBtn)   { cashBtn.disabled   = true; cashBtn.style.opacity   = '0.6'; }
+        if (onlineBtn) { onlineBtn.disabled = true; onlineBtn.style.opacity = '0.6'; }
+
+        const activeBtn = (paymentMethod === 'cash') ? cashBtn : onlineBtn;
+        if (activeBtn) activeBtn.innerHTML = `⏳ Preparing Print File…`;
+
+        const priceData    = calculatePriceAndDrawPreview();
+        const totalCost    = priceData.total;
+        const printedSheets = priceData.printedSheets;
+        const firstFile    = uploadedFiles[0];
+        const duplexVal    = document.getElementById('duplex-val')
+                              ? document.getElementById('duplex-val').value : 'single';
+
+        // ── Step 1: Render the preview canvas at HIGH resolution as PNG blob ──
+        renderHighResCanvas().then(blob => {
+            if (!blob) {
+                // Fallback: no canvas content — submit with original file path
+                doSubmitJob(paymentMethod, firstFile.saved_path, totalCost, printedSheets, duplexVal, cashBtn, onlineBtn);
+                return;
+            }
+
+            if (activeBtn) activeBtn.innerHTML = `⏳ Uploading Print File…`;
+
+            // ── Step 2: Upload rendered PNG to server ──
+            const uploadForm = new FormData();
+            uploadForm.append('shop_id', shopId);
+            uploadForm.append('rendered_file', blob, 'rendered_sheet.png');
+
+            fetch('/api/customer/upload-rendered', { method: 'POST', body: uploadForm })
+                .then(r => r.json())
+                .then(upData => {
+                    if (upData.success) {
+                        // ── Step 3: Submit job with rendered file path ──
+                        doSubmitJob(
+                            paymentMethod, upData.saved_path,
+                            totalCost, printedSheets, duplexVal,
+                            cashBtn, onlineBtn
+                        );
+                    } else {
+                        // Fallback to original file
+                        doSubmitJob(
+                            paymentMethod, firstFile.saved_path,
+                            totalCost, printedSheets, duplexVal,
+                            cashBtn, onlineBtn
+                        );
+                    }
+                })
+                .catch(() => {
+                    doSubmitJob(
+                        paymentMethod, firstFile.saved_path,
+                        totalCost, printedSheets, duplexVal,
+                        cashBtn, onlineBtn
+                    );
+                });
+        });
+    }
+
+    /**
+     * Renders the current layout/grid/crop at 4× resolution into a canvas
+     * and returns it as a PNG Blob — this is exactly what will be printed.
+     */
+    async function renderHighResCanvas() {
+        try {
+            const SCALE = 4; // 4× the preview canvas size for crisp prints
+            const paperSize  = document.getElementById('paper-size-val').value;
+            const orientation = document.getElementById('orientation-val').value;
+            const layoutGrid = document.getElementById('layout-grid-val').value;
+            const colorMode  = document.getElementById('color-mode-val').value;
+            const scaleVal   = document.getElementById('scale-fit-val').value;
+
+            const hiCanvas = document.createElement('canvas');
+            if (orientation === 'landscape') {
+                hiCanvas.width  = 380 * SCALE;
+                hiCanvas.height = 260 * SCALE;
+            } else {
+                hiCanvas.width  = 270 * SCALE;
+                hiCanvas.height = 380 * SCALE;
+            }
+            const ctx = hiCanvas.getContext('2d');
+
+            // White background
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, hiCanvas.width, hiCanvas.height);
+
+            if (colorMode === 'bw') {
+                ctx.filter = 'grayscale(100%) contrast(125%)';
+            }
+
+            let scaleFactor = 1.0;
+            if (scaleVal === '75') scaleFactor = 0.75;
+            if (scaleVal === '50') scaleFactor = 0.5;
+
+            // Collect render sources
+            const renderSlots = [];
+            for (const file of uploadedFiles) {
+                if (file.is_pdf && file.pdfDoc) {
+                    for (let p = 1; p <= Math.min(file.page_count, 4); p++) {
+                        const page = await file.pdfDoc.getPage(p);
+                        const viewport = page.getViewport({ scale: 1.5 });
+                        const tmpC = document.createElement('canvas');
+                        tmpC.width  = viewport.width;
+                        tmpC.height = viewport.height;
+                        await page.render({ canvasContext: tmpC.getContext('2d'), viewport }).promise;
+                        renderSlots.push({ img: tmpC, crop: file.crop });
+                    }
+                } else if (file.imgObj) {
+                    renderSlots.push({ img: file.imgObj, crop: file.crop });
+                }
+            }
+
+            if (renderSlots.length === 0) return null;
+
+            const W = hiCanvas.width;
+            const H = hiCanvas.height;
+
+            if (layoutGrid === '1in1') {
+                const w = (W - 24 * SCALE) * scaleFactor;
+                const h = (H - 24 * SCALE) * scaleFactor;
+                drawCroppedSource(ctx, renderSlots[0].img, renderSlots[0].crop,
+                    (W - w) / 2, (H - h) / 2, w, h);
+            } else if (layoutGrid === '2in1') {
+                const slotW = (W - 24 * SCALE) * scaleFactor;
+                const slotH = (H / 2 - 16 * SCALE) * scaleFactor;
+                const x = (W - slotW) / 2;
+                const idx1 = gridSlotMapping[0] ?? 0;
+                const idx2 = gridSlotMapping[1] ?? (renderSlots.length > 1 ? 1 : 0);
+                const item1 = renderSlots[idx1] || renderSlots[0];
+                const item2 = renderSlots[idx2] || renderSlots[0];
+                if (item1) drawCroppedSource(ctx, item1.img, item1.crop, x, 12 * SCALE, slotW, slotH);
+                if (item2) drawCroppedSource(ctx, item2.img, item2.crop, x, H / 2 + 6 * SCALE, slotW, slotH);
+            } else if (layoutGrid === '4in1') {
+                const w = (W / 2 - 16 * SCALE) * scaleFactor;
+                const h = (H / 2 - 16 * SCALE) * scaleFactor;
+                const coords = [
+                    [10 * SCALE, 10 * SCALE], [W / 2 + 4 * SCALE, 10 * SCALE],
+                    [10 * SCALE, H / 2 + 4 * SCALE], [W / 2 + 4 * SCALE, H / 2 + 4 * SCALE]
+                ];
+                coords.forEach((pos, idx) => {
+                    const targetIdx = gridSlotMapping[idx] ?? (idx % renderSlots.length);
+                    const item = renderSlots[targetIdx] || renderSlots[0];
+                    if (item) drawCroppedSource(ctx, item.img, item.crop, pos[0], pos[1], w, h);
+                });
+            }
+
+            ctx.filter = 'none';
+
+            return await new Promise(resolve => hiCanvas.toBlob(resolve, 'image/png', 0.95));
+        } catch (e) {
+            console.error('[renderHighResCanvas]', e);
+            return null;
+        }
+    }
+
+    function doSubmitJob(paymentMethod, filePath, totalCost, printedSheets, duplexVal, cashBtn, onlineBtn) {
+        const activeBtn = (paymentMethod === 'cash') ? cashBtn : onlineBtn;
+        if (activeBtn) activeBtn.innerHTML = `⏳ Submitting Order…`;
+
         const formData = new FormData();
         formData.append('shop_id', shopId);
-        formData.append('original_filename', uploadedFileMeta.filename);
-        formData.append('file_path', uploadedFileMeta.saved_path);
-        formData.append('page_count', uploadedFileMeta.page_count);
+        formData.append('original_filename', uploadedFiles.map(f => f.filename).join(', '));
+        formData.append('file_path', filePath);
+        formData.append('page_count', printedSheets);
         formData.append('copies', document.getElementById('copies').value);
-        formData.append('color_mode', document.getElementById('color-mode').value);
-        formData.append('duplex', document.getElementById('duplex').value);
-        formData.append('page_range', document.getElementById('paper-size-select').value + " / " + document.getElementById('layout-grid-select').value);
-        formData.append('payment_method', document.getElementById('payment-method').value);
+        formData.append('color_mode', document.getElementById('color-mode-val').value);
+        formData.append('duplex', duplexVal);
+        formData.append('page_range',
+            document.getElementById('paper-size-val').value + " / " +
+            document.getElementById('layout-grid-val').value
+        );
+        formData.append('payment_method', paymentMethod);
         formData.append('total_cost', totalCost);
 
         fetch('/api/customer/submit-job', { method: 'POST', body: formData })
             .then(res => res.json())
             .then(data => {
+                isSubmitting = false;
                 if (data.success) {
                     configCard.style.display = 'none';
-                    document.getElementById('success-card').style.display = 'block';
-                    document.getElementById('job-id-lbl').innerText = `#${data.job_id.slice(-8)}`;
+                    const successCard = document.getElementById('success-card');
+                    successCard.style.display = 'block';
+
+                    // Fill ticket ID
+                    const shortId = data.job_id.slice(-8).toUpperCase();
+                    document.getElementById('ticket-number').innerText = `#${shortId}`;
+
+                    // Fill order details
+                    const firstFile = uploadedFiles[0];
+                    const fname = uploadedFiles.map(f => f.filename).join(', ');
+                    document.getElementById('detail-filename').innerText =
+                        fname.length > 28 ? fname.slice(0, 28) + '…' : fname;
+                    document.getElementById('detail-pages').innerText =
+                        `${firstFile ? firstFile.pages : 1} pg × ${document.getElementById('copies').value} copy`;
+                    const colorTxt = document.getElementById('color-mode-val').value === 'bw' ? 'B&W' : 'Color';
+                    const paperSz  = document.getElementById('paper-size-val').value;
+                    document.getElementById('detail-opts').innerText = `${paperSz} • ${colorTxt}`;
+                    document.getElementById('detail-amount').innerText = `₹${parseFloat(data.total_cost).toFixed(0)}`;
+
+                    // Set initial status state
+                    window._trackingJobId = data.job_id;
+                    window._trackingPayMethod = paymentMethod;
+                    updateTicketStatus(paymentMethod === 'cash' ? 'PENDING_CASH' : 'QUEUED', data.total_cost);
+
+                    // Start polling
+                    startStatusPolling(data.job_id);
+                } else {
+                    if (cashBtn) { cashBtn.disabled = false; cashBtn.style.opacity = '1'; cashBtn.innerHTML = `💵 Pay Cash at Counter`; }
+                    if (onlineBtn) { onlineBtn.disabled = false; onlineBtn.style.opacity = '1'; onlineBtn.innerHTML = `💳 Pay Online (UPI / QR / Card)`; }
+                    alert(data.error || "Order submission failed.");
                 }
+            })
+            .catch(err => {
+                isSubmitting = false;
+                if (cashBtn) { cashBtn.disabled = false; cashBtn.style.opacity = '1'; cashBtn.innerHTML = `💵 Pay Cash at Counter`; }
+                if (onlineBtn) { onlineBtn.disabled = false; onlineBtn.style.opacity = '1'; onlineBtn.innerHTML = `💳 Pay Online (UPI / QR / Card)`; }
+                alert("Network connection error. Please try again.");
             });
-    });
+    }
+
+    // ──────────────────────────────────────────
+    //  Ticket UI: update based on job status
+    // ──────────────────────────────────────────
+    function updateTicketStatus(status, amount) {
+        const statusBox = document.getElementById('status-title-box');
+        const mainTitle = document.getElementById('status-main-title');
+        const subText   = document.getElementById('status-sub-text');
+        const icon      = document.getElementById('status-svg-icon');
+
+        const c1 = document.getElementById('step1-circle');
+        const c2 = document.getElementById('step2-circle');
+        const c3 = document.getElementById('step3-circle');
+        const c4 = document.getElementById('step4-circle');
+        const t2 = document.getElementById('step2-title');
+        const t3 = document.getElementById('step3-title');
+        const t4 = document.getElementById('step4-title');
+
+        // Reset
+        [c2, c3, c4].forEach((c, i) => {
+            c.className = 'step-circle';
+            c.innerText = i + 2;
+        });
+        [t2, t3, t4].forEach(t => t.className = 'muted');
+
+        const amt = amount ? `₹${parseFloat(amount).toFixed(0)}` : '';
+
+        if (status === 'PENDING_CASH') {
+            statusBox.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+            icon.setAttribute('stroke', '#f59e0b');
+            mainTitle.innerText = 'Cash Payment Pending';
+            subText.innerText   = `Please pay ${amt} at the shop counter to start printing.`;
+        } else if (status === 'QUEUED') {
+            statusBox.style.borderColor = 'rgba(99, 102, 241, 0.4)';
+            icon.setAttribute('stroke', '#818cf8');
+            mainTitle.innerText = 'Order Queued for Printing';
+            subText.innerText   = 'Payment confirmed! Your job is queued at the shop printer.';
+            c2.className = 'step-circle active'; c2.innerText = '●'; t2.className = '';
+        } else if (status === 'PRINTING') {
+            statusBox.style.borderColor = 'rgba(251, 191, 36, 0.4)';
+            icon.setAttribute('stroke', '#fbbf24');
+            mainTitle.innerText = 'Printing in Progress…';
+            subText.innerText   = 'Your document is being printed. Collect it from the shop counter shortly.';
+            c2.className = 'step-circle done'; c2.innerText = '✔'; t2.className = '';
+            c3.className = 'step-circle active'; c3.innerText = '●'; t3.className = '';
+        } else if (status === 'PRINTED') {
+            statusBox.style.borderColor = 'rgba(34, 197, 94, 0.4)';
+            icon.setAttribute('stroke', '#22c55e');
+            mainTitle.innerText = '✔ Printing Completed!';
+            subText.innerText   = 'Your document has been printed. Please collect it from the counter. Thank you!';
+            c2.className = 'step-circle done'; c2.innerText = '✔'; t2.className = '';
+            c3.className = 'step-circle done'; c3.innerText = '✔'; t3.className = '';
+            c4.className = 'step-circle done'; c4.innerText = '✔'; t4.className = '';
+            document.querySelector('.cancel-btn').style.display = 'none';
+        } else if (status === 'CANCELLED' || status === 'EXPIRED') {
+            statusBox.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+            icon.setAttribute('stroke', '#ef4444');
+            mainTitle.innerText = status === 'EXPIRED' ? 'Order Expired' : 'Order Cancelled';
+            subText.innerText   = 'This print order was ' + (status === 'EXPIRED' ? 'expired' : 'cancelled') + '. Start a new order if needed.';
+            document.querySelector('.cancel-btn').style.display = 'none';
+        }
+    }
+
+    let _pollTimer = null;
+
+    function startStatusPolling(jobId) {
+        let pollCount = 0;
+        const MAX_POLLS = 60; // 5 min max
+
+        function poll() {
+            if (pollCount++ > MAX_POLLS) return;
+            fetch(`/api/customer/job-status/${jobId}`)
+                .then(r => r.json())
+                .then(d => {
+                    if (d.status) {
+                        updateTicketStatus(d.status, d.total_cost);
+                        if (['PRINTED', 'CANCELLED', 'EXPIRED'].includes(d.status)) {
+                            clearTimeout(_pollTimer);
+                            return;
+                        }
+                    }
+                    _pollTimer = setTimeout(poll, 5000);
+                })
+                .catch(() => { _pollTimer = setTimeout(poll, 8000); });
+        }
+        _pollTimer = setTimeout(poll, 5000);
+    }
+
+    function cancelOrder() {
+        const jobId = window._trackingJobId;
+        if (!jobId) { location.reload(); return; }
+        if (!confirm('Are you sure you want to cancel this print order?')) return;
+        fetch(`/api/customer/cancel-job/${jobId}`, { method: 'POST' })
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) updateTicketStatus('CANCELLED', 0);
+                else location.reload();
+            })
+            .catch(() => location.reload());
+    }
+
 </script>
 {% endblock %}
+

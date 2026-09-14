@@ -96,10 +96,7 @@ class MainWindow(QMainWindow):
         self.init_queue_tab(queue_tab)
         self.tabs.addTab(queue_tab, "🖨️ Print Queue")
 
-        # Other Tabs (Placeholders matching screenshot)
-        self.tabs.addTab(QWidget(), "🏢 Offices")
-        self.tabs.addTab(QWidget(), "🪪 Passport Photo")
-        self.tabs.addTab(QWidget(), "💳 Aadhaar / PAN")
+        # Remaining Tabs: Shop, Pricing & Rates, Printers
         self.tabs.addTab(QWidget(), "🏪 Shop")
         
         # Pricing & Rates Tab
@@ -117,8 +114,6 @@ class MainWindow(QMainWindow):
         printers_scroll.setWidgetResizable(True)
         printers_scroll.setWidget(printers_tab)
         self.tabs.addTab(printers_scroll, "🖨️ Printers")
-        
-        self.tabs.addTab(QWidget(), "💬 WhatsApp")
         
         main_layout.addWidget(self.tabs)
 

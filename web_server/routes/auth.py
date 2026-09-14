@@ -92,7 +92,11 @@ async def google_auth(
     return redirect_resp
 
 @router.get("/logout")
+@router.post("/logout")
+@router.get("/api/auth/logout")
+@router.post("/api/auth/logout")
 async def logout():
-    redirect_resp = RedirectResponse(url="/login", status_code=302)
-    redirect_resp.delete_cookie(key="qwikprint_session")
+    redirect_resp = RedirectResponse(url="/login", status_code=303)
+    redirect_resp.delete_cookie(key="qwikprint_session", path="/")
+    redirect_resp.set_cookie(key="qwikprint_session", value="", httponly=True, max_age=0, expires=0, path="/")
     return redirect_resp

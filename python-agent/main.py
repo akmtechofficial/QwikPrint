@@ -192,7 +192,15 @@ def main():
     main_window.agent_toggle_requested.connect(worker.set_active)
 
     def handle_cash_approval(cash_job):
-        dlg = CashApprovalDialog(cash_job, main_window)
+        dlg = CashApprovalDialog(cash_job, None)
+        dlg.setWindowFlags(
+            Qt.WindowType.WindowStaysOnTopHint | 
+            Qt.WindowType.Dialog |
+            Qt.WindowType.WindowSystemMenuHint
+        )
+        dlg.show()
+        dlg.raise_()
+        dlg.activateWindow()
         dlg.exec()
 
     def handle_job_processed(job, success, msg):

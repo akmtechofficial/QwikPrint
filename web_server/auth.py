@@ -1,12 +1,18 @@
 import os
+import hmac
 import hashlib
 import binascii
 import json
 import base64
+import secrets
+import time
 from fastapi import Request, Response
 from web_server.database import db
 
-SECRET_KEY = "qwikprint_secret_key_super_secure_auth_token"
+SESSION_SECRET = os.environ.get("SESSION_SECRET")
+if not SESSION_SECRET:
+    SESSION_SECRET = secrets.token_hex(32)
+    print("[Auth Warning] SESSION_SECRET not set in environment. Generated transient session secret key.")
 
 def hash_password(password: str) -> str:
     """Hashes password using PBKDF2 HMAC SHA-256 with salt."""
@@ -25,18 +31,30 @@ def verify_password(password: str, stored_hash: str) -> bool:
         return False
 
 def create_session_data(user_id: str, shop_id: str) -> str:
-    """Creates a base64 encoded session string."""
-    data = {"user_id": user_id, "shop_id": shop_id, "key": SECRET_KEY}
-    return base64.b64encode(json.dumps(data).encode('utf-8')).decode('utf-8')
+    """Creates an HMAC SHA-256 signed session token with expiration."""
+    exp = int(time.time()) + (86400 * 30) # 30 days
+    data = {"user_id": user_id, "shop_id": shop_id, "exp": exp}
+    payload_b64 = base64.urlsafe_b64encode(json.dumps(data).encode('utf-8')).decode('utf-8')
+    sig = hmac.new(SESSION_SECRET.encode('utf-8'), payload_b64.encode('utf-8'), hashlib.sha256).hexdigest()
+    return f"{payload_b64}.{sig}"
 
 def decode_session_data(session_str: str) -> dict:
-    """Decodes session cookie."""
+    """Decodes and verifies HMAC SHA-256 signed session cookie."""
     try:
-        raw = base64.b64decode(session_str.encode('utf-8')).decode('utf-8')
+        if "." not in session_str:
+            return {}
+        payload_b64, sig = session_str.rsplit(".", 1)
+        expected_sig = hmac.new(SESSION_SECRET.encode('utf-8'), payload_b64.encode('utf-8'), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(sig, expected_sig):
+            return {}
+        
+        raw = base64.urlsafe_b64decode(payload_b64.encode('utf-8')).decode('utf-8')
         data = json.loads(raw)
-        if data.get("key") == SECRET_KEY:
-            return data
-        return {}
+        
+        if data.get("exp", 0) < time.time():
+            return {}
+            
+        return data
     except Exception:
         return {}
 

@@ -27,7 +27,7 @@ class SupabaseDatabase:
         self.dbname = os.getenv("SUPABASE_DB_NAME", "postgres")
         self.user = os.getenv("SUPABASE_DB_USER", "postgres")
         self.password = os.getenv("SUPABASE_DB_PASSWORD", "")
-        self.allow_sqlite_dev = os.getenv("ALLOW_SQLITE_DEV", "true").lower() == "true"
+        self.allow_sqlite_dev = os.getenv("ALLOW_SQLITE_DEV", "false").lower() == "true"
         
         self.use_postgres = False
         self.init_db()

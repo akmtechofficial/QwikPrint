@@ -511,4 +511,19 @@ class SupabaseDatabase:
         conn.close()
         return True
 
+    def get_active_file_paths(self) -> set:
+        """Returns normalized basenames of files belonging to active (non-terminal) print jobs."""
+        conn, is_pg = self.get_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor) if is_pg else conn.cursor()
+        query = "SELECT file_path FROM print_jobs WHERE status IN ('PAYMENT_PENDING', 'CREATED', 'QUEUED', 'CLAIMED', 'PROCESSING', 'PRINTING');"
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        conn.close()
+        active_files = set()
+        for r in rows:
+            fp = dict(r).get("file_path", "")
+            if fp:
+                active_files.add(os.path.basename(fp).lower())
+        return active_files
+
 db = SupabaseDatabase()

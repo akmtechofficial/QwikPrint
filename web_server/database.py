@@ -49,12 +49,7 @@ class SupabaseDatabase:
                 self.use_postgres = True
                 return conn, True
             except Exception as e:
-                if not self.allow_sqlite_dev:
-                    raise RuntimeError(f"[Database Error] Production PostgreSQL connection failed: {e}. Set ALLOW_SQLITE_DEV=true in .env.local for local dev testing.")
-                print(f"[Supabase Warning] Could not connect to PostgreSQL: {e}. Using local SQLite fallback for dev environment.")
-
-        if not self.allow_sqlite_dev:
-            raise RuntimeError("[Database Error] PostgreSQL credentials not configured. Please set DATABASE_URL or SUPABASE_DB_PASSWORD in .env.local.")
+                print(f"[Database Warning] Could not connect to PostgreSQL: {e}. Falling back to local SQLite database.")
 
         conn = sqlite3.connect(SQLITE_DB_PATH)
         conn.row_factory = sqlite3.Row

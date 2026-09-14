@@ -56,7 +56,28 @@ class PrinterService:
             elif status & win32print.PRINTER_STATUS_OFFLINE:
                 return "offline"
             return "busy"
-        except Exception:
-            return "ready"
+    def select_best_printer(self, color_mode: str = "bw", paper_size: str = "A4", override_printer: str = "") -> str:
+        """Selects the best printer based on color mode and shop overrides."""
+        installed = self.get_installed_printers()
+        if not installed:
+            return ""
+
+        if override_printer and override_printer in installed:
+            return override_printer
+
+        default_p = self.get_default_printer()
+
+        if color_mode.lower() == "color":
+            for p in installed:
+                p_lower = p.lower()
+                if any(kw in p_lower for kw in ["color", "inkjet", "epson", "canon", "deskjet", "pixma"]):
+                    return p
+            return default_p
+        else:
+            for p in installed:
+                p_lower = p.lower()
+                if any(kw in p_lower for kw in ["laser", "laserjet", "mono", "brother", "hp"]):
+                    return p
+            return default_p
 
 printer_service = PrinterService()

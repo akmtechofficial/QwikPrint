@@ -13,6 +13,9 @@ def validate_agent_auth(x_device_id: str = Header(None), x_device_token: str = H
     if not device or device["secret_token"] != x_device_token:
         raise HTTPException(status_code=401, detail="Unauthorized device credentials")
     
+    if device.get("status", "active").lower() in ["disabled", "revoked"]:
+        raise HTTPException(status_code=403, detail="Device has been disabled by shop owner. Printing stopped.")
+    
     return device
 
 @router.get("/api/agent/version-check")
@@ -173,6 +176,17 @@ async def update_status(payload: dict, x_device_id: str = Header(None), x_device
         raise HTTPException(status_code=400, detail="jobId and status required")
 
     db.update_job_status(job_id, status, error)
+
+    # File lifecycle: Auto-delete printed file from disk post printing
+    if status.upper() == "PRINTED":
+        job = db.get_job(job_id)
+        if job and job.get("file_path") and os.path.exists(job["file_path"]):
+            try:
+                os.remove(job["file_path"])
+                print(f"[File Lifecycle] Auto-deleted temporary file after printing: {job['file_path']}")
+            except Exception as clean_err:
+                print(f"[File Lifecycle Warning] Could not remove file: {clean_err}")
+
     return {"success": True, "status": status}
 
 @router.post("/api/jobs/{job_id}/confirm-cash")

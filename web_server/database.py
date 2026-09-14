@@ -334,6 +334,31 @@ class SupabaseDatabase:
         conn.close()
         return sanitized
 
+    def calculate_print_cost(self, shop_id: str, paper_size: str = "A4", page_count: int = 1, 
+                             copies: int = 1, color_mode: str = "bw", duplex: str = "single") -> float:
+        shop = self.get_shop(shop_id)
+        if not shop:
+            return 0.0
+        
+        rates = self.get_shop_paper_rates(shop_id)
+        selected_rate = None
+        for r in rates:
+            if r.get("name", "").lower() == (paper_size or "A4").lower() and r.get("enabled", True):
+                selected_rate = r
+                break
+        
+        if selected_rate:
+            bw_rate = selected_rate.get("bw_rate", shop.get("bw_rate", 2.0))
+            color_rate = selected_rate.get("color_rate", shop.get("color_rate", 10.0))
+        else:
+            bw_rate = shop.get("bw_rate", 2.0)
+            color_rate = shop.get("color_rate", 10.0)
+
+        rate_per_page = color_rate if color_mode.lower() == "color" else bw_rate
+        duplex_multiplier = (1.0 - shop.get("duplex_discount", 0.5)) if duplex.lower() in ["double", "duplex"] else 1.0
+        total = max(1, page_count) * max(1, copies) * rate_per_page * duplex_multiplier
+        return round(float(total), 2)
+
     def get_device(self, device_id: str) -> dict:
         conn, is_pg = self.get_connection()
         cursor = conn.cursor(cursor_factory=RealDictCursor) if is_pg else conn.cursor()

@@ -79,11 +79,24 @@ async def unlock_pdf(saved_path: str = Form(...), password: str = Form(...)):
     else:
         return JSONResponse({"success": False, "error": "Incorrect password. Please try again."}, status_code=400)
 
+@router.post("/api/customer/calculate-price")
+async def calculate_price(
+    shop_id: str = Form(...),
+    paper_size: str = Form("A4"),
+    page_count: int = Form(1),
+    copies: int = Form(1),
+    color_mode: str = Form("bw"),
+    duplex: str = Form("single")
+):
+    cost = db.calculate_print_cost(shop_id, paper_size, page_count, copies, color_mode, duplex)
+    return {"success": True, "total_cost": cost}
+
 @router.post("/api/customer/submit-job")
 async def submit_print_job(
     shop_id: str = Form(...),
     original_filename: str = Form(...),
     file_path: str = Form(...),
+    paper_size: str = Form("A4"),
     page_count: int = Form(1),
     copies: int = Form(1),
     color_mode: str = Form("bw"),
@@ -92,6 +105,16 @@ async def submit_print_job(
     payment_method: str = Form("cash"),
     total_cost: float = Form(0.0)
 ):
+    # Authoritative Server-Side Price Calculation (Do not trust client side total_cost)
+    server_calculated_cost = db.calculate_print_cost(
+        shop_id=shop_id,
+        paper_size=paper_size,
+        page_count=page_count,
+        copies=copies,
+        color_mode=color_mode,
+        duplex=duplex
+    )
+
     job = db.create_print_job(
         shop_id=shop_id,
         original_filename=original_filename,
@@ -102,12 +125,13 @@ async def submit_print_job(
         duplex=duplex,
         page_range=page_range,
         payment_method=payment_method,
-        total_cost=total_cost
+        total_cost=server_calculated_cost
     )
 
     return {
         "success": True,
         "job_id": job["job_id"],
         "status": job["status"],
+        "total_cost": server_calculated_cost,
         "message": "Print job submitted successfully!"
     }

@@ -297,6 +297,8 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "Pricing Updated 🎉", f"{msg}\n\n• B&W Rate: ₹{bw:.2f}/page\n• Color Rate: ₹{color:.2f}/page\n• Duplex Discount: ₹{duplex:.2f}")
         else:
             QMessageBox.warning(self, "Update Failed ❌", f"Could not sync pricing: {msg}")
+
+    def init_printers_tab(self, tab: QWidget):
         layout = QVBoxLayout(tab)
         layout.setContentsMargins(16, 16, 16, 16)
         

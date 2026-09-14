@@ -21,7 +21,12 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("QwikPrint Agent - XeroBot Edition v4.0.5")
+        self.setWindowTitle("QwikPrint")
+        icon_path = os.path.join(os.path.dirname(__file__), "app_icon.ico")
+        if os.path.exists(icon_path):
+            from PyQt6.QtGui import QIcon
+            self.setWindowIcon(QIcon(icon_path))
+
         self.resize(1100, 720)
         
         self.is_dark_theme = False

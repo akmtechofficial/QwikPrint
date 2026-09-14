@@ -33,12 +33,17 @@ def build_exe():
         except Exception as err:
             print(f"[Warning] Could not clean build dir: {err}")
 
+    icon_path = os.path.join(current_dir, "gui", "app_icon.ico")
+    logo_path = os.path.join(current_dir, "gui", "qwikprint_logo.png")
+
     pyinstaller_cmd = [
         sys.executable, "-m", "PyInstaller",
         "--name=PrintAgent",
         "--onefile",
         "--windowed",
         "--clean",
+        f"--icon={icon_path}",
+        f"--add-data={logo_path};gui",
         f"--paths={current_dir}",
         "--hidden-import=PyQt6",
         "--hidden-import=PyQt6.QtNetwork",
@@ -54,8 +59,11 @@ def build_exe():
 
     if result.returncode == 0:
         exe_path = os.path.join(dist_dir, "PrintAgent.exe")
+        main_dist = os.path.join(os.path.dirname(current_dir), "dist")
+        os.makedirs(main_dist, exist_ok=True)
+        shutil.copy(exe_path, os.path.join(main_dist, "PrintAgent.exe"))
         print("\n==========================================================")
-        print("[SUCCESS] Standalone Executable built at:")
+        print("[SUCCESS] Standalone Executable built with icon at:")
         print(f"-> {exe_path}")
         print("==========================================================")
     else:

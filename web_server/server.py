@@ -10,6 +10,8 @@ from web_server.routes.customer import router as customer_router
 from web_server.routes.shop import router as shop_router
 from web_server.routes.auth import router as auth_router
 from web_server.routes.agent_api import router as agent_router
+from web_server.routes.admin import router as admin_router
+from web_server.routes.payment import router as payment_router
 from web_server.database import db
 
 app = FastAPI(title="QwikPrint 100% Pure Python Print Server", version="1.0.0")
@@ -26,6 +28,8 @@ app.include_router(customer_router)
 app.include_router(shop_router)
 app.include_router(auth_router)
 app.include_router(agent_router)
+app.include_router(admin_router)
+app.include_router(payment_router)
 
 async def auto_purge_expired_files_task():
     """

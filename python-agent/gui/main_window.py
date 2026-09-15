@@ -89,6 +89,11 @@ class MainWindow(QMainWindow):
         setup_btn.clicked.connect(self.open_setup)
         h_layout.addWidget(setup_btn)
 
+        web_btn = QPushButton("🌐 Go to Web Panel")
+        web_btn.setStyleSheet("background: #0284c7; color: white; font-weight: bold;")
+        web_btn.clicked.connect(self.open_web_panel)
+        h_layout.addWidget(web_btn)
+
         main_layout.addWidget(header_frame)
 
         # -------------------------------------------------------------
@@ -416,11 +421,17 @@ class MainWindow(QMainWindow):
             self.reload_printers()
 
     def update_connection_status(self, is_online: bool):
-        if is_online:
+        if api_client.last_subscription_error:
+            self.status_badge.setText("🔴 Subscription Locked")
+            self.status_badge.setStyleSheet("color: #ef4444; font-weight: bold; font-size: 13px; margin-right: 10px;")
+            self.sync_lbl.setText(f"🔒 {api_client.last_subscription_error}")
+        elif is_online:
             self.status_badge.setText("🟢 Running")
+            self.status_badge.setStyleSheet("color: #16a34a; font-weight: bold; font-size: 13px; margin-right: 10px;")
             self.sync_lbl.setText(f"Synced {time.strftime('%H:%M:%S')} | ☑️ Queue connected")
         else:
             self.status_badge.setText("🔴 Disconnected")
+            self.status_badge.setStyleSheet("color: #ef4444; font-weight: bold; font-size: 13px; margin-right: 10px;")
 
     def update_queue_table(self, jobs: list):
         self.queue_table.setRowCount(0)
@@ -463,4 +474,12 @@ class MainWindow(QMainWindow):
                 self.log_message(f"Test print page spooled to '{printer}'.")
                 QMessageBox.information(self, "Test Print Sent", f"Test print page spooled to '{printer}'.")
         except Exception as e:
-            self.log_message(f"Test print error: {e}")
+            QMessageBox.critical(self, "Error", f"Test print error: {str(e)}")
+
+    def open_web_panel(self):
+        import webbrowser
+        server_url = config_mgr.get("server_url", "http://localhost:8000").rstrip("/")
+        if api_client.last_subscription_error:
+            webbrowser.open(f"{server_url}/subscription")
+        else:
+            webbrowser.open(f"{server_url}/dashboard")

@@ -16,6 +16,11 @@ def validate_agent_auth(x_device_id: str = Header(None), x_device_token: str = H
     if device.get("status", "active").lower() in ["disabled", "revoked"]:
         raise HTTPException(status_code=403, detail="Device has been disabled by shop owner. Printing stopped.")
     
+    # Check shop active subscription / suspension
+    is_valid, reason, exp_date = db.verify_shop_active_subscription(device["shop_id"])
+    if not is_valid:
+        raise HTTPException(status_code=403, detail=f"Subscription Locked: {reason}. Please renew subscription on Web Panel.")
+
     return device
 
 @router.get("/api/agent/version-check")

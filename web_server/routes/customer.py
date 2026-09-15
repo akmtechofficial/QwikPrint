@@ -16,8 +16,19 @@ async def customer_portal(request: Request, shop_id: str):
     shop = db.get_shop(shop_id)
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
+    
+    is_valid, reason, exp_date = db.verify_shop_active_subscription(shop_id)
     paper_rates = db.get_shop_paper_rates(shop_id)
-    return templates.TemplateResponse(request=request, name="customer.html", context={"shop": shop, "paper_rates": paper_rates})
+    return templates.TemplateResponse(
+        request=request,
+        name="customer.html",
+        context={
+            "shop": shop,
+            "paper_rates": paper_rates,
+            "is_locked": not is_valid,
+            "lock_reason": reason
+        }
+    )
 
 MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024  # 25 MB
 
@@ -26,6 +37,12 @@ async def upload_document(shop_id: str = Form(...), file: UploadFile = File(...)
     shop = db.get_shop(shop_id)
     if not shop:
         return JSONResponse({"error": "Invalid Shop ID"}, status_code=404)
+
+    is_valid, reason, exp_date = db.verify_shop_active_subscription(shop_id)
+    if not is_valid:
+        return JSONResponse({
+            "error": f"🔒 Shop Account Locked ({reason}). Document upload disabled. Please contact the shop owner to renew their subscription."
+        }, status_code=403)
 
     content = await file.read()
 

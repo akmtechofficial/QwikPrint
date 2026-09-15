@@ -36,7 +36,10 @@ class SupabaseDatabase:
         if HAS_POSTGRES and (self.db_url or self.password or self.host):
             try:
                 if self.db_url:
-                    conn = psycopg2.connect(self.db_url, connect_timeout=5)
+                    db_url = self.db_url
+                    if "sslmode=" not in db_url:
+                        db_url += ("&" if "?" in db_url else "?") + "sslmode=require"
+                    conn = psycopg2.connect(db_url, connect_timeout=10)
                 else:
                     conn = psycopg2.connect(
                         host=self.host,
@@ -44,9 +47,11 @@ class SupabaseDatabase:
                         dbname=self.dbname,
                         user=self.user,
                         password=self.password,
-                        connect_timeout=5
+                        sslmode='require',
+                        connect_timeout=10
                     )
                 self.use_postgres = True
+                print("[Database] Successfully connected to PostgreSQL!")
                 return conn, True
             except Exception as e:
                 print(f"[Database Warning] Could not connect to PostgreSQL: {e}. Falling back to local SQLite database.")
@@ -113,6 +118,27 @@ class SupabaseDatabase:
                 created_at VARCHAR(100),
                 updated_at VARCHAR(100)
             );
+            CREATE TABLE IF NOT EXISTS plans (
+                plan_id VARCHAR(100) PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                duration_days INT NOT NULL,
+                price FLOAT NOT NULL,
+                description TEXT,
+                created_at VARCHAR(100)
+            );
+            CREATE TABLE IF NOT EXISTS subscriptions (
+                subscription_id VARCHAR(100) PRIMARY KEY,
+                shop_id VARCHAR(100) NOT NULL,
+                plan_id VARCHAR(100),
+                plan_name VARCHAR(255),
+                amount FLOAT DEFAULT 0.0,
+                payment_gateway VARCHAR(50) DEFAULT 'payflux',
+                transaction_id VARCHAR(255),
+                status VARCHAR(50) DEFAULT 'success',
+                starts_at VARCHAR(100),
+                expires_at VARCHAR(100),
+                created_at VARCHAR(100)
+            );
             """)
             conn.commit()
 
@@ -127,18 +153,23 @@ class SupabaseDatabase:
             ALTER TABLE shops ADD COLUMN IF NOT EXISTS color_rate FLOAT DEFAULT 10.0;
             ALTER TABLE shops ADD COLUMN IF NOT EXISTS duplex_discount FLOAT DEFAULT 0.5;
             ALTER TABLE shops ADD COLUMN IF NOT EXISTS paper_rates TEXT;
+            ALTER TABLE shops ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(50) DEFAULT 'active';
+            ALTER TABLE shops ADD COLUMN IF NOT EXISTS plan_name VARCHAR(255) DEFAULT 'Trial Plan';
+            ALTER TABLE shops ADD COLUMN IF NOT EXISTS plan_expires_at VARCHAR(100);
+            ALTER TABLE shops ADD COLUMN IF NOT EXISTS is_suspended BOOLEAN DEFAULT FALSE;
             """)
             conn.commit()
-
-            cursor.execute("SELECT COUNT(*) FROM shops;")
-            # No mock seed insertion - database starts clean for real shop registrations
         else:
             # SQLite Table Init
             for col_def in [
                 ("owner_id", "TEXT"), ("api_key", "TEXT"), ("owner_name", "TEXT"), 
                 ("email", "TEXT"), ("phone", "TEXT"), ("address", "TEXT"), 
                 ("bw_rate", "REAL DEFAULT 2.0"), ("color_rate", "REAL DEFAULT 10.0"), 
-                ("duplex_discount", "REAL DEFAULT 0.5"), ("paper_rates", "TEXT")
+                ("duplex_discount", "REAL DEFAULT 0.5"), ("paper_rates", "TEXT"),
+                ("subscription_status", "TEXT DEFAULT 'active'"),
+                ("plan_name", "TEXT DEFAULT 'Trial Plan'"),
+                ("plan_expires_at", "TEXT"),
+                ("is_suspended", "INTEGER DEFAULT 0")
             ]:
                 try:
                     cursor.execute(f"ALTER TABLE shops ADD COLUMN {col_def[0]} {col_def[1]};")
@@ -152,7 +183,8 @@ class SupabaseDatabase:
             CREATE TABLE IF NOT EXISTS shops (
                 shop_id TEXT PRIMARY KEY, owner_id TEXT, api_key TEXT UNIQUE, name TEXT NOT NULL, owner_name TEXT,
                 email TEXT, phone TEXT, address TEXT, bw_rate REAL DEFAULT 2.0, color_rate REAL DEFAULT 10.0,
-                duplex_discount REAL DEFAULT 0.5, created_at TEXT
+                duplex_discount REAL DEFAULT 0.5, created_at TEXT, subscription_status TEXT DEFAULT 'active',
+                plan_name TEXT DEFAULT 'Trial Plan', plan_expires_at TEXT, is_suspended INTEGER DEFAULT 0
             );
             CREATE TABLE IF NOT EXISTS devices (
                 device_id TEXT PRIMARY KEY, shop_id TEXT NOT NULL, device_name TEXT NOT NULL,
@@ -165,10 +197,36 @@ class SupabaseDatabase:
                 payment_status TEXT DEFAULT 'pending', total_cost REAL DEFAULT 0.0, status TEXT DEFAULT 'PAYMENT_PENDING',
                 error TEXT, created_at TEXT, updated_at TEXT
             );
+            CREATE TABLE IF NOT EXISTS plans (
+                plan_id TEXT PRIMARY KEY, name TEXT NOT NULL, duration_days INTEGER NOT NULL,
+                price REAL NOT NULL, description TEXT, created_at TEXT
+            );
+            CREATE TABLE IF NOT EXISTS subscriptions (
+                subscription_id TEXT PRIMARY KEY, shop_id TEXT NOT NULL, plan_id TEXT, plan_name TEXT,
+                amount REAL DEFAULT 0.0, payment_gateway TEXT DEFAULT 'payflux', transaction_id TEXT,
+                status TEXT DEFAULT 'success', starts_at TEXT, expires_at TEXT, created_at TEXT
+            );
             """)
             conn.commit()
 
-        conn.close()
+        # Seed default plans if empty
+        try:
+            cursor.execute("SELECT COUNT(*) FROM plans;")
+            count = cursor.fetchone()[0]
+            if count == 0:
+                now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                default_plans = [
+                    ("plan-1m", "1 Month Starter", 30, 199.0, "30 Days Unlimited Printing Access", now),
+                    ("plan-3m", "3 Months Pro", 90, 499.0, "90 Days Unlimited Printing Access (Save 15%)", now),
+                    ("plan-12m", "1 Year Enterprise", 365, 1499.0, "365 Days Unlimited Printing Access (Best Value)", now)
+                ]
+                for p in default_plans:
+                    q = "INSERT INTO plans (plan_id, name, duration_days, price, description, created_at) VALUES (%s, %s, %s, %s, %s, %s);" if is_pg \
+                        else "INSERT INTO plans (plan_id, name, duration_days, price, description, created_at) VALUES (?, ?, ?, ?, ?, ?);"
+                    cursor.execute(q, p)
+                conn.commit()
+        except Exception as e:
+            print(f"[Database Warning] Error seeding default plans: {e}")
 
         conn.close()
 
@@ -525,5 +583,192 @@ class SupabaseDatabase:
             if fp:
                 active_files.add(os.path.basename(fp).lower())
         return active_files
+
+    # Master Admin & Subscription Helper Methods
+    def get_all_shops(self):
+        conn, is_pg = self.get_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor) if is_pg else conn.cursor()
+        query = "SELECT * FROM shops ORDER BY created_at DESC;"
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
+    def toggle_shop_suspension(self, shop_id: str, suspend: bool) -> bool:
+        conn, is_pg = self.get_connection()
+        cursor = conn.cursor()
+        is_susp_val = bool(suspend) if is_pg else (1 if suspend else 0)
+        status_val = 'suspended' if suspend else 'active'
+        query = "UPDATE shops SET is_suspended = %s, subscription_status = %s WHERE shop_id = %s;" if is_pg \
+            else "UPDATE shops SET is_suspended = ?, subscription_status = ? WHERE shop_id = ?;"
+        cursor.execute(query, (is_susp_val, status_val, shop_id))
+        conn.commit()
+        conn.close()
+        return True
+
+    def update_shop_subscription(self, shop_id: str, duration_days: int, plan_name: str = "Custom Renewal") -> dict:
+        conn, is_pg = self.get_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor) if is_pg else conn.cursor()
+        
+        q_get = "SELECT plan_expires_at FROM shops WHERE shop_id = %s;" if is_pg else "SELECT plan_expires_at FROM shops WHERE shop_id = ?;"
+        cursor.execute(q_get, (shop_id,))
+        row = cursor.fetchone()
+        
+        now_dt = datetime.datetime.now(datetime.timezone.utc)
+        start_dt = now_dt
+        if row and dict(row).get("plan_expires_at"):
+            try:
+                curr_exp = datetime.datetime.fromisoformat(dict(row)["plan_expires_at"])
+                if curr_exp > now_dt:
+                    start_dt = curr_exp
+            except Exception:
+                pass
+        
+        new_exp_dt = start_dt + datetime.timedelta(days=duration_days)
+        new_exp_str = new_exp_dt.isoformat()
+        
+        q_upd = "UPDATE shops SET subscription_status = 'active', plan_name = %s, plan_expires_at = %s, is_suspended = FALSE WHERE shop_id = %s;" if is_pg \
+            else "UPDATE shops SET subscription_status = 'active', plan_name = ?, plan_expires_at = ?, is_suspended = 0 WHERE shop_id = ?;"
+        cursor.execute(q_upd, (plan_name, new_exp_str, shop_id))
+        conn.commit()
+        conn.close()
+        
+        return {
+            "shop_id": shop_id,
+            "plan_name": plan_name,
+            "plan_expires_at": new_exp_str,
+            "subscription_status": "active"
+        }
+
+    def verify_shop_active_subscription(self, shop_id: str) -> tuple:
+        """Returns (is_valid: bool, reason: str, expiry_date: str)"""
+        shop = self.get_shop(shop_id)
+        if not shop:
+            return False, "Shop not found", ""
+        
+        if shop.get("is_suspended"):
+            return False, "Account suspended by Admin", shop.get("plan_expires_at", "")
+        
+        exp_str = shop.get("plan_expires_at")
+        if not exp_str:
+            return True, "Active", ""
+        
+        try:
+            exp_dt = datetime.datetime.fromisoformat(exp_str)
+            if exp_dt.tzinfo is None:
+                exp_dt = exp_dt.replace(tzinfo=datetime.timezone.utc)
+            now_dt = datetime.datetime.now(datetime.timezone.utc)
+            if exp_dt < now_dt:
+                return False, "Subscription plan expired", exp_str
+        except Exception:
+            pass
+
+        return True, "Active", exp_str
+
+    def get_plans(self):
+        conn, is_pg = self.get_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor) if is_pg else conn.cursor()
+        query = "SELECT * FROM plans ORDER BY price ASC;"
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
+    def save_plan(self, plan_data: dict) -> bool:
+        conn, is_pg = self.get_connection()
+        cursor = conn.cursor()
+        plan_id = plan_data.get("plan_id") or f"plan-{uuid.uuid4().hex[:8]}"
+        name = plan_data.get("name", "Custom Plan")
+        duration_days = int(plan_data.get("duration_days", 30))
+        price = float(plan_data.get("price", 0.0))
+        description = plan_data.get("description", "")
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+        q_up = """
+        INSERT INTO plans (plan_id, name, duration_days, price, description, created_at)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        ON CONFLICT (plan_id) DO UPDATE SET
+            name = EXCLUDED.name,
+            duration_days = EXCLUDED.duration_days,
+            price = EXCLUDED.price,
+            description = EXCLUDED.description;
+        """ if is_pg else """
+        INSERT OR REPLACE INTO plans (plan_id, name, duration_days, price, description, created_at)
+        VALUES (?, ?, ?, ?, ?, ?);
+        """
+        cursor.execute(q_up, (plan_id, name, duration_days, price, description, now))
+        conn.commit()
+        conn.close()
+        return True
+
+    def delete_plan(self, plan_id: str) -> bool:
+        conn, is_pg = self.get_connection()
+        cursor = conn.cursor()
+        q_del = "DELETE FROM plans WHERE plan_id = %s;" if is_pg else "DELETE FROM plans WHERE plan_id = ?;"
+        cursor.execute(q_del, (plan_id,))
+        conn.commit()
+        conn.close()
+        return True
+
+    def create_subscription_record(self, sub_data: dict) -> bool:
+        conn, is_pg = self.get_connection()
+        cursor = conn.cursor()
+        sub_id = sub_data.get("subscription_id") or f"sub-{uuid.uuid4().hex[:10]}"
+        shop_id = sub_data.get("shop_id")
+        plan_id = sub_data.get("plan_id")
+        plan_name = sub_data.get("plan_name", "")
+        amount = float(sub_data.get("amount", 0.0))
+        gw = sub_data.get("payment_gateway", "payflux")
+        tx_id = sub_data.get("transaction_id", f"tx-{uuid.uuid4().hex[:12]}")
+        status = sub_data.get("status", "success")
+        starts_at = sub_data.get("starts_at") or datetime.datetime.now(datetime.timezone.utc).isoformat()
+        expires_at = sub_data.get("expires_at", "")
+        created_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+        q_ins = """
+        INSERT INTO subscriptions (subscription_id, shop_id, plan_id, plan_name, amount, payment_gateway, transaction_id, status, starts_at, expires_at, created_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+        """ if is_pg else """
+        INSERT INTO subscriptions (subscription_id, shop_id, plan_id, plan_name, amount, payment_gateway, transaction_id, status, starts_at, expires_at, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        """
+        cursor.execute(q_ins, (sub_id, shop_id, plan_id, plan_name, amount, gw, tx_id, status, starts_at, expires_at, created_at))
+        conn.commit()
+        conn.close()
+        return True
+
+    def get_subscriptions(self):
+        conn, is_pg = self.get_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor) if is_pg else conn.cursor()
+        query = "SELECT * FROM subscriptions ORDER BY created_at DESC;"
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
+    def get_admin_dashboard_stats(self):
+        conn, is_pg = self.get_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor) if is_pg else conn.cursor()
+        
+        cursor.execute("SELECT COUNT(*) as total_shops FROM shops;")
+        total_shops = dict(cursor.fetchone() or {}).get("total_shops", 0)
+
+        cursor.execute("SELECT COUNT(*) as suspended_shops FROM shops WHERE is_suspended = TRUE;" if is_pg else "SELECT COUNT(*) as suspended_shops FROM shops WHERE is_suspended = 1;")
+        suspended_shops = dict(cursor.fetchone() or {}).get("suspended_shops", 0)
+
+        cursor.execute("SELECT COUNT(*) as total_jobs, SUM(total_cost) as total_revenue FROM print_jobs WHERE status = 'COMPLETED';")
+        job_stats = dict(cursor.fetchone() or {})
+
+        cursor.execute("SELECT SUM(amount) as subscription_revenue FROM subscriptions WHERE status = 'success';")
+        sub_revenue = dict(cursor.fetchone() or {}).get("subscription_revenue") or 0.0
+
+        conn.close()
+        return {
+            "total_shops": total_shops,
+            "suspended_shops": suspended_shops,
+            "completed_print_jobs": job_stats.get("total_jobs") or 0,
+            "print_revenue": job_stats.get("total_revenue") or 0.0,
+            "subscription_revenue": sub_revenue
+        }
 
 db = SupabaseDatabase()

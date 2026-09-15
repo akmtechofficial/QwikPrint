@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}Subscription & Billing - QwikPrint{% endblock %}
+
+{% block extra_head %}
+<style>
+    .sub-container {
+        max-width: 1000px;
+        margin: 30px auto;
+        padding: 0 20px;
+    }
+    .status-banner {
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.9));
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 30px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        backdrop-filter: blur(10px);
+    }
+    .plan-title { font-size: 1.4rem; font-weight: 800; color: #f8fafc; margin-bottom: 6px; }
+    .plan-exp { color: #94a3b8; font-size: 0.92rem; }
+    .plans-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 24px;
+        margin-bottom: 40px;
+    }
+    .plan-card {
+        background: rgba(30, 41, 59, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        padding: 28px;
+        position: relative;
+        transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    .plan-card:hover {
+        transform: translateY(-5px);
+        border-color: #38bdf8;
+        box-shadow: 0 12px 30px rgba(56, 189, 248, 0.2);
+    }
+    .plan-card.featured {
+        border: 2px solid #818cf8;
+        background: linear-gradient(180deg, rgba(99, 102, 241, 0.15), rgba(30, 41, 59, 0.8));
+    }
+    .featured-badge {
+        position: absolute;
+        top: -12px;
+        right: 20px;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        color: white;
+        padding: 4px 14px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .plan-name { font-size: 1.3rem; font-weight: 700; color: #f8fafc; margin-bottom: 8px; }
+    .plan-price { font-size: 2.2rem; font-weight: 800; color: #38bdf8; margin: 16px 0; }
+    .plan-price span { font-size: 0.9rem; color: #94a3b8; font-weight: 500; }
+    .plan-desc { color: #cbd5e1; font-size: 0.9rem; margin-bottom: 24px; line-height: 1.5; }
+    .btn-renew {
+        width: 100%;
+        background: linear-gradient(135deg, #0284c7, #2563eb);
+        color: white;
+        padding: 12px;
+        border-radius: 12px;
+        font-size: 1rem;
+        font-weight: 700;
+        border: none;
+        cursor: pointer;
+        transition: opacity 0.2s, transform 0.15s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+    .btn-renew:hover { opacity: 0.92; transform: scale(1.02); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sub-container">
+    <div class="status-banner">
+        <div>
+            <div class="plan-title">
+                Active Plan: <span style="color: #38bdf8;">{{ shop.plan_name or '1 Month Starter' }}</span>
+            </div>
+            <div class="plan-exp">
+                Expires On: <strong>{{ shop.plan_expires_at[:10] if shop.plan_expires_at else 'Active / Unlimited' }}</strong>
+            </div>
+        </div>
+        <div>
+            {% if shop.is_suspended %}
+            <span class="badge badge-suspended" style="padding: 10px 20px; font-size: 0.9rem;">🚫 Account Suspended</span>
+            {% elif is_valid %}
+            <span class="badge badge-active" style="padding: 10px 20px; font-size: 0.9rem;">✅ Subscription Active</span>
+            {% else %}
+            <span class="badge badge-expired" style="padding: 10px 20px; font-size: 0.9rem;">⚠️ Subscription Expired</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <h2 style="color: #f8fafc; margin-bottom: 12px; font-weight: 800;">Choose Your Subscription Package</h2>
+    <p style="color: #94a3b8; margin-bottom: 28px;">Select a plan to instant renew your shop printing agent & QR customer upload portal via Payflux UPI/Gateway.</p>
+
+    <div class="plans-grid">
+        {% for p in plans %}
+        <div class="plan-card {% if loop.index == 2 %}featured{% endif %}">
+            {% if loop.index == 2 %}
+            <div class="featured-badge">Most Popular</div>
+            {% endif %}
+            <div>
+                <div class="plan-name">{{ p.name }}</div>
+                <div class="plan-price">₹{{ p.price }} <span>/ {{ p.duration_days }} Days</span></div>
+                <div class="plan-desc">
+                    {{ p.description or 'Unlimited print jobs, desktop agent auto-printing, instant QR code portal access & real-time customer uploads.' }}
+                </div>
+            </div>
+            <button class="btn-renew" onclick="initiatePayfluxPayment('{{ p.plan_id }}', '{{ p.name }}', {{ p.price }})">
+                💳 Renew Now via Payflux
+            </button>
+        </div>
+        {% else %}
+        <div class="plan-card">
+            <div class="plan-name">Standard Monthly Plan</div>
+            <div class="plan-price">₹199 <span>/ 30 Days</span></div>
+            <div class="plan-desc">Unlimited print jobs, real-time agent syncing, auto cash/QR print processing.</div>
+            <button class="btn-renew" onclick="initiatePayfluxPayment('plan-1m', '1 Month Plan', 199.0)">💳 Renew Now via Payflux</button>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+async function initiatePayfluxPayment(planId, planName, amount) {
+    try {
+        const btn = event.target;
+        btn.innerText = "⏳ Creating Payment Request...";
+        btn.disabled = true;
+
+        const res = await fetch('/api/payments/create-order', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                plan_id: planId,
+                plan_name: planName,
+                amount: amount
+            })
+        });
+        const data = await res.json();
+        
+        if (data.success && data.payment_url) {
+            window.location.href = data.payment_url;
+        } else if (data.success && data.auto_activated) {
+            alert('✅ Plan auto-renewed successfully!');
+            window.location.reload();
+        } else {
+            alert('❌ Payment creation error: ' + (data.error || 'Failed to initiate Payflux payment'));
+            btn.innerText = "💳 Renew Now via Payflux";
+            btn.disabled = false;
+        }
+    } catch (e) {
+        alert('❌ Network error: ' + e);
+    }
+}
+</script>
+{% endblock %}

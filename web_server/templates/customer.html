@@ -249,6 +249,19 @@
     </div>
 </div>
 
+{% if is_locked %}
+<div class="glass-card" style="border: 2px solid #ef4444; background: rgba(239, 68, 68, 0.12); padding: 40px 20px; text-align: center; margin-bottom: 30px; border-radius: 16px; backdrop-filter: blur(10px);">
+    <div style="font-size: 56px; margin-bottom: 12px;">🔒</div>
+    <h2 style="color: #f87171; font-size: 1.6rem; font-weight: 800; margin-bottom: 8px;">Shop Account Locked / Subscription Expired</h2>
+    <p style="color: #cbd5e1; font-size: 1rem; max-width: 600px; margin: 0 auto 16px;">
+        This print shop portal is currently locked (Reason: <strong>{{ lock_reason }}</strong>). Customer file uploads are disabled until the shop owner renews their subscription.
+    </p>
+    <div style="display: inline-block; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(239, 68, 68, 0.4); padding: 8px 18px; border-radius: 20px; color: #fca5a5; font-size: 0.88rem; font-weight: 600;">
+        📢 If you are the Shop Owner, please log in to your Web Dashboard to renew your plan.
+    </div>
+</div>
+{% else %}
+
 <!-- 1. Primary Multi-File Upload Box -->
 <div class="glass-card" id="upload-card">
     <h3 style="font-size: 18px; margin-bottom: 16px;">1. Select or Drop Your Documents / Images</h3>
@@ -260,6 +273,7 @@
     </div>
     <div id="size-error-msg" style="display:none; background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.4); border-radius: 8px; padding: 8px 14px; color: #f87171; font-size: 13px; font-weight: 600; margin-top: 10px;"></div>
 </div>
+{% endif %}
 
 <!-- 🔒 Password Protected PDF Card (Shown if encrypted PDF is detected) -->
 <div class="glass-card" id="password-card" style="display: none; border: 1px solid #f59e0b; background: rgba(245, 158, 11, 0.1);">

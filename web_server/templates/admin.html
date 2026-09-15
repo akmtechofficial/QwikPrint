@@ -1,0 +1,547 @@
+{% extends "base.html" %}
+
+{% block title %}Master Admin Panel - QwikPrint{% endblock %}
+
+{% block extra_head %}
+<style>
+    .admin-container {
+        max-width: 1300px;
+        margin: 30px auto;
+        padding: 0 20px;
+    }
+    .admin-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.9));
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 20px 28px;
+        backdrop-filter: blur(12px);
+    }
+    .admin-title {
+        font-size: 1.6rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, #38bdf8, #818cf8);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 18px;
+        margin-bottom: 30px;
+    }
+    .stat-card {
+        background: rgba(30, 41, 59, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 14px;
+        padding: 20px;
+        transition: transform 0.2s, border-color 0.2s;
+    }
+    .stat-card:hover {
+        transform: translateY(-3px);
+        border-color: rgba(56, 189, 248, 0.3);
+    }
+    .stat-label {
+        color: #94a3b8;
+        font-size: 0.88rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .stat-value {
+        font-size: 1.8rem;
+        font-weight: 800;
+        margin-top: 8px;
+        color: #f8fafc;
+    }
+    .admin-tabs {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 24px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        padding-bottom: 12px;
+    }
+    .tab-btn {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #94a3b8;
+        padding: 10px 20px;
+        border-radius: 10px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .tab-btn.active, .tab-btn:hover {
+        background: #0284c7;
+        color: #ffffff;
+        border-color: #38bdf8;
+        box-shadow: 0 4px 14px rgba(2, 132, 199, 0.3);
+    }
+    .panel-section {
+        background: rgba(30, 41, 59, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 30px;
+    }
+    .section-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #f8fafc;
+        margin-bottom: 18px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .table-responsive {
+        overflow-x: auto;
+    }
+    .admin-table {
+        width: 100%;
+        border-collapse: collapse;
+        color: #cbd5e1;
+        font-size: 0.92rem;
+    }
+    .admin-table th {
+        background: rgba(15, 23, 42, 0.8);
+        padding: 12px 16px;
+        text-align: left;
+        color: #94a3b8;
+        font-weight: 600;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .admin-table td {
+        padding: 14px 16px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .admin-table tr:hover td {
+        background: rgba(255, 255, 255, 0.03);
+    }
+    .badge {
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+    .badge-active { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.4); }
+    .badge-expired { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+    .badge-suspended { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+    .btn-action {
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        transition: transform 0.15s, opacity 0.15s;
+    }
+    .btn-action:hover { opacity: 0.9; transform: scale(1.02); }
+    .btn-grant { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+    .btn-suspend { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; }
+    .btn-unsuspend { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; }
+    .btn-add { background: linear-gradient(135deg, #0284c7, #2563eb); color: white; padding: 8px 16px; border-radius: 10px; }
+    
+    /* Modal */
+    .modal-overlay {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(15, 23, 42, 0.85);
+        backdrop-filter: blur(8px);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+    .modal-box {
+        background: #1e293b;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 16px;
+        width: 100%;
+        max-width: 480px;
+        padding: 24px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    }
+    .modal-header { font-size: 1.2rem; font-weight: 700; color: #f8fafc; margin-bottom: 16px; }
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; color: #94a3b8; font-size: 0.88rem; margin-bottom: 6px; }
+    .form-input {
+        width: 100%;
+        background: #0f172a;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: white;
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-size: 0.95rem;
+    }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <div class="admin-header">
+        <div>
+            <div class="admin-title">👑 Master Admin Control Center</div>
+            <div style="color: #94a3b8; font-size: 0.9rem; margin-top: 4px;">System Overview, Shop Management, Subscriptions & Pricing Control</div>
+        </div>
+        <div>
+            <span class="badge badge-active" style="padding: 8px 16px; font-size: 0.85rem;">Role: Super Admin</span>
+        </div>
+    </div>
+
+    <!-- Top Statistics Grid -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">Total Registered Shops</div>
+            <div class="stat-value" id="stat-shops">{{ stats.total_shops }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Suspended Accounts</div>
+            <div class="stat-value" style="color: #f87171;" id="stat-suspended">{{ stats.suspended_shops }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Completed Print Jobs</div>
+            <div class="stat-value" style="color: #38bdf8;">{{ stats.completed_print_jobs }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Subscription Revenue</div>
+            <div class="stat-value" style="color: #4ade80;">₹{{ "%.2f"|format(stats.subscription_revenue) }}</div>
+        </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="admin-tabs">
+        <button class="tab-btn active" onclick="switchTab('shops-tab')">🏪 Shops & Subscriptions</button>
+        <button class="tab-btn" onclick="switchTab('plans-tab')">💰 Pricing Packages</button>
+        <button class="tab-btn" onclick="switchTab('tx-tab')">💳 Payflux Payments Log</button>
+    </div>
+
+    <!-- Tab 1: Shops Management -->
+    <div id="shops-tab" class="panel-section">
+        <div class="section-title">
+            <span>Manage Registered Shops</span>
+            <input type="text" id="shop-search" placeholder="Search by name, email or phone..." class="form-input" style="max-width: 300px; padding: 6px 12px; font-size: 0.85rem;" onkeyup="filterShops()">
+        </div>
+        <div class="table-responsive">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Shop Name</th>
+                        <th>Owner Email / Phone</th>
+                        <th>Plan</th>
+                        <th>Expires At</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="shops-table-body">
+                    {% for s in shops %}
+                    <tr class="shop-row">
+                        <td>
+                            <strong style="color: #f8fafc;">{{ s.name }}</strong><br>
+                            <small style="color: #64748b;">ID: {{ s.shop_id }}</small>
+                        </td>
+                        <td>
+                            {{ s.email or s.owner_name or 'N/A' }}<br>
+                            <small style="color: #94a3b8;">📞 {{ s.phone or 'N/A' }}</small>
+                        </td>
+                        <td>{{ s.plan_name or 'Trial Plan' }}</td>
+                        <td>{{ s.plan_expires_at or 'Permanent / No Limit' }}</td>
+                        <td>
+                            {% if s.is_suspended %}
+                            <span class="badge badge-suspended">Suspended</span>
+                            {% elif s.subscription_status == 'active' or not s.plan_expires_at %}
+                            <span class="badge badge-active">Active</span>
+                            {% else %}
+                            <span class="badge badge-expired">Expired</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                <button class="btn-action btn-grant" onclick="openGrantModal('{{ s.shop_id }}', '{{ s.name }}')">➕ Grant Days</button>
+                                {% if s.is_suspended %}
+                                <button class="btn-action btn-unsuspend" onclick="toggleSuspend('{{ s.shop_id }}', false)">Unsuspend</button>
+                                {% else %}
+                                <button class="btn-action btn-suspend" onclick="toggleSuspend('{{ s.shop_id }}', true)">Suspend</button>
+                                {% endif %}
+                                <button class="btn-action" style="background: #64748b; color: white;" onclick="resetShopKey('{{ s.shop_id }}')">🔑 Reset Key</button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: #94a3b8; padding: 24px;">No registered shops found in database.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Tab 2: Pricing Packages -->
+    <div id="plans-tab" class="panel-section" style="display: none;">
+        <div class="section-title">
+            <span>Manage Subscription Plans</span>
+            <button class="btn-action btn-add" onclick="openPlanModal()">➕ Create New Plan</button>
+        </div>
+        <div class="table-responsive">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Plan Name</th>
+                        <th>Duration (Days)</th>
+                        <th>Price (₹)</th>
+                        <th>Description</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in plans %}
+                    <tr>
+                        <td><strong>{{ p.name }}</strong></td>
+                        <td>{{ p.duration_days }} Days</td>
+                        <td style="color: #4ade80; font-weight: 700;">₹{{ p.price }}</td>
+                        <td>{{ p.description }}</td>
+                        <td>
+                            <button class="btn-action btn-suspend" onclick="deletePlan('{{ p.plan_id }}')">Delete</button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: #94a3b8; padding: 24px;">No plans configured yet. Click 'Create New Plan' above.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Tab 3: Payflux Payments Log -->
+    <div id="tx-tab" class="panel-section" style="display: none;">
+        <div class="section-title">Payflux Payment History</div>
+        <div class="table-responsive">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Subscription ID</th>
+                        <th>Shop ID</th>
+                        <th>Plan Name</th>
+                        <th>Amount</th>
+                        <th>Transaction ID</th>
+                        <th>Gateway</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tx in subscriptions %}
+                    <tr>
+                        <td><small>{{ tx.subscription_id }}</small></td>
+                        <td>{{ tx.shop_id }}</td>
+                        <td>{{ tx.plan_name }}</td>
+                        <td style="color: #4ade80; font-weight: 700;">₹{{ tx.amount }}</td>
+                        <td><small>{{ tx.transaction_id }}</small></td>
+                        <td><span class="badge" style="background: rgba(99, 102, 241, 0.2); color: #818cf8;">{{ tx.payment_gateway }}</span></td>
+                        <td><span class="badge badge-active">{{ tx.status }}</span></td>
+                        <td>{{ tx.created_at[:10] if tx.created_at else '' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" style="text-align: center; color: #94a3b8; padding: 24px;">No subscription transactions logged yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 1: Grant Subscription Validity -->
+<div id="grant-modal" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-header">➕ Extend Shop Validity</div>
+        <div style="color: #94a3b8; font-size: 0.88rem; margin-bottom: 16px;" id="grant-shop-name">Extend subscription for selected shop</div>
+        <input type="hidden" id="grant-shop-id">
+        <div class="form-group">
+            <label class="form-label">Select Extension Duration:</label>
+            <select id="grant-days" class="form-input">
+                <option value="7">7 Days (1 Week Free Trial)</option>
+                <option value="30" selected>30 Days (1 Month)</option>
+                <option value="90">90 Days (3 Months)</option>
+                <option value="365">365 Days (1 Year)</option>
+                <option value="9999">Permanent Unlimited Access</option>
+            </select>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-action" style="background: #334155; color: white;" onclick="closeModal('grant-modal')">Cancel</button>
+            <button class="btn-action btn-grant" onclick="submitGrantValidity()">Confirm Validity Extension</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 2: Create Pricing Plan -->
+<div id="plan-modal" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-header">💰 Add Pricing Package</div>
+        <div class="form-group">
+            <label class="form-label">Package Name:</label>
+            <input type="text" id="plan-name" placeholder="e.g. 1 Month Starter" class="form-input">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Duration (Days):</label>
+            <input type="number" id="plan-days" placeholder="30" class="form-input">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Price (INR ₹):</label>
+            <input type="number" id="plan-price" placeholder="199" class="form-input">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Description:</label>
+            <input type="text" id="plan-desc" placeholder="Full unlimited printing access for 30 days" class="form-input">
+        </div>
+        <div class="modal-footer">
+            <button class="btn-action" style="background: #334155; color: white;" onclick="closeModal('plan-modal')">Cancel</button>
+            <button class="btn-action btn-add" onclick="submitCreatePlan()">Save Package</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function switchTab(tabId) {
+    document.querySelectorAll('.panel-section').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    document.getElementById(tabId).style.display = 'block';
+    event.target.classList.add('active');
+}
+
+function filterShops() {
+    const q = document.getElementById('shop-search').value.toLowerCase();
+    document.querySelectorAll('.shop-row').forEach(row => {
+        const text = row.innerText.toLowerCase();
+        row.style.display = text.includes(q) ? '' : 'none';
+    });
+}
+
+function openGrantModal(shopId, shopName) {
+    document.getElementById('grant-shop-id').value = shopId;
+    document.getElementById('grant-shop-name').innerText = "Shop: " + shopName;
+    document.getElementById('grant-modal').style.display = 'flex';
+}
+
+function openPlanModal() {
+    document.getElementById('plan-modal').style.display = 'flex';
+}
+
+function closeModal(id) {
+    document.getElementById(id).style.display = 'none';
+}
+
+async function submitGrantValidity() {
+    const shopId = document.getElementById('grant-shop-id').value;
+    const days = parseInt(document.getElementById('grant-days').value);
+    
+    try {
+        const res = await fetch('/api/admin/shops/' + shopId + '/subscription', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({duration_days: days, plan_name: days + ' Days Extension'})
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert('✅ Subscription validity extended successfully!');
+            window.location.reload();
+        } else {
+            alert('❌ Error: ' + (data.error || 'Failed to update'));
+        }
+    } catch (e) {
+        alert('❌ Request failed: ' + e);
+    }
+}
+
+async function toggleSuspend(shopId, suspend) {
+    if (!confirm(suspend ? "Are you sure you want to SUSPEND this shop?" : "Unsuspend this shop?")) return;
+    try {
+        const res = await fetch('/api/admin/shops/' + shopId + '/suspend', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({suspend: suspend})
+        });
+        const data = await res.json();
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert('❌ Failed: ' + data.error);
+        }
+    } catch (e) {
+        alert('❌ Network error: ' + e);
+    }
+}
+
+async function submitCreatePlan() {
+    const name = document.getElementById('plan-name').value;
+    const days = parseInt(document.getElementById('plan-days').value);
+    const price = parseFloat(document.getElementById('plan-price').value);
+    const desc = document.getElementById('plan-desc').value;
+
+    if (!name || isNaN(days) || isNaN(price)) {
+        alert('Please fill in Name, Days, and Price');
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/admin/plans', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name: name, duration_days: days, price: price, description: desc})
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert('✅ Plan created!');
+            window.location.reload();
+        } else {
+            alert('❌ Error: ' + data.error);
+        }
+    } catch (e) {
+        alert('❌ Network error: ' + e);
+    }
+}
+
+async function deletePlan(planId) {
+    if (!confirm("Delete this pricing plan?")) return;
+    try {
+        const res = await fetch('/api/admin/plans/' + planId, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert('❌ Failed to delete');
+        }
+    } catch (e) {
+        alert('❌ Error: ' + e);
+    }
+}
+
+async function resetShopKey(shopId) {
+    if (!confirm("Regenerate Secret API Key for this shop? This will disconnect their currently paired Desktop PC.")) return;
+    try {
+        const res = await fetch('/api/admin/shops/' + shopId + '/reset-key', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            alert('✅ API Key Regenerated:\n' + data.new_api_key);
+            window.location.reload();
+        } else {
+            alert('❌ Reset failed: ' + (data.error || 'Server error'));
+        }
+    } catch (e) {
+        alert('❌ Network error: ' + e);
+    }
+}
+</script>
+{% endblock %}

@@ -3,7 +3,29 @@ from config_manager import config_mgr
 
 class APIClient:
     def __init__(self):
-        pass
+        self._session = requests.Session()
+        # Disable system environment proxies that trigger PermissionError (13: Permission denied) on Windows
+        self._session.trust_env = False
+        self._session.headers.update({
+            "User-Agent": "QwikPrintAgent/1.0.0 (Windows NT 10.0; Win64; x64)",
+            "Accept": "application/json"
+        })
+        self.last_subscription_error = None
+
+    def _request(self, method: str, url: str, **kwargs):
+        """Executes HTTP request with proxy bypass and 127.0.0.1 loopback fallback."""
+        kwargs.setdefault("timeout", 10)
+        try:
+            return self._session.request(method, url, **kwargs)
+        except (requests.exceptions.ConnectionError, OSError) as e:
+            # Automatic fallback for localhost -> 127.0.0.1 if IPv6/localhost socket fails
+            if "localhost" in url:
+                alt_url = url.replace("localhost", "127.0.0.1")
+                try:
+                    return self._session.request(method, alt_url, **kwargs)
+                except Exception:
+                    pass
+            raise e
 
     @property
     def server_url(self) -> str:
@@ -21,25 +43,28 @@ class APIClient:
         """Verifies Shopkeeper API Key and auto-fetches 1 API = 1 PC credentials."""
         url = f"{server_url.rstrip('/')}/api/agent/verify-key"
         try:
-            res = requests.post(
-                url,
-                json={"apiKey": api_key},
-                headers={"Content-Type": "application/json"},
-                timeout=10
-            )
+            res = self._request("POST", url, json={"apiKey": api_key}, headers={"Content-Type": "application/json"}, timeout=10)
             data = res.json()
             if res.status_code == 200 and data.get("success"):
                 return True, data.get("message", "API Key verified!"), data
             else:
                 return False, data.get("error", "Invalid API Key"), {}
         except Exception as e:
-            return False, f"Connection error: {str(e)}", {}
+            err_str = str(e)
+            if "PermissionError" in err_str or "Permission denied" in err_str or "10013" in err_str:
+                return False, (
+                    "Windows Network Permission Error (Permission Denied).\n\n"
+                    "Your Windows Firewall, Antivirus, or proxy setting is blocking Python socket connections.\n"
+                    "Please allow QwikPrint Agent in Windows Defender / Antivirus or run as Administrator."
+                ), {}
+            return False, f"Connection failed: {err_str}", {}
 
     def register_device(self, server_url: str, shop_id: str, device_name: str, id_token: str) -> tuple[bool, str, dict]:
         """Registers device with shop owner credentials."""
         url = f"{server_url.rstrip('/')}/api/agent/register-device"
         try:
-            res = requests.post(
+            res = self._request(
+                "POST",
                 url,
                 json={"shopId": shop_id, "deviceName": device_name, "appVersion": "1.0.0-python"},
                 headers={"Authorization": f"Bearer {id_token}", "Content-Type": "application/json"},
@@ -59,7 +84,8 @@ class APIClient:
             return False
         url = f"{self.server_url}/api/agent/heartbeat"
         try:
-            res = requests.post(
+            res = self._request(
+                "POST",
                 url,
                 json={
                     "deviceId": config_mgr.get("device_id"),
@@ -71,7 +97,16 @@ class APIClient:
                 headers=self.headers,
                 timeout=5
             )
-            return res.status_code == 200
+            if res.status_code == 200:
+                self.last_subscription_error = None
+                return True
+            elif res.status_code == 403:
+                try:
+                    self.last_subscription_error = res.json().get("detail", "Subscription Locked")
+                except Exception:
+                    self.last_subscription_error = "Subscription Locked"
+                return False
+            return False
         except Exception:
             return False
 
@@ -81,10 +116,18 @@ class APIClient:
             return [], []
         url = f"{self.server_url}/api/agent/queue"
         try:
-            res = requests.get(url, headers=self.headers, timeout=5)
+            res = self._request("GET", url, headers=self.headers, timeout=5)
             if res.status_code == 200:
+                self.last_subscription_error = None
                 data = res.json()
                 return data.get("jobs", []), data.get("cashPendingJobs", [])
+            elif res.status_code == 403:
+                try:
+                    self.last_subscription_error = res.json().get("detail", "Subscription Locked")
+                except Exception:
+                    self.last_subscription_error = "Subscription Locked"
+                print(f"[API Error] Subscription locked: {self.last_subscription_error}")
+                return [], []
             return [], []
         except Exception as e:
             print(f"[API Error] Fetch queue failed: {e}")
@@ -94,7 +137,7 @@ class APIClient:
         """Claims print job for this device."""
         url = f"{self.server_url}/api/agent/claim-job"
         try:
-            res = requests.post(url, json={"jobId": job_id}, headers=self.headers, timeout=5)
+            res = self._request("POST", url, json={"jobId": job_id}, headers=self.headers, timeout=5)
             data = res.json()
             if res.status_code == 200 and data.get("success"):
                 return True, data.get("job", {})
@@ -107,7 +150,7 @@ class APIClient:
         """Gets pre-signed download URL for job file."""
         url = f"{self.server_url}/api/agent/download-url?jobId={job_id}"
         try:
-            res = requests.get(url, headers=self.headers, timeout=8)
+            res = self._request("GET", url, headers=self.headers, timeout=8)
             if res.status_code == 200:
                 data = res.json()
                 return data.get("downloadUrl", "")
@@ -120,7 +163,8 @@ class APIClient:
         """Updates job status: DOWNLOADING -> PRINTING -> PRINTED / PRINT_FAILED."""
         url = f"{self.server_url}/api/agent/update-status"
         try:
-            res = requests.post(
+            res = self._request(
+                "POST",
                 url,
                 json={"jobId": job_id, "status": status, "error": error_msg},
                 headers=self.headers,
@@ -135,7 +179,7 @@ class APIClient:
         """Confirms cash payment for a job."""
         url = f"{self.server_url}/api/jobs/{job_id}/confirm-cash"
         try:
-            res = requests.post(url, headers=self.headers, timeout=8)
+            res = self._request("POST", url, headers=self.headers, timeout=8)
             data = res.json()
             if res.status_code == 200 and data.get("success"):
                 return True, "Cash payment approved!"
@@ -147,7 +191,7 @@ class APIClient:
         """Rejects cash payment for a job."""
         url = f"{self.server_url}/api/jobs/{job_id}/reject-cash"
         try:
-            res = requests.post(url, headers=self.headers, timeout=8)
+            res = self._request("POST", url, headers=self.headers, timeout=8)
             data = res.json()
             if res.status_code == 200 and data.get("success"):
                 return True, "Cash payment rejected"
@@ -160,7 +204,8 @@ class APIClient:
         url = f"{self.server_url}/api/agent/pricing"
         shop_id = config_mgr.get("shop_id")
         try:
-            res = requests.post(
+            res = self._request(
+                "POST",
                 url,
                 json={
                     "shopId": shop_id,
@@ -188,7 +233,8 @@ class APIClient:
         url = f"{self.server_url}/api/agent/paper-rates"
         shop_id = config_mgr.get("shop_id")
         try:
-            res = requests.post(
+            res = self._request(
+                "POST",
                 url,
                 json={"shopId": shop_id, "paperRates": paper_rates[:5]},
                 headers=self.headers,

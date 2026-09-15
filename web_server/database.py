@@ -228,6 +228,42 @@ class SupabaseDatabase:
         except Exception as e:
             print(f"[Database Warning] Error seeding default plans: {e}")
 
+        # Seed Super Admin User (admin@qwikprint.in / @Qwikprint)
+        try:
+            import hashlib, binascii
+            admin_email = os.getenv("SUPERADMIN_EMAIL", "admin@qwikprint.in").lower().strip()
+            admin_pass = os.getenv("SUPERADMIN_PASSWORD", "@Qwikprint")
+            
+            salt = os.urandom(16)
+            pwd_hash = binascii.hexlify(salt).decode('ascii') + "$" + binascii.hexlify(hashlib.pbkdf2_hmac('sha256', admin_pass.encode('utf-8'), salt, 100000)).decode('ascii')
+            now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+            q_chk = "SELECT user_id FROM users WHERE email = %s;" if is_pg else "SELECT user_id FROM users WHERE email = ?;"
+            cursor.execute(q_chk, (admin_email,))
+            row = cursor.fetchone()
+            if not row:
+                user_id = "USER_SUPERADMIN_001"
+                shop_id = "SHOP_ADMIN_001"
+                api_key = "QWIK_KEY_ADMIN_001"
+                
+                q_u = "INSERT INTO users (user_id, email, password_hash, full_name, phone, role, created_at) VALUES (%s, %s, %s, %s, %s, 'super_admin', %s);" if is_pg \
+                    else "INSERT INTO users VALUES (?, ?, ?, ?, ?, 'super_admin', ?);"
+                cursor.execute(q_u, (user_id, admin_email, pwd_hash, "Master Admin", "+91 9999999999", now))
+                
+                q_s = "INSERT INTO shops (shop_id, owner_id, api_key, name, owner_name, email, phone, address, bw_rate, color_rate, duplex_discount, created_at, subscription_status, plan_name, is_suspended) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 2.0, 10.0, 0.5, %s, 'active', 'Enterprise Permanent', FALSE);" if is_pg \
+                    else "INSERT INTO shops (shop_id, owner_id, api_key, name, owner_name, email, phone, address, bw_rate, color_rate, duplex_discount, created_at, subscription_status, plan_name, is_suspended) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 2.0, 10.0, 0.5, ?, 'active', 'Enterprise Permanent', 0);"
+                cursor.execute(q_s, (shop_id, user_id, api_key, "QwikPrint Central Admin", "Master Admin", admin_email, "+91 9999999999", "Headquarters", now))
+                conn.commit()
+                print(f"[Database] Super Admin user seeded successfully ({admin_email}).")
+            else:
+                q_up = "UPDATE users SET password_hash = %s, role = 'super_admin' WHERE email = %s;" if is_pg \
+                    else "UPDATE users SET password_hash = ?, role = 'super_admin' WHERE email = ?;"
+                cursor.execute(q_up, (pwd_hash, admin_email))
+                conn.commit()
+                print(f"[Database] Super Admin password and role updated for: {admin_email}")
+        except Exception as e:
+            print(f"[Database Warning] Error seeding super admin: {e}")
+
         conn.close()
 
     # User operations

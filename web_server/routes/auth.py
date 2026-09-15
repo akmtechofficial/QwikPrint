@@ -60,9 +60,18 @@ async def login_submit(
         return templates.TemplateResponse(request=request, name="login.html", context={"error": "Invalid email or password."})
 
     shop = db.get_user_shop(user["user_id"])
-    session_token = create_session_data(user["user_id"], shop["shop_id"])
+    shop_id = shop["shop_id"] if shop else "SHOP_ADMIN_001"
+    session_token = create_session_data(user["user_id"], shop_id)
     
-    redirect_resp = RedirectResponse(url="/dashboard", status_code=303)
+    superadmin_email = os.getenv("SUPERADMIN_EMAIL", "admin@qwikprint.in").lower().strip()
+    target_url = request.query_params.get("next")
+    if not target_url:
+        if user.get("role") == "super_admin" or user.get("email", "").lower().strip() == superadmin_email:
+            target_url = "/admin"
+        else:
+            target_url = "/dashboard"
+
+    redirect_resp = RedirectResponse(url=target_url, status_code=303)
     redirect_resp.set_cookie(key="qwikprint_session", value=session_token, httponly=True, max_age=86400 * 30)
     return redirect_resp
 

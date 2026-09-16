@@ -89,6 +89,11 @@ async def delete_plan(plan_id: str):
     db.delete_plan(plan_id)
     return {"success": True, "message": "Plan deleted"}
 
+@router.delete("/api/admin/shops/{shop_id}")
+async def delete_shop(shop_id: str):
+    db.delete_shop_completely(shop_id)
+    return {"success": True, "message": "Shop and all related data completely deleted from database"}
+
 @router.post("/api/admin/shops/{shop_id}/reset-key")
 async def reset_shop_key(shop_id: str):
     new_key = db.regenerate_shop_api_key(shop_id)

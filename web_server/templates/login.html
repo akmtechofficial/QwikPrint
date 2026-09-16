@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}QwikPrint{% endblock %}
+{% block title %}QwikPrint - Shopkeeper Sign In{% endblock %}
 
 {% block content %}
 <div class="glass-card" style="max-width: 460px; margin: 30px auto;">
@@ -36,12 +36,12 @@
     <form action="/login" method="POST">
         <div class="form-group">
             <label class="form-label">Registered Email Address:</label>
-            <input type="email" name="email" class="form-input" placeholder="akash@printsoft.com" value="akash@printsoft.com" required>
+            <input type="email" name="email" class="form-input" placeholder="Enter your email address..." value="" autocomplete="email" required>
         </div>
 
         <div class="form-group">
             <label class="form-label">Password:</label>
-            <input type="password" name="password" class="form-input" placeholder="••••••••" required>
+            <input type="password" name="password" class="form-input" placeholder="••••••••" value="" autocomplete="current-password" required>
         </div>
 
         <button type="submit" class="btn-primary" style="width: 100%; margin-top: 10px; padding: 14px; font-size: 16px;">🔑 Sign In to Dashboard</button>
@@ -51,17 +51,48 @@
     <form id="google-auth-form" action="/api/auth/google" method="POST" style="display: none;">
         <input type="hidden" name="email" id="google-email-input">
         <input type="hidden" name="full_name" id="google-name-input">
+        <input type="hidden" name="device_fp" id="google-fp-input">
     </form>
 
     <script>
+    function getDeviceFingerprint() {
+        let fp = localStorage.getItem('qwikprint_device_fp');
+        if (!fp) {
+            try {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                ctx.textBaseline = "top";
+                ctx.font = "14px 'Arial'";
+                ctx.fillText("QwikPrint-Security-FP", 2, 2);
+                const b64 = canvas.toDataURL();
+                let hash = 0;
+                for (let i = 0; i < b64.length; i++) {
+                    hash = ((hash << 5) - hash) + b64.charCodeAt(i);
+                    hash |= 0;
+                }
+                fp = 'FP_' + Math.abs(hash).toString(36).toUpperCase() + '_' + Math.random().toString(36).substring(2, 8).toUpperCase();
+            } catch (e) {
+                fp = 'FP_' + Math.random().toString(36).substring(2, 12).toUpperCase();
+            }
+            localStorage.setItem('qwikprint_device_fp', fp);
+        }
+        document.cookie = "qwikprint_registered_device=" + fp + "; path=/; max-age=" + (86400 * 365 * 10);
+        return fp;
+    }
+
     document.getElementById('google-signin-btn').addEventListener('click', function() {
         const userEmail = prompt("Google Sign-In: Enter your Google Email Address:");
         if (userEmail && userEmail.includes('@')) {
             const userName = userEmail.split('@')[0].replace('.', ' ');
             document.getElementById('google-email-input').value = userEmail;
             document.getElementById('google-name-input').value = userName;
+            document.getElementById('google-fp-input').value = getDeviceFingerprint();
             document.getElementById('google-auth-form').submit();
         }
+    });
+
+    window.addEventListener('load', function() {
+        getDeviceFingerprint();
     });
     </script>
 

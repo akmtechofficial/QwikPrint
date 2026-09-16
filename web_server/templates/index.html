@@ -1,84 +1,880 @@
 {% extends "base.html" %}
 
-{% block title %}QwikPrint{% endblock %}
+{% block title %}QwikPrint - India's #1 Automated Smart QR Printing Platform for Xerox & Print Shops{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* ==========================================================================
+       QwikPrint Ultra-Modern High-Converting SaaS Landing Page Styles
+       ========================================================================== */
+
+    .hero-wrapper {
+        position: relative;
+        padding: 50px 10px 40px;
+        text-align: center;
+        max-width: 1050px;
+        margin: 0 auto;
+    }
+
+    .hero-glow-orb {
+        position: absolute;
+        top: 20%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 500px;
+        height: 350px;
+        background: radial-gradient(circle, rgba(6, 182, 212, 0.22) 0%, rgba(99, 102, 241, 0.18) 45%, transparent 70%);
+        filter: blur(60px);
+        z-index: 0;
+        pointer-events: none;
+    }
+
+    .hero-content {
+        position: relative;
+        z-index: 1;
+    }
+
+    .badge-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 18px;
+        background: rgba(15, 23, 42, 0.85);
+        border: 1px solid rgba(56, 189, 248, 0.4);
+        border-radius: 9999px;
+        color: #38bdf8;
+        font-size: 0.85rem;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+        margin-bottom: 24px;
+        box-shadow: 0 0 25px rgba(56, 189, 248, 0.25);
+        backdrop-filter: blur(10px);
+    }
+
+    .badge-pulse {
+        width: 8px;
+        height: 8px;
+        background: #10b981;
+        border-radius: 50%;
+        box-shadow: 0 0 10px #10b981;
+        animation: pulse 1.8s infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    .hero-headline {
+        font-size: clamp(2.4rem, 5.5vw, 3.8rem);
+        font-weight: 900;
+        line-height: 1.15;
+        letter-spacing: -1.5px;
+        color: #ffffff;
+        margin-bottom: 22px;
+    }
+
+    .hero-headline .gradient-text {
+        background: linear-gradient(135deg, #38bdf8 0%, #818cf8 50%, #c084fc 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtext {
+        font-size: clamp(1.05rem, 2vw, 1.25rem);
+        color: #94a3b8;
+        max-width: 820px;
+        margin: 0 auto 36px;
+        line-height: 1.6;
+        font-weight: 400;
+    }
+
+    .hero-cta-group {
+        display: flex;
+        justify-content: center;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 50px;
+    }
+
+    .btn-hero-primary {
+        background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+        color: #ffffff;
+        font-size: 1.1rem;
+        font-weight: 700;
+        padding: 16px 36px;
+        border-radius: 14px;
+        text-decoration: none;
+        box-shadow: 0 10px 25px rgba(2, 132, 199, 0.45);
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        transition: all 0.25s ease;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .btn-hero-primary:hover {
+        transform: translateY(-3px) scale(1.02);
+        box-shadow: 0 16px 35px rgba(2, 132, 199, 0.6);
+        color: #ffffff;
+    }
+
+    .btn-hero-secondary {
+        background: rgba(30, 41, 59, 0.7);
+        color: #f8fafc;
+        font-size: 1.1rem;
+        font-weight: 700;
+        padding: 16px 30px;
+        border-radius: 14px;
+        text-decoration: none;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        backdrop-filter: blur(10px);
+        transition: all 0.25s ease;
+    }
+
+    .btn-hero-secondary:hover {
+        border-color: #38bdf8;
+        background: rgba(30, 41, 59, 0.95);
+        transform: translateY(-3px);
+        color: #38bdf8;
+    }
+
+    /* Live Interactive Ecosystem Simulation Mockup */
+    .mockup-container {
+        background: linear-gradient(145deg, rgba(30, 41, 59, 0.75), rgba(15, 23, 42, 0.95));
+        border: 1px solid rgba(56, 189, 248, 0.25);
+        border-radius: 24px;
+        padding: 30px 24px;
+        box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 40px rgba(56, 189, 248, 0.15);
+        margin: 0 auto 60px;
+        max-width: 1000px;
+        backdrop-filter: blur(20px);
+    }
+
+    .mockup-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        padding-bottom: 16px;
+        margin-bottom: 24px;
+    }
+
+    .mockup-dots {
+        display: flex;
+        gap: 8px;
+    }
+
+    .mockup-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+    }
+
+    .mockup-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 20px;
+        text-align: left;
+    }
+
+    .mockup-panel {
+        background: rgba(15, 23, 42, 0.75);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
+        padding: 20px;
+    }
+
+    .mockup-panel-title {
+        font-size: 0.9rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #94a3b8;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 14px;
+    }
+
+    .live-job-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: rgba(30, 41, 59, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 12px;
+        padding: 12px 14px;
+        margin-bottom: 10px;
+        font-size: 0.88rem;
+    }
+
+    .live-badge {
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+
+    .badge-printing {
+        background: rgba(16, 185, 129, 0.2);
+        border: 1px solid #10b981;
+        color: #4ade80;
+    }
+
+    .badge-paid {
+        background: rgba(56, 189, 248, 0.2);
+        border: 1px solid #38bdf8;
+        color: #38bdf8;
+    }
+
+    /* Stats Grid */
+    .stats-strip {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 18px;
+        max-width: 1050px;
+        margin: 0 auto 70px;
+    }
+
+    .stat-box {
+        background: rgba(30, 41, 59, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 20px;
+        padding: 24px 20px;
+        text-align: center;
+        backdrop-filter: blur(10px);
+        transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .stat-box:hover {
+        transform: translateY(-4px);
+        border-color: rgba(56, 189, 248, 0.4);
+    }
+
+    .stat-num {
+        font-size: 2.3rem;
+        font-weight: 900;
+        background: linear-gradient(135deg, #38bdf8, #818cf8);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 4px;
+    }
+
+    .stat-lbl {
+        font-size: 0.88rem;
+        color: #94a3b8;
+        font-weight: 600;
+    }
+
+    /* Steps Grid */
+    .section-title-wrap {
+        text-align: center;
+        max-width: 750px;
+        margin: 0 auto 40px;
+    }
+
+    .section-tag {
+        color: #38bdf8;
+        font-size: 0.85rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+        display: inline-block;
+    }
+
+    .section-heading {
+        font-size: 2.2rem;
+        font-weight: 800;
+        color: #ffffff;
+        margin-bottom: 12px;
+        letter-spacing: -0.5px;
+    }
+
+    .section-subtext {
+        font-size: 1.05rem;
+        color: #94a3b8;
+        line-height: 1.6;
+    }
+
+    .steps-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        gap: 24px;
+        max-width: 1050px;
+        margin: 0 auto 70px;
+    }
+
+    .workflow-card {
+        background: rgba(30, 41, 59, 0.55);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 22px;
+        padding: 30px 24px;
+        position: relative;
+        backdrop-filter: blur(12px);
+        transition: all 0.3s ease;
+    }
+
+    .workflow-card:hover {
+        transform: translateY(-6px);
+        border-color: rgba(56, 189, 248, 0.5);
+        box-shadow: 0 20px 35px rgba(56, 189, 248, 0.15);
+    }
+
+    .step-badge-num {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #0284c7, #6366f1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+        font-weight: 800;
+        color: #ffffff;
+        margin-bottom: 20px;
+        box-shadow: 0 6px 16px rgba(2, 132, 199, 0.35);
+    }
+
+    .workflow-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #f8fafc;
+        margin-bottom: 10px;
+    }
+
+    .workflow-desc {
+        color: #94a3b8;
+        font-size: 0.92rem;
+        line-height: 1.55;
+    }
+
+    /* Feature Grid */
+    .features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 24px;
+        max-width: 1050px;
+        margin: 0 auto 70px;
+    }
+
+    .feat-card {
+        background: rgba(30, 41, 59, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 20px;
+        padding: 30px 26px;
+        backdrop-filter: blur(10px);
+        transition: all 0.25s ease;
+    }
+
+    .feat-card:hover {
+        border-color: #818cf8;
+        transform: translateY(-4px);
+    }
+
+    .feat-icon {
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+        background: rgba(99, 102, 241, 0.15);
+        border: 1px solid rgba(99, 102, 241, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 18px;
+    }
+
+    .feat-title {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #f8fafc;
+        margin-bottom: 8px;
+    }
+
+    .feat-desc {
+        color: #94a3b8;
+        font-size: 0.92rem;
+        line-height: 1.55;
+    }
+
+    /* Interactive Savings Calculator */
+    .calculator-wrapper {
+        background: linear-gradient(145deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.95));
+        border: 1px solid rgba(56, 189, 248, 0.3);
+        border-radius: 26px;
+        padding: 40px 32px;
+        max-width: 1050px;
+        margin: 0 auto 70px;
+        backdrop-filter: blur(15px);
+        box-shadow: 0 20px 45px rgba(0, 0, 0, 0.5);
+    }
+
+    .calc-slider-box {
+        margin-bottom: 24px;
+    }
+
+    .calc-range {
+        width: 100%;
+        height: 8px;
+        border-radius: 4px;
+        background: #334155;
+        accent-color: #38bdf8;
+        cursor: pointer;
+        outline: none;
+    }
+
+    .calc-result-card {
+        background: rgba(15, 23, 42, 0.9);
+        border: 1px solid rgba(56, 189, 248, 0.35);
+        border-radius: 20px;
+        padding: 26px 20px;
+        text-align: center;
+    }
+
+    .calc-result-num {
+        font-size: 2.8rem;
+        font-weight: 900;
+        color: #4ade80;
+        margin: 6px 0;
+    }
+
+    /* FAQ Accordion */
+    .faq-container {
+        max-width: 850px;
+        margin: 0 auto 70px;
+    }
+
+    .faq-item {
+        background: rgba(30, 41, 59, 0.55);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
+        margin-bottom: 14px;
+        overflow: hidden;
+        transition: border-color 0.2s ease;
+    }
+
+    .faq-item:hover {
+        border-color: rgba(56, 189, 248, 0.35);
+    }
+
+    .faq-question {
+        padding: 20px 24px;
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: #f8fafc;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        user-select: none;
+    }
+
+    .faq-answer {
+        padding: 0 24px 20px;
+        color: #94a3b8;
+        font-size: 0.95rem;
+        line-height: 1.6;
+        display: none;
+    }
+
+    .faq-item.active .faq-answer {
+        display: block;
+    }
+
+    .faq-icon {
+        font-size: 1.2rem;
+        transition: transform 0.2s ease;
+    }
+
+    .faq-item.active .faq-icon {
+        transform: rotate(45deg);
+        color: #38bdf8;
+    }
+
+    /* CTA Box */
+    .final-cta {
+        background: linear-gradient(135deg, rgba(2, 132, 199, 0.35), rgba(99, 102, 241, 0.35));
+        border: 2px solid rgba(56, 189, 248, 0.5);
+        border-radius: 28px;
+        padding: 50px 30px;
+        text-align: center;
+        max-width: 1050px;
+        margin: 0 auto 40px;
+        box-shadow: 0 20px 50px rgba(2, 132, 199, 0.25);
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<!-- Hero Section -->
-<div class="glass-card hero-banner">
-    <div class="hero-badge">
-        <span class="pulsing-dot"></span> 100% Pure Python Powered • Supabase PostgreSQL & Firebase Auth
-    </div>
-    
-    <h1 class="hero-title">
-        The Ultimate <span class="gradient-text">QR Online Printing</span><br>SaaS Platform for Print Shops
-    </h1>
-    
-    <p class="hero-subtitle">
-        Customers scan QR at your shop, upload documents from mobile, and choose cash or online payment. Connected Windows PCs print automatically in seconds.
-    </p>
+<div class="hero-wrapper">
+    <div class="hero-glow-orb"></div>
+    <div class="hero-content">
+        <div class="badge-pill">
+            <div class="badge-pulse"></div>
+            ⚡ India's #1 Automated Print ATM & Xerox Automation Platform
+        </div>
 
-    <div class="btn-group">
-        <a href="/dashboard" class="btn-primary">📊 Open Shop Dashboard</a>
-        <a href="/s/SHOP_AKM_001" class="btn-secondary">📱 Try Customer Demo Portal</a>
-    </div>
-</div>
+        <h1 class="hero-headline">
+            Transform Your Print Shop into a<br>
+            <span class="gradient-text">Fully Automated Smart Print ATM</span>
+        </h1>
 
-<!-- How It Works Grid -->
-<div style="margin-top: 10px; margin-bottom: 30px;">
-    <h2 style="font-size: 22px; text-align: center; margin-bottom: 24px;">How QwikPrint Automated Printing Works</h2>
-    
-    <div class="grid-3">
-        <div class="feature-card">
-            <div class="feature-icon">📲</div>
-            <h3 style="font-size: 17px; margin-bottom: 8px;">1. Customer Scans QR</h3>
-            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">Customer scans your shop QR code from mobile. Opens instantly without downloading any app.</p>
-        </div>
-        <div class="feature-card">
-            <div class="feature-icon">📄</div>
-            <h3 style="font-size: 17px; margin-bottom: 8px;">2. Uploads & Customizes</h3>
-            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">Uploads PDF/Images. Automatic page count analyzer calculates exact price per page.</p>
-        </div>
-        <div class="feature-card">
-            <div class="feature-icon">💵</div>
-            <h3 style="font-size: 17px; margin-bottom: 8px;">3. Cash or Online Pay</h3>
-            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">Counter cash payment triggers a chime sound alert & popup on your desktop app.</p>
-        </div>
-        <div class="feature-card">
-            <div class="feature-icon">🖨️</div>
-            <h3 style="font-size: 17px; margin-bottom: 8px;">4. Silent Auto-Print</h3>
-            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">Desktop agent spools document to your connected printer silently with exact page options.</p>
+        <p class="hero-subtext">
+            Eliminate counter crowds and endless WhatsApp document transfers. Customers scan your shop QR poster, upload documents from mobile, and pay via UPI or cash. Your Windows Counter PC prints in <strong>under 2 seconds</strong>.
+        </p>
+
+        <div class="hero-cta-group">
+            {% if shop %}
+            <a href="/dashboard" class="btn-hero-primary">
+                📊 Open Shop Dashboard
+            </a>
+            <a href="/subscription" class="btn-hero-secondary">
+                💳 Manage Subscription
+            </a>
+            {% else %}
+            <a href="/register" class="btn-hero-primary">
+                🚀 Start Free Trial (Google Sign-Up)
+            </a>
+            <a href="/pricing" class="btn-hero-secondary">
+                💎 View Transparent Pricing
+            </a>
+            {% endif %}
         </div>
     </div>
 </div>
 
-<!-- Technology & Enterprise Features -->
-<div class="glass-card">
-    <h2 style="font-size: 22px; margin-bottom: 20px;">⚡ High-Performance Architecture Breakdown</h2>
-    
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
-        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--card-border); padding: 20px; border-radius: 14px;">
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                <span style="font-size: 20px;">🗄️</span>
-                <h4 style="color: var(--primary-light); font-size: 16px;">Supabase PostgreSQL</h4>
-            </div>
-            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">Production-grade PostgreSQL database handling shops, print queue transactions, devices, and audit logs.</p>
+<!-- Interactive Live System Simulation Mockup -->
+<div class="mockup-container">
+    <div class="mockup-header">
+        <div class="mockup-dots">
+            <div class="mockup-dot" style="background: #ef4444;"></div>
+            <div class="mockup-dot" style="background: #f59e0b;"></div>
+            <div class="mockup-dot" style="background: #10b981;"></div>
         </div>
-        
-        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--card-border); padding: 20px; border-radius: 14px;">
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                <span style="font-size: 20px;">🔐</span>
-                <h4 style="color: var(--amber-warning); font-size: 16px;">Firebase Auth Only</h4>
-            </div>
-            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">Firebase Admin SDK used exclusively for verifying shop owner authentication tokens while database operations run on Supabase.</p>
+        <div style="font-size: 0.85rem; font-weight: 700; color: #38bdf8; display: flex; align-items: center; gap: 6px;">
+            <span class="badge-pulse"></span> QwikPrint Cloud Engine & Windows Agent v2.5
         </div>
-        
-        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--card-border); padding: 20px; border-radius: 14px;">
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                <span style="font-size: 20px;">💻</span>
-                <h4 style="color: var(--emerald-success); font-size: 16px;">PyQt6 Desktop Spooler (.exe)</h4>
+        <div style="font-size: 0.8rem; color: #64748b;">99.99% Cloud Sync</div>
+    </div>
+
+    <div class="mockup-grid">
+        <!-- Panel 1: Customer Phone Scan -->
+        <div class="mockup-panel">
+            <div class="mockup-panel-title">
+                📱 1. Customer Mobile Portal
+            </div>
+            <div style="background: rgba(30, 41, 59, 0.9); border-radius: 12px; padding: 14px; font-size: 0.85rem;">
+                <div style="color: #cbd5e1; font-weight: 700; margin-bottom: 8px;">📄 resume_final.pdf</div>
+                <div style="display: flex; justify-content: space-between; color: #94a3b8; margin-bottom: 6px;">
+                    <span>Pages: 4 (B&W Double-Sided)</span>
+                    <strong style="color: #4ade80;">₹6.00</strong>
                 </div>
-            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">System tray desktop app with real-time queue listener, cash approval sound chime, and SumatraPDF silent printing engine.</p>
+                <div style="background: rgba(16, 185, 129, 0.15); border: 1px solid #10b981; border-radius: 6px; padding: 6px; text-align: center; color: #4ade80; font-weight: 700; font-size: 0.8rem;">
+                    ✓ UPI Payment Verified via Payflux
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel 2: Live Print Queue -->
+        <div class="mockup-panel">
+            <div class="mockup-panel-title">
+                ⚡ 2. Real-Time Spooler Queue
+            </div>
+            <div class="live-job-item">
+                <div>
+                    <div style="font-weight: 700; color: #f8fafc;">Admit_Card_2026.pdf</div>
+                    <div style="color: #94a3b8; font-size: 0.78rem;">2 Pages | Color Single-Sided</div>
+                </div>
+                <span class="live-badge badge-printing">🖨️ PRINTING</span>
+            </div>
+            <div class="live-job-item">
+                <div>
+                    <div style="font-weight: 700; color: #f8fafc;">project_report.docx</div>
+                    <div style="color: #94a3b8; font-size: 0.78rem;">18 Pages | B&W Duplex</div>
+                </div>
+                <span class="live-badge badge-paid">✅ QUEUED</span>
+            </div>
+        </div>
+
+        <!-- Panel 3: Counter Sound & Auto-Print -->
+        <div class="mockup-panel">
+            <div class="mockup-panel-title">
+                🖥️ 3. Counter PC Auto-Execution
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.84rem;">
+                <div style="background: rgba(30, 41, 59, 0.8); padding: 10px 12px; border-radius: 8px; border-left: 3px solid #38bdf8;">
+                    🔊 <strong>Counter Audio Chime:</strong> Alert on cash payment!
+                </div>
+                <div style="background: rgba(30, 41, 59, 0.8); padding: 10px 12px; border-radius: 8px; border-left: 3px solid #10b981;">
+                    ⚙️ <strong>Direct Spool:</strong> Auto-sent to HP / Canon / Epson
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+<!-- Stats Strip -->
+<div class="stats-strip">
+    <div class="stat-box">
+        <div class="stat-num">1,200,000+</div>
+        <div class="stat-lbl">Automated Pages Printed</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-num">500+</div>
+        <div class="stat-lbl">Active Indian Print Shops</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-num">&lt; 2 Sec</div>
+        <div class="stat-lbl">Instant Print Spool Speed</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-num">100%</div>
+        <div class="stat-lbl">Zero Manual WhatsApp Handling</div>
+    </div>
+</div>
+
+<!-- Step by Step Workflow -->
+<div class="section-title-wrap">
+    <span class="section-tag">Zero Effort Workflow</span>
+    <h2 class="section-heading">How QwikPrint Automates Your Entire Shop</h2>
+    <p class="section-subtext">No app install required for customers. Works seamlessly in any mobile browser.</p>
+</div>
+
+<div class="steps-container">
+    <div class="workflow-card">
+        <div class="step-badge-num">1</div>
+        <h3 class="workflow-title">Customer Scans QR</h3>
+        <p class="workflow-desc">Customer points their phone camera at your customized shop counter QR standee to open your store's mobile upload page.</p>
+    </div>
+
+    <div class="workflow-card">
+        <div class="step-badge-num">2</div>
+        <h3 class="workflow-title">Upload & Select Mode</h3>
+        <p class="workflow-desc">Customer selects PDF, Doc, or Photo files, chooses B&W or Color, paper size, and duplex modes. Cost is calculated instantly.</p>
+    </div>
+
+    <div class="workflow-card">
+        <div class="step-badge-num">3</div>
+        <h3 class="workflow-title">Instant Payment</h3>
+        <p class="workflow-desc">Customer pays via Payflux UPI QR or chooses Cash at Counter. Cash triggers a clear chime sound alert on your PC.</p>
+    </div>
+
+    <div class="workflow-card">
+        <div class="step-badge-num">4</div>
+        <h3 class="workflow-title">Silent Windows Auto-Print</h3>
+        <p class="workflow-desc">Your Windows Desktop Agent (.exe) fetches the file from the secure cloud and spools it directly to your physical printer.</p>
+    </div>
+</div>
+
+<!-- Features Grid -->
+<div class="section-title-wrap">
+    <span class="section-tag">Built for Indian Xerox & Print Counters</span>
+    <h2 class="section-heading">Engineered for High Speed, Privacy & Profit</h2>
+    <p class="section-subtext">Everything you need to run a high-efficiency smart print counter.</p>
+</div>
+
+<div class="features-grid">
+    <div class="feat-card">
+        <div class="feat-icon">⚡</div>
+        <h3 class="feat-title">1-Click Windows Desktop Agent</h3>
+        <p class="feat-desc">Portable lightweight .exe software. Runs quietly in system tray, auto-detects USB & network printers, and connects with 1 single API Key.</p>
+    </div>
+
+    <div class="feat-card">
+        <div class="feat-icon">📑</div>
+        <h3 class="feat-title">Custom Paper Rates & Duplex Discount</h3>
+        <p class="feat-desc">Set custom per-page rates for A4, A3, Legal, and Photo 4x6 sizes with automatic duplex discounts and live rate calculations.</p>
+    </div>
+
+    <div class="feat-card">
+        <div class="feat-icon">🔒</div>
+        <h3 class="feat-title">Anti-Abuse & Privacy Protection</h3>
+        <p class="feat-desc">Device-bound pairing ensures 1 PC = 1 Shop. All uploaded customer documents are automatically purged after printing for 100% privacy.</p>
+    </div>
+
+    <div class="feat-card">
+        <div class="feat-icon">📊</div>
+        <h3 class="feat-title">Real-Time Daily Analytics</h3>
+        <p class="feat-desc">Track total prints, revenue collected, color vs B&W breakdown, and daily customer transaction volume right from your web dashboard.</p>
+    </div>
+
+    <div class="feat-card">
+        <div class="feat-icon">🔊</div>
+        <h3 class="feat-title">Audio Chimes for Cash Orders</h3>
+        <p class="feat-desc">Never miss a cash order. Your counter PC rings a sound chime whenever a customer chooses cash payment so you can verify with 1 click.</p>
+    </div>
+
+    <div class="feat-card">
+        <div class="feat-icon">🚀</div>
+        <h3 class="feat-title">Zero Dependency on WhatsApp</h3>
+        <p class="feat-desc">Stop sharing your personal WhatsApp number with hundreds of customers every day. Keep your counter clutter-free and professional.</p>
+    </div>
+</div>
+
+<!-- Interactive ROI / Time Savings Calculator -->
+<div class="calculator-wrapper">
+    <div class="section-title-wrap" style="margin-bottom: 24px;">
+        <span class="section-tag">Calculate Your Profit</span>
+        <h2 class="section-heading" style="font-size: 1.8rem;">How Much Time & Money Will QwikPrint Save You?</h2>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px; align-items: center;">
+        <div>
+            <div class="calc-slider-box">
+                <label style="color: #cbd5e1; font-weight: 700; font-size: 1rem; display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <span>Daily Print Customers:</span>
+                    <strong id="calc-cust-val" style="color: #38bdf8; font-size: 1.2rem;">60 Customers/day</strong>
+                </label>
+                <input type="range" id="calc-slider" class="calc-range" min="10" max="300" value="60" step="10" oninput="runRoiCalculation()">
+            </div>
+
+            <p style="color: #94a3b8; font-size: 0.9rem; line-height: 1.6;">
+                *Calculated based on saving average 3.5 minutes per customer spent in WhatsApp transfer, file downloading, opening dialogs, and manual payment collection.
+            </p>
+        </div>
+
+        <div class="calc-result-card">
+            <div style="font-size: 0.85rem; font-weight: 700; color: #94a3b8; text-transform: uppercase;">Estimated Monthly Counter Time Saved</div>
+            <div class="calc-result-num" id="calc-hours-saved">105 Hours</div>
+            <div style="color: #cbd5e1; font-size: 0.95rem;">
+                Equivalent to adding <strong style="color: #38bdf8;" id="calc-helper-equiv">1.3 Full-Time Staff</strong> for free!
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Dynamic Pricing Section -->
+<div class="section-title-wrap">
+    <span class="section-tag">Affordable Pricing</span>
+    <h2 class="section-heading">Transparent Pricing for Every Print Shop</h2>
+    <p class="section-subtext">No hidden charges. 100% money-back guarantee with Payflux UPI activation.</p>
+</div>
+
+<div class="features-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+    {% for p in plans %}
+    <div class="feat-card" style="display: flex; flex-direction: column; justify-content: space-between; position: relative; border-color: {% if loop.index == 2 %}#818cf8{% else %}rgba(255, 255, 255, 0.1){% endif %};">
+        {% if loop.index == 2 %}
+        <div style="position: absolute; top: -12px; right: 20px; background: linear-gradient(135deg, #6366f1, #a855f7); color: white; padding: 4px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase;">
+            ⭐ Most Popular
+        </div>
+        {% endif %}
+        <div>
+            <h3 style="font-size: 1.4rem; font-weight: 800; color: #ffffff; margin-bottom: 6px;">{{ p.name }}</h3>
+            <div style="font-size: 2.2rem; font-weight: 900; color: #38bdf8; margin-bottom: 12px;">
+                ₹{{ p.price }} <span style="font-size: 0.9rem; color: #94a3b8; font-weight: 500;">/ {{ p.duration_days }} Days</span>
+            </div>
+            <p style="color: #cbd5e1; font-size: 0.9rem; line-height: 1.5; margin-bottom: 20px;">
+                {{ p.description or 'Unlimited print jobs, Windows desktop agent pairing, and instant customer QR portal.' }}
+            </p>
+            <ul style="list-style: none; padding: 0; color: #e2e8f0; font-size: 0.9rem; margin-bottom: 24px;">
+                <li style="margin-bottom: 8px;">✓ Unlimited Customer Uploads</li>
+                <li style="margin-bottom: 8px;">✓ Windows Desktop Agent (.exe)</li>
+                <li style="margin-bottom: 8px;">✓ Payflux UPI & Cash Verification</li>
+                <li style="margin-bottom: 8px;">✓ Auto Document Purge Security</li>
+            </ul>
+        </div>
+        {% if shop %}
+        <a href="/subscription" class="btn-hero-primary" style="text-align: center; justify-content: center; padding: 12px; font-size: 0.95rem;">
+            💳 Subscribe / Renew Now
+        </a>
+        {% else %}
+        <a href="/register" class="btn-hero-primary" style="text-align: center; justify-content: center; padding: 12px; font-size: 0.95rem;">
+            🚀 Start Free Trial (Google)
+        </a>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+
+<!-- FAQ Accordion -->
+<div class="section-title-wrap">
+    <span class="section-tag">Got Questions?</span>
+    <h2 class="section-heading">Frequently Asked Questions</h2>
+</div>
+
+<div class="faq-container">
+    <div class="faq-item active">
+        <div class="faq-question" onclick="toggleFaq(this)">
+            <span>Do I need to buy any new printer or special hardware?</span>
+            <span class="faq-icon">+</span>
+        </div>
+        <div class="faq-answer">
+            No! QwikPrint works with all existing USB, Network, and Wi-Fi printers (HP, Canon, Epson, Brother, Konica Minolta, Ricoh, etc.) connected to your Windows computer (Windows 10 / 11 / 7).
+        </div>
+    </div>
+
+    <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+            <span>How fast does a document print after customer uploads?</span>
+            <span class="faq-icon">+</span>
+        </div>
+        <div class="faq-answer">
+            In under 2 seconds! As soon as payment is confirmed (or cash is verified), the Windows Desktop Agent fetches the file and sends it directly to your printer spooler.
+        </div>
+    </div>
+
+    <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+            <span>What happens if a customer wants to pay in cash?</span>
+            <span class="faq-icon">+</span>
+        </div>
+        <div class="faq-answer">
+            Customers can choose 'Pay Cash at Counter'. Your computer plays an audible chime alert, and with 1 click on 'Collect Cash' in your agent or web panel, printing begins immediately.
+        </div>
+    </div>
+
+    <div class="faq-item">
+        <div class="faq-question" onclick="toggleFaq(this)">
+            <span>Is customer data and confidential document safe?</span>
+            <span class="faq-icon">+</span>
+        </div>
+        <div class="faq-answer">
+            Yes, 100%. All uploaded files are temporarily encrypted, and the background File Lifecycle Daemon permanently purges files from the server after printing.
+        </div>
+    </div>
+</div>
+
+<!-- Final CTA Banner -->
+<div class="final-cta">
+    <h2 style="font-size: 2.4rem; font-weight: 900; color: #ffffff; margin-bottom: 14px;">
+        Ready to Turn Your Shop into a Smart Print ATM?
+    </h2>
+    <p style="color: #e2e8f0; font-size: 1.15rem; max-width: 680px; margin: 0 auto 30px; line-height: 1.6;">
+        Join over 500+ print shops automating their counter today. Setup takes less than 2 minutes on Windows.
+    </p>
+    {% if not shop %}
+    <a href="/register" class="btn-hero-primary" style="font-size: 1.2rem; padding: 18px 42px; display: inline-flex;">
+        🚀 Start 7-Day Free Trial (Google Sign-Up)
+    </a>
+    {% else %}
+    <a href="/dashboard" class="btn-hero-primary" style="font-size: 1.2rem; padding: 18px 42px; display: inline-flex;">
+        📊 Go to Shop Control Panel
+    </a>
+    {% endif %}
+</div>
+
+<script>
+function runRoiCalculation() {
+    const val = parseInt(document.getElementById('calc-slider').value);
+    document.getElementById('calc-cust-val').innerText = val + " Customers/day";
+    const minutesSaved = val * 3.5 * 30; // 30 days
+    const hoursSaved = Math.round(minutesSaved / 60);
+    document.getElementById('calc-hours-saved').innerText = hoursSaved + " Hours";
+    
+    let helpers = (hoursSaved / 80).toFixed(1);
+    if (helpers < 0.5) helpers = "0.5 Staff";
+    else helpers = helpers + " Full-Time Staff";
+    document.getElementById('calc-helper-equiv').innerText = helpers;
+}
+
+function toggleFaq(el) {
+    const item = el.parentElement;
+    item.classList.toggle('active');
+}
+</script>
 {% endblock %}

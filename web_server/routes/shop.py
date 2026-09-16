@@ -20,7 +20,13 @@ def verify_shop_authorization(request: Request, requested_shop_id: str):
 
 @router.get("/", response_class=HTMLResponse)
 async def home_page(request: Request):
-    return templates.TemplateResponse(request=request, name="index.html")
+    user, shop = get_current_user_and_shop(request)
+    plans = db.get_plans()
+    return templates.TemplateResponse(request=request, name="index.html", context={
+        "user": user,
+        "shop": shop,
+        "plans": plans
+    })
 
 @router.get("/dashboard", response_class=HTMLResponse)
 async def shop_dashboard(request: Request):

@@ -48,6 +48,20 @@ async def subscription_page(request: Request):
         }
     )
 
+@router.get("/pricing", response_class=HTMLResponse)
+async def pricing_page(request: Request):
+    user, shop = get_current_user_and_shop(request)
+    plans = db.get_plans()
+    return templates.TemplateResponse(
+        request=request,
+        name="pricing.html",
+        context={
+            "shop": shop,
+            "user": user,
+            "plans": plans
+        }
+    )
+
 @router.post("/api/payments/create-order")
 async def create_payflux_order(request: Request, payload: dict = Body(...)):
     user, shop = get_current_user_and_shop(request)

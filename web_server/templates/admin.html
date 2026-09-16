@@ -272,6 +272,7 @@
                                 <button class="btn-action btn-suspend" onclick="toggleSuspend('{{ s.shop_id }}', true)">Suspend</button>
                                 {% endif %}
                                 <button class="btn-action" style="background: #64748b; color: white;" onclick="resetShopKey('{{ s.shop_id }}')">🔑 Reset Key</button>
+                                <button class="btn-action" style="background: #dc2626; color: white;" onclick="deleteShopCompletely('{{ s.shop_id }}', '{{ s.name }}')">🗑️ Delete Shop</button>
                             </div>
                         </td>
                     </tr>
@@ -538,6 +539,22 @@ async function resetShopKey(shopId) {
             window.location.reload();
         } else {
             alert('❌ Reset failed: ' + (data.error || 'Server error'));
+        }
+    } catch (e) {
+        alert('❌ Network error: ' + e);
+    }
+}
+
+async function deleteShopCompletely(shopId, shopName) {
+    if (!confirm("PERMANENT DELETE WARNING:\nAre you sure you want to PERMANENTLY DELETE shop '" + shopName + "'?\n\nThis will permanently purge the shop, owner user, paired devices, print jobs, and subscriptions from database.")) return;
+    try {
+        const res = await fetch('/api/admin/shops/' + shopId, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+            alert('✅ Shop and all related data permanently deleted.');
+            window.location.reload();
+        } else {
+            alert('❌ Delete failed: ' + (data.error || 'Server error'));
         }
     } catch (e) {
         alert('❌ Network error: ' + e);

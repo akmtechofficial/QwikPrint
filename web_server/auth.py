@@ -43,7 +43,7 @@ def verify_password(password: str, stored_hash: str) -> bool:
 
 def create_session_data(user_id: str, shop_id: str) -> str:
     """Creates an HMAC SHA-256 signed session token with expiration."""
-    exp = int(time.time()) + (86400 * 30) # 30 days
+    exp = int(time.time()) + (86400 * 365) # 1 year persistence
     data = {"user_id": user_id, "shop_id": shop_id, "exp": exp}
     payload_b64 = base64.urlsafe_b64encode(json.dumps(data).encode('utf-8')).decode('utf-8')
     sig = hmac.new(SESSION_SECRET.encode('utf-8'), payload_b64.encode('utf-8'), hashlib.sha256).hexdigest()

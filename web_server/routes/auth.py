@@ -74,7 +74,7 @@ async def login_submit(
             target_url = "/dashboard"
 
     redirect_resp = RedirectResponse(url=target_url, status_code=303)
-    redirect_resp.set_cookie(key="qwikprint_session", value=session_token, httponly=True, max_age=86400 * 30)
+    redirect_resp.set_cookie(key="qwikprint_session", value=session_token, httponly=True, max_age=86400 * 365, path="/", samesite="lax")
     return redirect_resp
 
 @router.post("/auth/google")
@@ -113,8 +113,8 @@ async def google_auth(
         target_url = "/admin" if (user.get("role") == "super_admin" or is_admin_email) else "/dashboard"
 
         redirect_resp = RedirectResponse(url=target_url, status_code=303)
-        redirect_resp.set_cookie(key="qwikprint_session", value=session_token, httponly=True, max_age=86400 * 30)
-        redirect_resp.set_cookie(key="qwikprint_registered_device", value=fp, httponly=True, max_age=86400 * 365 * 10)
+        redirect_resp.set_cookie(key="qwikprint_session", value=session_token, httponly=True, max_age=86400 * 365, path="/", samesite="lax")
+        redirect_resp.set_cookie(key="qwikprint_registered_device", value=fp, httponly=True, max_age=86400 * 365 * 10, path="/", samesite="lax")
         return redirect_resp
     else:
         if is_admin_email:
@@ -128,15 +128,15 @@ async def google_auth(
             session_token = create_session_data(user["user_id"], shop["shop_id"])
 
             redirect_resp = RedirectResponse(url="/admin", status_code=303)
-            redirect_resp.set_cookie(key="qwikprint_session", value=session_token, httponly=True, max_age=86400 * 30)
-            redirect_resp.set_cookie(key="qwikprint_registered_device", value=fp, httponly=True, max_age=86400 * 365 * 10)
+            redirect_resp.set_cookie(key="qwikprint_session", value=session_token, httponly=True, max_age=86400 * 365, path="/", samesite="lax")
+            redirect_resp.set_cookie(key="qwikprint_registered_device", value=fp, httponly=True, max_age=86400 * 365 * 10, path="/", samesite="lax")
             return redirect_resp
         else:
             # NEW USER -> Redirect to Onboarding
             pending_data = f"{clean_email}|{full_name}|{fp}"
             redirect_resp = RedirectResponse(url="/onboarding", status_code=303)
-            redirect_resp.set_cookie(key="qwikprint_pending_google", value=pending_data, httponly=True, max_age=3600)
-            redirect_resp.set_cookie(key="qwikprint_registered_device", value=fp, httponly=True, max_age=86400 * 365 * 10)
+            redirect_resp.set_cookie(key="qwikprint_pending_google", value=pending_data, httponly=True, max_age=3600, path="/", samesite="lax")
+            redirect_resp.set_cookie(key="qwikprint_registered_device", value=fp, httponly=True, max_age=86400 * 365 * 10, path="/", samesite="lax")
             return redirect_resp
 
 @router.get("/onboarding", response_class=HTMLResponse)
@@ -242,8 +242,8 @@ async def onboarding_submit(
     session_token = create_session_data(user["user_id"], shop["shop_id"])
     redirect_resp = RedirectResponse(url=target_url, status_code=303)
     redirect_resp.delete_cookie(key="qwikprint_pending_google", path="/")
-    redirect_resp.set_cookie(key="qwikprint_session", value=session_token, httponly=True, max_age=86400 * 30)
-    redirect_resp.set_cookie(key="qwikprint_registered_device", value=fp, httponly=True, max_age=86400 * 365 * 10)
+    redirect_resp.set_cookie(key="qwikprint_session", value=session_token, httponly=True, max_age=86400 * 365, path="/", samesite="lax")
+    redirect_resp.set_cookie(key="qwikprint_registered_device", value=fp, httponly=True, max_age=86400 * 365 * 10, path="/", samesite="lax")
     return redirect_resp
 
 @router.get("/logout")

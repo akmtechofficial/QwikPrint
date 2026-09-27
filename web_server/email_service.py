@@ -40,7 +40,7 @@ def send_async_email(to_email: str, subject: str, html_content: str):
     thread.start()
 
 def notify_new_user_registration(user_info: dict, shop_info: dict, client_ip: str, device_fp: str):
-    admin_email = (os.getenv("EMAIL") or "akmtechofficial@gmail.com").strip()
+    admin_email = (os.getenv("ADMIN_EMAIL") or os.getenv("EMAIL") or "").strip()
     user_email = user_info.get("email", "")
     full_name = user_info.get("full_name", "Shop Owner")
     phone = user_info.get("phone", "N/A")

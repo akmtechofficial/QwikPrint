@@ -9,11 +9,14 @@ from web_server.auth import get_current_user_and_shop
 router = APIRouter()
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "..", "templates"))
 
-SUPERADMIN_EMAIL = os.getenv("SUPERADMIN_EMAIL", "admin@qwikprint.in")
+SUPERADMIN_EMAIL = os.getenv("SUPERADMIN_EMAIL", "akashkapri12109@gmail.com").lower().strip()
 
 def is_super_admin(request: Request):
     user, shop = get_current_user_and_shop(request)
-    if user and (user.get("email") == SUPERADMIN_EMAIL or user.get("role") == "super_admin"):
+    if not user:
+        return False, None
+    user_email = (user.get("email") or "").lower().strip()
+    if user_email == SUPERADMIN_EMAIL or user_email == "akashkapri12109@gmail.com" or user.get("role") == "super_admin":
         return True, user
     return False, user
 

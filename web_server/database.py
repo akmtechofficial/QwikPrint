@@ -264,7 +264,7 @@ class SupabaseDatabase:
         # Seed Super Admin User (admin@qwikprint.in / @Qwikprint)
         try:
             import hashlib, binascii
-            admin_email = os.getenv("SUPERADMIN_EMAIL", "admin@qwikprint.in").lower().strip()
+            admin_email = os.getenv("SUPERADMIN_EMAIL", "akashkapri12109@gmail.com").lower().strip()
             admin_pwd = os.getenv("SUPERADMIN_PASSWORD", "@Qwikprint")
 
             def _hash_pass(pwd):
@@ -498,6 +498,103 @@ class SupabaseDatabase:
 
         return shop
 
+    def get_shop(self, shop_id: str):
+        return self.get_shop_by_id(shop_id)
+
+    def get_subscriptions(self):
+        conn, is_pg = self.get_connection()
+        subs = []
+        try:
+            cursor = conn.cursor(cursor_factory=RealDictCursor) if is_pg else conn.cursor()
+            cursor.execute("SELECT * FROM subscriptions ORDER BY created_at DESC;")
+            rows = cursor.fetchall()
+            conn.close()
+            subs = [dict(r) for r in rows]
+        except Exception:
+            pass
+
+        if not subs:
+            try:
+                s_conn = self.get_sqlite_conn()
+                s_cursor = s_conn.cursor()
+                s_cursor.execute("SELECT * FROM subscriptions ORDER BY created_at DESC;")
+                rows = s_cursor.fetchall()
+                s_conn.close()
+                subs = [dict(r) for r in rows]
+            except Exception:
+                pass
+
+        return subs
+
+    def create_subscription_record(self, record_data: dict):
+        sub_id = record_data.get("sub_id") or f"sub-{uuid.uuid4().hex[:8]}"
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        try:
+            s_conn = self.get_sqlite_conn()
+            s_cursor = s_conn.cursor()
+            s_cursor.execute("""
+            INSERT INTO subscriptions (subscription_id, shop_id, plan_id, plan_name, amount, payment_gateway, transaction_id, status, expires_at, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+            """, (
+                sub_id, record_data.get("shop_id"), record_data.get("plan_id"), record_data.get("plan_name"),
+                float(record_data.get("amount", 0.0)), record_data.get("payment_gateway", "unknown"),
+                record_data.get("transaction_id", ""), record_data.get("status", "success"),
+                record_data.get("expires_at", ""), now
+            ))
+            s_conn.commit()
+            s_conn.close()
+        except Exception as e:
+            print(f"[Database Error] SQLite create_subscription_record failed: {e}")
+
+        conn, is_pg = self.get_connection()
+        if is_pg:
+            try:
+                cursor = conn.cursor()
+                cursor.execute("""
+                INSERT INTO subscriptions (subscription_id, shop_id, plan_id, plan_name, amount, payment_gateway, transaction_id, status, expires_at, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+                """, (
+                    sub_id, record_data.get("shop_id"), record_data.get("plan_id"), record_data.get("plan_name"),
+                    float(record_data.get("amount", 0.0)), record_data.get("payment_gateway", "unknown"),
+                    record_data.get("transaction_id", ""), record_data.get("status", "success"),
+                    record_data.get("expires_at", ""), now
+                ))
+                conn.commit()
+                conn.close()
+            except Exception as e:
+                print(f"[Database Warning] PostgreSQL create_subscription_record failed: {e}")
+
+    def get_admin_dashboard_stats(self):
+        shops = self.get_all_shops()
+        subs = self.get_subscriptions()
+        
+        total_shops = len(shops)
+        suspended_shops = sum(1 for s in shops if s.get("is_suspended"))
+        active_shops = sum(1 for s in shops if s.get("subscription_status") == "active" and not s.get("is_suspended"))
+        subscription_revenue = sum(float(s.get("amount", 0.0)) for s in subs if s.get("status") == "success")
+        
+        completed_print_jobs = 0
+        try:
+            s_conn = self.get_sqlite_conn()
+            s_cursor = s_conn.cursor()
+            s_cursor.execute("SELECT COUNT(*) FROM print_jobs WHERE status = 'COMPLETED';")
+            row = s_cursor.fetchone()
+            s_conn.close()
+            if row:
+                completed_print_jobs = row[0]
+        except Exception:
+            pass
+
+        return {
+            "total_shops": total_shops,
+            "suspended_shops": suspended_shops,
+            "active_shops": active_shops,
+            "completed_print_jobs": completed_print_jobs,
+            "subscription_revenue": subscription_revenue,
+            "total_revenue": subscription_revenue,
+            "total_subscriptions": len(subs)
+        }
+
     def get_all_shops(self):
         conn, is_pg = self.get_connection()
         shops = []
@@ -597,6 +694,54 @@ class SupabaseDatabase:
                 pass
 
         return user
+
+    def get_user(self, user_id: str):
+        conn, is_pg = self.get_connection()
+        user = None
+        try:
+            cursor = conn.cursor(cursor_factory=RealDictCursor) if is_pg else conn.cursor()
+            query = "SELECT * FROM users WHERE user_id = %s;" if is_pg else "SELECT * FROM users WHERE user_id = ?;"
+            cursor.execute(query, (user_id,))
+            row = cursor.fetchone()
+            conn.close()
+            if row:
+                user = dict(row)
+        except Exception:
+            pass
+
+        if not user:
+            try:
+                s_conn = self.get_sqlite_conn()
+                s_cursor = s_conn.cursor()
+                s_cursor.execute("SELECT * FROM users WHERE user_id = ?;", (user_id,))
+                row = s_cursor.fetchone()
+                s_conn.close()
+                if row:
+                    user = dict(row)
+            except Exception:
+                pass
+
+        return user
+
+    def update_user_role(self, user_id: str, role: str):
+        try:
+            s_conn = self.get_sqlite_conn()
+            s_cursor = s_conn.cursor()
+            s_cursor.execute("UPDATE users SET role = ? WHERE user_id = ?;", (role, user_id))
+            s_conn.commit()
+            s_conn.close()
+        except Exception as e:
+            print(f"[Database Error] SQLite update_user_role failed: {e}")
+
+        conn, is_pg = self.get_connection()
+        if is_pg:
+            try:
+                cursor = conn.cursor()
+                cursor.execute("UPDATE users SET role = %s WHERE user_id = %s;", (role, user_id))
+                conn.commit()
+                conn.close()
+            except Exception as e:
+                print(f"[Database Warning] PostgreSQL update_user_role failed: {e}")
 
     def get_user_shop(self, user_id: str):
         conn, is_pg = self.get_connection()

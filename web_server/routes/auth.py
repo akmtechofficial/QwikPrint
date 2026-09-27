@@ -65,10 +65,10 @@ async def login_submit(
     shop_id = shop["shop_id"] if shop else "SHOP_ADMIN_001"
     session_token = create_session_data(user["user_id"], shop_id)
     
-    superadmin_email = os.getenv("SUPERADMIN_EMAIL", "admin@qwikprint.in").lower().strip()
+    superadmin_email = os.getenv("SUPERADMIN_EMAIL", "akashkapri12109@gmail.com").lower().strip()
     target_url = request.query_params.get("next")
     if not target_url:
-        if user.get("role") == "super_admin" or user.get("email", "").lower().strip() == superadmin_email:
+        if user.get("role") == "super_admin" or user.get("email", "").lower().strip() == superadmin_email or user.get("email", "").lower().strip() == "akashkapri12109@gmail.com":
             target_url = "/admin"
         else:
             target_url = "/dashboard"
@@ -94,29 +94,50 @@ async def google_auth(
         import uuid
         fp = f"FP_{uuid.uuid4().hex[:12].upper()}"
 
+    superadmin_email = os.getenv("SUPERADMIN_EMAIL", "akashkapri12109@gmail.com").lower().strip()
+    is_admin_email = (clean_email == "akashkapri12109@gmail.com" or clean_email == superadmin_email)
+
     existing_user = db.get_user_by_email(clean_email)
     
     if existing_user:
         # Existing User -> Extract existing shop data & log in directly
         user = existing_user
+        if is_admin_email and user.get("role") != "super_admin":
+            db.update_user_role(user["user_id"], "super_admin")
+            user["role"] = "super_admin"
+
         shop = db.get_user_shop(user["user_id"])
         shop_id = shop["shop_id"] if shop else "SHOP_ADMIN_001"
         session_token = create_session_data(user["user_id"], shop_id)
         
-        superadmin_email = os.getenv("SUPERADMIN_EMAIL", "admin@qwikprint.in").lower().strip()
-        target_url = "/admin" if (user.get("role") == "super_admin" or clean_email == superadmin_email) else "/dashboard"
+        target_url = "/admin" if (user.get("role") == "super_admin" or is_admin_email) else "/dashboard"
 
         redirect_resp = RedirectResponse(url=target_url, status_code=303)
         redirect_resp.set_cookie(key="qwikprint_session", value=session_token, httponly=True, max_age=86400 * 30)
         redirect_resp.set_cookie(key="qwikprint_registered_device", value=fp, httponly=True, max_age=86400 * 365 * 10)
         return redirect_resp
     else:
-        # NEW USER -> Do NOT ask for shop name before sign up! Redirect to Onboarding
-        pending_data = f"{clean_email}|{full_name}|{fp}"
-        redirect_resp = RedirectResponse(url="/onboarding", status_code=303)
-        redirect_resp.set_cookie(key="qwikprint_pending_google", value=pending_data, httponly=True, max_age=3600)
-        redirect_resp.set_cookie(key="qwikprint_registered_device", value=fp, httponly=True, max_age=86400 * 365 * 10)
-        return redirect_resp
+        if is_admin_email:
+            # Auto-create super admin account without requiring onboarding
+            pwd_hash = hash_password(f"GOOGLE_AUTH_{clean_email}")
+            user, shop = db.create_user_and_shop(
+                clean_email, pwd_hash, full_name or "Akash Kapri", "9999999999", "QwikPrint Admin",
+                registration_ip=client_ip, device_fingerprint=fp
+            )
+            db.update_user_role(user["user_id"], "super_admin")
+            session_token = create_session_data(user["user_id"], shop["shop_id"])
+
+            redirect_resp = RedirectResponse(url="/admin", status_code=303)
+            redirect_resp.set_cookie(key="qwikprint_session", value=session_token, httponly=True, max_age=86400 * 30)
+            redirect_resp.set_cookie(key="qwikprint_registered_device", value=fp, httponly=True, max_age=86400 * 365 * 10)
+            return redirect_resp
+        else:
+            # NEW USER -> Redirect to Onboarding
+            pending_data = f"{clean_email}|{full_name}|{fp}"
+            redirect_resp = RedirectResponse(url="/onboarding", status_code=303)
+            redirect_resp.set_cookie(key="qwikprint_pending_google", value=pending_data, httponly=True, max_age=3600)
+            redirect_resp.set_cookie(key="qwikprint_registered_device", value=fp, httponly=True, max_age=86400 * 365 * 10)
+            return redirect_resp
 
 @router.get("/onboarding", response_class=HTMLResponse)
 async def onboarding_page(request: Request):
@@ -175,16 +196,21 @@ async def onboarding_submit(
         import uuid
         fp = f"FP_{uuid.uuid4().hex[:12].upper()}"
 
+    superadmin_email = os.getenv("SUPERADMIN_EMAIL", "akashkapri12109@gmail.com").lower().strip()
+    is_admin_email = (clean_email == "akashkapri12109@gmail.com" or clean_email == superadmin_email)
+
     existing_user = db.get_user_by_email(clean_email)
     if existing_user:
         user = existing_user
+        if is_admin_email and user.get("role") != "super_admin":
+            db.update_user_role(user["user_id"], "super_admin")
+            user["role"] = "super_admin"
         shop = db.get_user_shop(user["user_id"])
     else:
         # Multi-Account Lock per IP & Device Fingerprint
         is_blocked, existing_email = db.is_ip_or_device_registered(client_ip, fp)
-        superadmin_email = os.getenv("SUPERADMIN_EMAIL", "admin@qwikprint.in").lower().strip()
         
-        if is_blocked and clean_email != superadmin_email:
+        if is_blocked and not is_admin_email:
             return templates.TemplateResponse(
                 request=request,
                 name="onboarding.html",
@@ -198,9 +224,12 @@ async def onboarding_submit(
 
         pwd_hash = hash_password(f"GOOGLE_AUTH_{clean_email}")
         user, shop = db.create_user_and_shop(
-            full_name, clean_email, phone, shop_name, pwd_hash,
+            clean_email, pwd_hash, full_name, phone, shop_name,
             registration_ip=client_ip, device_fingerprint=fp
         )
+        if is_admin_email:
+            db.update_user_role(user["user_id"], "super_admin")
+            user["role"] = "super_admin"
 
         # Send Email Notifications (Admin Notification to akmtechofficial@gmail.com + Welcome Email to User)
         try:
@@ -209,8 +238,9 @@ async def onboarding_submit(
         except Exception as e:
             print(f"[Warning] Could not trigger email notifications: {e}")
 
+    target_url = "/admin" if (user.get("role") == "super_admin" or is_admin_email) else "/dashboard"
     session_token = create_session_data(user["user_id"], shop["shop_id"])
-    redirect_resp = RedirectResponse(url="/dashboard", status_code=303)
+    redirect_resp = RedirectResponse(url=target_url, status_code=303)
     redirect_resp.delete_cookie(key="qwikprint_pending_google", path="/")
     redirect_resp.set_cookie(key="qwikprint_session", value=session_token, httponly=True, max_age=86400 * 30)
     redirect_resp.set_cookie(key="qwikprint_registered_device", value=fp, httponly=True, max_age=86400 * 365 * 10)

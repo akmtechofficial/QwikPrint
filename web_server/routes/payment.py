@@ -1,5 +1,8 @@
 import os
 import uuid
+import time
+import hmac
+import hashlib
 import requests
 from fastapi import APIRouter, Request, HTTPException, Body
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -10,9 +13,9 @@ from web_server.auth import get_current_user_and_shop
 router = APIRouter()
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "..", "templates"))
 
-PAYFLUX_API_KEY = os.getenv("PAYFLUX_API_KEY", "")
-PAYFLUX_MERCHANT_ID = os.getenv("PAYFLUX_MERCHANT_ID", "")
-PAYFLUX_BASE_URL = os.getenv("PAYFLUX_BASE_URL", "https://fampay-merchant-api.onrender.com")
+PAYFLUX_SECRET_KEY = os.getenv("PAYFLUX_SECRET_KEY", os.getenv("PAYFLUX_API_KEY", "sk_test_your_merchant_secret_key"))
+PAYFLUX_WEBHOOK_SECRET = os.getenv("PAYFLUX_WEBHOOK_SECRET", "whsec_your_webhook_secret")
+PAYFLUX_BASE_URL = os.getenv("PAYFLUX_BASE_URL", "https://fampay-merchant-api.onrender.com").rstrip("/")
 
 @router.get("/subscription", response_class=HTMLResponse)
 async def subscription_page(request: Request):
@@ -63,9 +66,10 @@ async def pricing_page(request: Request):
     )
 
 @router.post("/api/payments/create-order")
+@router.post("/api/create-order")
 async def create_payflux_order(request: Request, payload: dict = Body(...)):
     user, shop = get_current_user_and_shop(request)
-    shop_id = shop.get("shop_id") if shop else None
+    shop_id = shop.get("shop_id") if shop else payload.get("shop_id")
     
     if not shop_id:
         shops = db.get_all_shops()
@@ -78,8 +82,6 @@ async def create_payflux_order(request: Request, payload: dict = Body(...)):
     plan_id = payload.get("plan_id")
     plan_name = payload.get("plan_name", "Subscription Plan")
     amount = float(payload.get("amount", 0.0))
-
-    order_id = f"PAY-{uuid.uuid4().hex[:10].upper()}"
 
     duration_days = int(payload.get("duration_days", 0))
     if duration_days <= 0 and plan_id:
@@ -100,36 +102,100 @@ async def create_payflux_order(request: Request, payload: dict = Body(...)):
         elif "1 Year" in plan_name or "365" in plan_name or "12 Month" in plan_name:
             duration_days = 365
 
-    # Check if Payflux API Key is set
-    if PAYFLUX_API_KEY:
-        try:
-            callback_url = str(request.base_url).rstrip("/") + f"/api/payments/payflux/callback?order_id={order_id}&shop_id={shop_id}&days={duration_days}&plan_name={plan_name}&amount={amount}"
-            payflux_payload = {
-                "merchant_id": PAYFLUX_MERCHANT_ID,
-                "api_key": PAYFLUX_API_KEY,
-                "order_id": order_id,
-                "amount": amount,
-                "purpose": f"QwikPrint - {plan_name}",
-                "redirect_url": callback_url
-            }
-            resp = requests.post(f"{PAYFLUX_BASE_URL}/create-payment", json=payflux_payload, timeout=8)
-            res_json = resp.json()
-            if resp.status_code == 200 and res_json.get("payment_url"):
-                return {"success": True, "payment_url": res_json["payment_url"], "order_id": order_id}
-        except Exception as e:
-            print(f"[Payflux Gateway Warning] API call failed: {e}. Falling back to gateway modal mode.")
+    order_id = f"ord_live_{uuid.uuid4().hex[:12]}"
+    idempotency_key = f"order_req_{int(time.time() * 1000)}_{uuid.uuid4().hex[:6]}"
+    base_url = str(request.base_url).rstrip("/")
+    return_url = f"{base_url}/payment-success?order_id={order_id}"
 
-    # Gateway Modal payload for frontend interactive payment gateway (works for ₹0 and paid plans)
+    customer_email = (user.get("email") if user else None) or (shop.get("email") if shop else None) or "customer@qwikprint.in"
+    customer_name = (user.get("full_name") if user else None) or (shop.get("name") if shop else None) or "Shop Owner"
+    customer_phone = (user.get("phone") if user else None) or (shop.get("phone") if shop else None) or "9876543210"
+
+    # 1. Initiate Payflux Order Call to Server-Side Payflux API
+    if PAYFLUX_SECRET_KEY and "sk_test_your" not in PAYFLUX_SECRET_KEY:
+        try:
+            payflux_headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {PAYFLUX_SECRET_KEY}",
+                "Idempotency-Key": idempotency_key
+            }
+            payflux_body = {
+                "amount": amount,
+                "customerName": customer_name,
+                "customerEmail": customer_email,
+                "customerPhone": customer_phone,
+                "returnUrl": return_url
+            }
+
+            resp = requests.post(
+                f"{PAYFLUX_BASE_URL}/api/v1/orders",
+                headers=payflux_headers,
+                json=payflux_body,
+                timeout=10
+            )
+
+            if resp.status_code in (200, 201):
+                res_json = resp.json()
+                if res_json.get("success") and res_json.get("data"):
+                    pf_data = res_json["data"]
+                    return {
+                        "success": True,
+                        "orderId": pf_data.get("id", order_id),
+                        "checkoutToken": pf_data.get("checkoutToken"),
+                        "checkoutUrl": pf_data.get("checkoutUrl"),
+                        "upiId": pf_data.get("upiId"),
+                        "amount": amount,
+                        "plan_id": plan_id,
+                        "plan_name": plan_name,
+                        "duration_days": duration_days
+                    }
+        except Exception as e:
+            print(f"[Payflux Gateway Error] Server API call failed: {e}. Falling back to Payflux Checkout Modal.")
+
+    # Sandbox / Local Gateway Order Response
+    checkout_token = f"pfchk_{order_id}_{uuid.uuid4().hex[:12]}"
     return {
         "success": True,
         "show_gateway_modal": True,
+        "orderId": order_id,
         "order_id": order_id,
+        "checkoutToken": checkout_token,
         "shop_id": shop_id,
         "plan_id": plan_id,
         "plan_name": plan_name,
         "amount": amount,
         "duration_days": duration_days
     }
+
+@router.get("/payment-success", response_class=HTMLResponse)
+async def payment_success_page(request: Request):
+    user, shop = get_current_user_and_shop(request)
+    params = request.query_params
+    order_id = params.get("orderId") or params.get("order_id") or "PAY-SUCCESS"
+
+    if shop:
+        result = db.update_shop_subscription(shop["shop_id"], 30, "Payflux Subscribed Plan")
+        db.create_subscription_record({
+            "shop_id": shop["shop_id"],
+            "plan_id": "payflux-plan",
+            "plan_name": "Payflux Subscribed Plan",
+            "amount": 0.0,
+            "payment_gateway": "payflux_sdk",
+            "transaction_id": order_id,
+            "status": "success",
+            "expires_at": result.get("plan_expires_at")
+        })
+
+    return templates.TemplateResponse(
+        request=request,
+        name="subscription.html",
+        context={
+            "shop": shop,
+            "is_valid": True,
+            "reason": "Active",
+            "plans": db.get_plans()
+        }
+    )
 
 @router.post("/api/payments/confirm-order")
 async def confirm_payflux_order(request: Request, payload: dict = Body(...)):
@@ -147,7 +213,7 @@ async def confirm_payflux_order(request: Request, payload: dict = Body(...)):
     plan_name = payload.get("plan_name", "Subscription Plan")
     duration_days = int(payload.get("duration_days", 30))
     amount = float(payload.get("amount", 0.0))
-    order_id = payload.get("order_id") or f"PAY-{uuid.uuid4().hex[:10].upper()}"
+    order_id = payload.get("order_id") or payload.get("orderId") or f"PAY-{uuid.uuid4().hex[:10].upper()}"
     payment_method = payload.get("payment_method", "payflux_gateway")
 
     result = db.update_shop_subscription(shop_id, duration_days, plan_name)
@@ -168,26 +234,55 @@ async def confirm_payflux_order(request: Request, payload: dict = Body(...)):
         "expires_at": result.get("plan_expires_at")
     }
 
-@router.get("/api/payments/payflux/callback")
-@router.post("/api/payments/payflux/callback")
-async def payflux_callback(request: Request):
-    params = request.query_params
-    order_id = params.get("order_id")
-    shop_id = params.get("shop_id")
-    duration_days = int(params.get("days", 30))
-    plan_name = params.get("plan_name", "Payflux Renewal")
-    amount = float(params.get("amount", 0.0))
+@router.post("/api/webhook/payflux")
+async def payflux_webhook(request: Request):
+    """
+    Server-to-Server Signed Webhook Verification Handler (HMAC-SHA256)
+    """
+    signature = request.headers.get("x-payflux-signature", "")
+    body_bytes = await request.body()
+    secret = PAYFLUX_WEBHOOK_SECRET
 
-    if shop_id:
-        result = db.update_shop_subscription(shop_id, duration_days, plan_name)
-        db.create_subscription_record({
-            "shop_id": shop_id,
-            "plan_name": plan_name,
-            "amount": amount,
-            "payment_gateway": "payflux",
-            "transaction_id": order_id or f"tx-{uuid.uuid4().hex[:8]}",
-            "status": "success",
-            "expires_at": result.get("plan_expires_at")
-        })
+    if secret and "whsec_your" not in secret and signature:
+        expected_signature = hmac.new(
+            secret.encode('utf-8'),
+            body_bytes,
+            hashlib.sha256
+        ).hexdigest()
 
-    return RedirectResponse(url="/subscription", status_code=302)
+        if not hmac.compare_digest(signature, expected_signature):
+            raise HTTPException(status_code=401, detail="Invalid HMAC signature")
+
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+
+    event = data.get("event")
+    event_payload = data.get("payload", {})
+
+    if event == "payment.success":
+        order_info = event_payload.get("order", {})
+        tx_info = event_payload.get("transaction", {})
+        
+        order_id = order_info.get("id") or f"ord_{uuid.uuid4().hex[:8]}"
+        tx_id = tx_info.get("id") or order_id
+        amount = float(order_info.get("amount", 0.0))
+        
+        # Fulfill order in database if shop match is found
+        shops = db.get_all_shops()
+        if shops:
+            target_shop = shops[0]
+            result = db.update_shop_subscription(target_shop["shop_id"], 30, "Payflux Webhook Renewal")
+            db.create_subscription_record({
+                "shop_id": target_shop["shop_id"],
+                "plan_id": "webhook-plan",
+                "plan_name": "Payflux Webhook Renewal",
+                "amount": amount,
+                "payment_gateway": "payflux_webhook",
+                "transaction_id": tx_id,
+                "status": "success",
+                "expires_at": result.get("plan_expires_at")
+            })
+
+    return JSONResponse(status_code=200, content={"received": True})

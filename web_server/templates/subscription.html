@@ -173,7 +173,7 @@ async function initiatePayfluxPayment(planId, planName, amount, durationDays) {
     try {
         const btn = event.target;
         const origText = btn.innerHTML;
-        btn.innerHTML = "⏳ Opening Payflux Gateway...";
+        btn.innerHTML = "⏳ Connecting to Payflux Gateway...";
         btn.disabled = true;
 
         const res = await fetch('/api/payments/create-order', {
@@ -191,21 +191,61 @@ async function initiatePayfluxPayment(planId, planName, amount, durationDays) {
         btn.innerHTML = origText;
         btn.disabled = false;
 
-        if (data.success && data.payment_url) {
-            window.location.href = data.payment_url;
+        const orderId = data.orderId || data.order_id;
+        const checkoutToken = data.checkoutToken;
+
+        // 1. Try Official Payflux JS SDK Popup Checkout
+        if (data.success && checkoutToken && typeof Payflux !== 'undefined' && typeof Payflux.open === 'function') {
+            try {
+                Payflux.open({
+                    orderId: orderId,
+                    checkoutToken: checkoutToken,
+                    onSuccess: async function(result) {
+                        console.log("Payment Confirmed by Backend Payflux SDK:", result);
+                        await fetch('/api/payments/confirm-order', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                order_id: (result && result.orderId) ? result.orderId : orderId,
+                                plan_id: planId,
+                                plan_name: planName,
+                                amount: amount,
+                                duration_days: durationDays,
+                                payment_method: 'payflux_sdk'
+                            })
+                        });
+                        window.location.href = "/payment-success?orderId=" + ((result && result.orderId) ? result.orderId : orderId);
+                    },
+                    onFailure: function(error) {
+                        alert("Payment Failed: " + (error.message || "Transaction cancelled"));
+                    },
+                    onClose: function() {
+                        console.log("Customer closed the Payflux checkout modal");
+                    }
+                });
+                return;
+            } catch (err) {
+                console.warn("[Payflux SDK Warning] Payflux.open call exception, falling back to modal UI:", err);
+            }
+        }
+
+        // 2. Direct Redirect URL if returned by Payflux API
+        if (data.success && data.checkoutUrl) {
+            window.location.href = data.checkoutUrl;
             return;
         }
 
+        // 3. Fallback Interactive Gateway Modal
         if (data.success) {
             currentOrder = {
-                order_id: data.order_id,
+                order_id: orderId,
                 plan_id: planId,
                 plan_name: planName,
                 amount: amount,
                 duration_days: durationDays || 30
             };
 
-            document.getElementById('modal-order-id').innerText = data.order_id;
+            document.getElementById('modal-order-id').innerText = orderId;
             document.getElementById('modal-plan-name').innerText = planName;
             document.getElementById('modal-amount').innerText = '₹' + amount.toFixed(2);
             document.getElementById('modal-pay-btn').innerText = `🔒 Pay ₹${amount.toFixed(2)} & Activate Subscription`;

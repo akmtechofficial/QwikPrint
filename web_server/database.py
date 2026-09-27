@@ -249,6 +249,7 @@ class SupabaseDatabase:
             if count == 0:
                 now = datetime.datetime.now(datetime.timezone.utc).isoformat()
                 default_plans = [
+                    ("plan-free", "7 Days Free Trial", 7, 0.0, "7 Days Full Unlimited Printing Access (100% Free Trial)", now),
                     ("plan-1m", "1 Month Starter", 30, 199.0, "30 Days Unlimited Printing Access", now),
                     ("plan-3m", "3 Months Pro", 90, 499.0, "90 Days Unlimited Printing Access (Save 15%)", now),
                     ("plan-12m", "1 Year Enterprise", 365, 1499.0, "365 Days Unlimited Printing Access (Best Value)", now)
@@ -325,6 +326,18 @@ class SupabaseDatabase:
                 plans = [dict(r) for r in rows]
             except Exception as e:
                 print(f"[Database Error] SQLite fallback get_plans failed: {e}")
+
+        # Ensure a 0 Rs Free Trial plan exists in plans array
+        has_zero_plan = any(float(p.get("price", 0)) == 0.0 for p in plans)
+        if not has_zero_plan:
+            free_plan = {
+                "plan_id": "plan-free",
+                "name": "7 Days Free Trial",
+                "duration_days": 7,
+                "price": 0.0,
+                "description": "7 Days Full Unlimited Printing Access (100% Free Trial)"
+            }
+            plans.insert(0, free_plan)
 
         return plans
 
@@ -776,7 +789,7 @@ class SupabaseDatabase:
             return False, ""
         s_conn = self.get_sqlite_conn()
         s_cursor = s_conn.cursor()
-        s_cursor.execute("SELECT email FROM users WHERE (registration_ip = ? AND registration_ip != '127.0.0.1') OR (device_fingerprint = ? AND device_fingerprint != '');", (ip, device_fingerprint))
+        s_cursor.execute("SELECT email FROM users WHERE (registration_ip = ? AND registration_ip != '127.0.0.1') OR (device_fingerprint = ? AND device_fingerprint != '');", (ip, device_fp))
         row = s_cursor.fetchone()
         s_conn.close()
         if row:

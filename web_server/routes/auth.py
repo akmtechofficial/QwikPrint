@@ -238,7 +238,7 @@ async def onboarding_submit(
         except Exception as e:
             print(f"[Warning] Could not trigger email notifications: {e}")
 
-    target_url = "/admin" if (user.get("role") == "super_admin" or is_admin_email) else "/dashboard"
+    target_url = "/admin" if (user.get("role") == "super_admin" or is_admin_email) else "/subscription?new_signup=true"
     session_token = create_session_data(user["user_id"], shop["shop_id"])
     redirect_resp = RedirectResponse(url=target_url, status_code=303)
     redirect_resp.delete_cookie(key="qwikprint_pending_google", path="/")

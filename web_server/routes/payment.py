@@ -77,7 +77,7 @@ async def create_payflux_order(request: Request, payload: dict = Body(...)):
 
     plan_id = payload.get("plan_id")
     plan_name = payload.get("plan_name", "Subscription Plan")
-    amount = float(payload.get("amount", 199.0))
+    amount = float(payload.get("amount", 0.0))
 
     order_id = f"PAY-{uuid.uuid4().hex[:10].upper()}"
 
@@ -91,7 +91,9 @@ async def create_payflux_order(request: Request, payload: dict = Body(...)):
 
     if duration_days <= 0:
         duration_days = 30
-        if "2 Month" in plan_name or "60" in plan_name:
+        if "Free" in plan_name or "Trial" in plan_name or "7" in plan_name or amount == 0:
+            duration_days = 7
+        elif "2 Month" in plan_name or "60" in plan_name:
             duration_days = 60
         elif "3 Month" in plan_name or "90" in plan_name:
             duration_days = 90
@@ -115,16 +117,46 @@ async def create_payflux_order(request: Request, payload: dict = Body(...)):
             if resp.status_code == 200 and res_json.get("payment_url"):
                 return {"success": True, "payment_url": res_json["payment_url"], "order_id": order_id}
         except Exception as e:
-            print(f"[Payflux Gateway Warning] API call failed: {e}. Falling back to instant auto-activation mode.")
+            print(f"[Payflux Gateway Warning] API call failed: {e}. Falling back to gateway modal mode.")
 
-    # Auto-activation mode if Payflux key is in setup
-    result = db.update_shop_subscription(shop_id, duration_days, plan_name)
-    db.create_subscription_record({
+    # Gateway Modal payload for frontend interactive payment gateway (works for ₹0 and paid plans)
+    return {
+        "success": True,
+        "show_gateway_modal": True,
+        "order_id": order_id,
         "shop_id": shop_id,
         "plan_id": plan_id,
         "plan_name": plan_name,
         "amount": amount,
-        "payment_gateway": "payflux",
+        "duration_days": duration_days
+    }
+
+@router.post("/api/payments/confirm-order")
+async def confirm_payflux_order(request: Request, payload: dict = Body(...)):
+    user, shop = get_current_user_and_shop(request)
+    shop_id = shop.get("shop_id") if shop else payload.get("shop_id")
+    
+    if not shop_id:
+        shops = db.get_all_shops()
+        if shops:
+            shop_id = shops[0].get("shop_id")
+
+    if not shop_id:
+        raise HTTPException(status_code=400, detail="No registered shop found for payment confirmation")
+
+    plan_name = payload.get("plan_name", "Subscription Plan")
+    duration_days = int(payload.get("duration_days", 30))
+    amount = float(payload.get("amount", 0.0))
+    order_id = payload.get("order_id") or f"PAY-{uuid.uuid4().hex[:10].upper()}"
+    payment_method = payload.get("payment_method", "payflux_gateway")
+
+    result = db.update_shop_subscription(shop_id, duration_days, plan_name)
+    db.create_subscription_record({
+        "shop_id": shop_id,
+        "plan_id": payload.get("plan_id", "custom"),
+        "plan_name": plan_name,
+        "amount": amount,
+        "payment_gateway": payment_method,
         "transaction_id": order_id,
         "status": "success",
         "expires_at": result.get("plan_expires_at")
@@ -132,7 +164,6 @@ async def create_payflux_order(request: Request, payload: dict = Body(...)):
 
     return {
         "success": True,
-        "auto_activated": True,
         "message": f"Successfully subscribed to {plan_name} for {duration_days} days!",
         "expires_at": result.get("plan_expires_at")
     }

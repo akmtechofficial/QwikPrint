@@ -97,41 +97,122 @@ async def google_auth(
     existing_user = db.get_user_by_email(clean_email)
     
     if existing_user:
-        # User already registered -> Allow Login
+        # Existing User -> Extract existing shop data & log in directly
         user = existing_user
         shop = db.get_user_shop(user["user_id"])
-        if not shop:
-            s_name = shop_name or f"{user.get('full_name', 'My')} Print Hub"
-            shop = db.create_user_and_shop(
-                user["full_name"], clean_email, "", s_name, "GOOGLE_AUTH_USER",
-                registration_ip=client_ip, device_fingerprint=fp
-            )[1]
-    else:
-        # New Registration attempt -> Check Multi-Account Lock per IP & Device Fingerprint
-        is_blocked, existing_email = db.is_ip_or_device_registered(client_ip, fp)
+        shop_id = shop["shop_id"] if shop else "SHOP_ADMIN_001"
+        session_token = create_session_data(user["user_id"], shop_id)
         
-        # Super admin exemption
         superadmin_email = os.getenv("SUPERADMIN_EMAIL", "admin@qwikprint.in").lower().strip()
+        target_url = "/admin" if (user.get("role") == "super_admin" or clean_email == superadmin_email) else "/dashboard"
+
+        redirect_resp = RedirectResponse(url=target_url, status_code=303)
+        redirect_resp.set_cookie(key="qwikprint_session", value=session_token, httponly=True, max_age=86400 * 30)
+        redirect_resp.set_cookie(key="qwikprint_registered_device", value=fp, httponly=True, max_age=86400 * 365 * 10)
+        return redirect_resp
+    else:
+        # NEW USER -> Do NOT ask for shop name before sign up! Redirect to Onboarding
+        pending_data = f"{clean_email}|{full_name}|{fp}"
+        redirect_resp = RedirectResponse(url="/onboarding", status_code=303)
+        redirect_resp.set_cookie(key="qwikprint_pending_google", value=pending_data, httponly=True, max_age=3600)
+        redirect_resp.set_cookie(key="qwikprint_registered_device", value=fp, httponly=True, max_age=86400 * 365 * 10)
+        return redirect_resp
+
+@router.get("/onboarding", response_class=HTMLResponse)
+async def onboarding_page(request: Request):
+    user, shop = get_current_user_and_shop(request)
+    if user or shop:
+        return RedirectResponse(url="/dashboard", status_code=302)
+    
+    pending_cookie = request.cookies.get("qwikprint_pending_google", "")
+    google_email = ""
+    google_name = ""
+    device_fp = request.cookies.get("qwikprint_registered_device", "")
+    
+    if pending_cookie and "|" in pending_cookie:
+        parts = pending_cookie.split("|")
+        google_email = parts[0]
+        if len(parts) > 1:
+            google_name = parts[1]
+        if len(parts) > 2 and not device_fp:
+            device_fp = parts[2]
+            
+    if not google_email:
+        return RedirectResponse(url="/register", status_code=302)
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="onboarding.html", 
+        context={
+            "error": None,
+            "google_email": google_email,
+            "google_name": google_name,
+            "device_fp": device_fp
+        }
+    )
+
+@router.post("/onboarding", response_class=HTMLResponse)
+async def onboarding_submit(
+    request: Request,
+    email: str = Form(""),
+    full_name: str = Form(...),
+    shop_name: str = Form(...),
+    phone: str = Form(...),
+    device_fp: str = Form("")
+):
+    pending_cookie = request.cookies.get("qwikprint_pending_google", "")
+    clean_email = email.lower().strip()
+    
+    if not clean_email and pending_cookie and "|" in pending_cookie:
+        clean_email = pending_cookie.split("|")[0].lower().strip()
+        
+    if not clean_email:
+        return RedirectResponse(url="/register", status_code=302)
+
+    client_ip = get_client_ip(request)
+    fp = device_fp.strip() or request.cookies.get("qwikprint_registered_device", "")
+    if not fp:
+        import uuid
+        fp = f"FP_{uuid.uuid4().hex[:12].upper()}"
+
+    existing_user = db.get_user_by_email(clean_email)
+    if existing_user:
+        user = existing_user
+        shop = db.get_user_shop(user["user_id"])
+    else:
+        # Multi-Account Lock per IP & Device Fingerprint
+        is_blocked, existing_email = db.is_ip_or_device_registered(client_ip, fp)
+        superadmin_email = os.getenv("SUPERADMIN_EMAIL", "admin@qwikprint.in").lower().strip()
+        
         if is_blocked and clean_email != superadmin_email:
             return templates.TemplateResponse(
                 request=request,
-                name="register.html",
+                name="onboarding.html",
                 context={
-                    "error": f"🚫 Registration Locked: An account ({existing_email[:3]}***@{existing_email.split('@')[-1]}) has already been created from this device or IP address ({client_ip}). Creating multiple shop accounts from the same device is strictly prohibited."
+                    "error": f"🚫 Registration Locked: An account ({existing_email[:3]}***@{existing_email.split('@')[-1]}) has already been created from this device or IP address ({client_ip}). Creating multiple shop accounts from the same device is strictly prohibited.",
+                    "google_email": clean_email,
+                    "google_name": full_name,
+                    "device_fp": fp
                 }
             )
 
-        s_name = shop_name or f"{full_name}'s Print Hub"
         pwd_hash = hash_password(f"GOOGLE_AUTH_{clean_email}")
         user, shop = db.create_user_and_shop(
-            full_name, clean_email, "+91 0000000000", s_name, pwd_hash,
+            full_name, clean_email, phone, shop_name, pwd_hash,
             registration_ip=client_ip, device_fingerprint=fp
         )
 
+        # Send Email Notifications (Admin Notification to akmtechofficial@gmail.com + Welcome Email to User)
+        try:
+            from web_server.email_service import notify_new_user_registration
+            notify_new_user_registration(user, shop, client_ip, fp)
+        except Exception as e:
+            print(f"[Warning] Could not trigger email notifications: {e}")
+
     session_token = create_session_data(user["user_id"], shop["shop_id"])
     redirect_resp = RedirectResponse(url="/dashboard", status_code=303)
+    redirect_resp.delete_cookie(key="qwikprint_pending_google", path="/")
     redirect_resp.set_cookie(key="qwikprint_session", value=session_token, httponly=True, max_age=86400 * 30)
-    # Set persistent 10-year device fingerprint cookie
     redirect_resp.set_cookie(key="qwikprint_registered_device", value=fp, httponly=True, max_age=86400 * 365 * 10)
     return redirect_resp
 

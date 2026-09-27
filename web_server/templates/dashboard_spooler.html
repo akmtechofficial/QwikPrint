@@ -1,0 +1,38 @@
+{% extends "dashboard_base.html" %}
+
+{% block page_heading %}🔑 Windows Desktop Spooler & API Key Pairing{% endblock %}
+
+{% block dashboard_content %}
+<div class="glass-card" style="border-color: var(--primary-light);">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 18px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 32px;">🔑</span>
+            <div>
+                <h3 style="font-size: 18px; font-weight: 800; font-family: var(--font-display); color: #ffffff;">Desktop Spooler Pairing API Key</h3>
+                <p style="font-size: 13px; color: var(--text-muted);">Paste this API Key into your Windows Desktop Print Agent software to pair your printer counter.</p>
+            </div>
+        </div>
+        <span class="status-pill pill-success" style="font-size: 12px;">🔒 1 API Key = 1 PC Bound License</span>
+    </div>
+
+    <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 24px;">
+        <input type="text" id="api-key-input" class="form-input" value="{{ api_key }}" readonly style="flex: 1; font-family: monospace; font-size: 17px; font-weight: 700; color: var(--cyan-accent); background: #09090b; border-color: var(--primary-light); text-align: center;">
+        <button onclick="navigator.clipboard.writeText('{{ api_key }}'); alert('API Key copied to clipboard! Paste it into Desktop Agent.');" class="btn-primary" style="padding: 12px 24px;">
+            📋 Copy API Key
+        </button>
+        <form action="/api/shop/regenerate-key" method="POST" style="margin: 0;">
+            <input type="hidden" name="shop_id" value="{{ shop.shop_id }}">
+            <button type="submit" class="btn-secondary" style="padding: 12px 18px; font-size: 13px;">🔄 Regenerate Key</button>
+        </form>
+    </div>
+
+    <div style="background: rgba(9, 9, 11, 0.8); border: 1px solid var(--card-border); border-radius: 14px; padding: 20px;">
+        <h4 style="font-size: 15px; font-weight: 700; color: #ffffff; margin-bottom: 12px;">💻 How to Connect Your Windows Print Counter:</h4>
+        <ol style="color: var(--text-body); font-size: 13.5px; padding-left: 20px; display: flex; flex-direction: column; gap: 8px;">
+            <li>Download & Install the <strong>QwikPrint Windows Desktop Spooler (.exe)</strong> on your main print counter PC.</li>
+            <li>Launch the app and paste your unique <strong>API Key</strong> shown above.</li>
+            <li>Select your connected USB/Network Xerox Printer and click <strong>"Start Automated Spooling"</strong>.</li>
+        </ol>
+    </div>
+</div>
+{% endblock %}

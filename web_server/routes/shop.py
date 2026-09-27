@@ -28,13 +28,10 @@ async def home_page(request: Request):
         "plans": plans
     })
 
-@router.get("/dashboard", response_class=HTMLResponse)
-async def shop_dashboard(request: Request):
+def get_dashboard_context(request: Request, active_tab: str):
     user, shop = get_current_user_and_shop(request)
-    
-    # Strict Authentication Protection (No Auth Bypass / Fallback allowed)
     if not user or not shop:
-        return RedirectResponse(url="/login", status_code=302)
+        return None, None, None
 
     jobs = db.get_shop_jobs(shop["shop_id"], limit=50)
     paper_rates = db.get_shop_paper_rates(shop["shop_id"])
@@ -49,9 +46,11 @@ async def shop_dashboard(request: Request):
 
     api_key = shop.get("api_key") or f"QWIK_KEY_{shop['shop_id']}_8F2A1C"
 
-    return templates.TemplateResponse(request=request, name="dashboard.html", context={
+    context = {
+        "request": request,
         "user": user,
         "shop": shop,
+        "active_tab": active_tab,
         "api_key": api_key,
         "paper_rates": paper_rates,
         "jobs": jobs,
@@ -60,7 +59,76 @@ async def shop_dashboard(request: Request):
         "total_pages": total_pages,
         "customer_url": customer_url,
         "qr_base64": qr_base64
-    })
+    }
+    return user, shop, context
+
+@router.get("/dashboard", response_class=HTMLResponse)
+async def shop_dashboard_overview(request: Request):
+    user, shop, context = get_dashboard_context(request, "overview")
+    if not user or not shop:
+        return RedirectResponse(url="/login", status_code=302)
+    return templates.TemplateResponse(request=request, name="dashboard_overview.html", context=context)
+
+@router.get("/dashboard/queue", response_class=HTMLResponse)
+async def shop_dashboard_queue(request: Request):
+    user, shop, context = get_dashboard_context(request, "queue")
+    if not user or not shop:
+        return RedirectResponse(url="/login", status_code=302)
+    return templates.TemplateResponse(request=request, name="dashboard_queue.html", context=context)
+
+@router.get("/dashboard/profile", response_class=HTMLResponse)
+async def shop_dashboard_profile(request: Request):
+    user, shop, context = get_dashboard_context(request, "profile")
+    if not user or not shop:
+        return RedirectResponse(url="/login", status_code=302)
+    return templates.TemplateResponse(request=request, name="dashboard_profile.html", context=context)
+
+@router.get("/dashboard/rates", response_class=HTMLResponse)
+async def shop_dashboard_rates(request: Request):
+    user, shop, context = get_dashboard_context(request, "rates")
+    if not user or not shop:
+        return RedirectResponse(url="/login", status_code=302)
+    return templates.TemplateResponse(request=request, name="dashboard_rates.html", context=context)
+
+@router.get("/dashboard/spooler", response_class=HTMLResponse)
+async def shop_dashboard_spooler(request: Request):
+    user, shop, context = get_dashboard_context(request, "spooler")
+    if not user or not shop:
+        return RedirectResponse(url="/login", status_code=302)
+    return templates.TemplateResponse(request=request, name="dashboard_spooler.html", context=context)
+
+@router.get("/dashboard/qr-poster", response_class=HTMLResponse)
+async def shop_dashboard_qr(request: Request):
+    user, shop, context = get_dashboard_context(request, "qr_poster")
+    if not user or not shop:
+        return RedirectResponse(url="/login", status_code=302)
+    return templates.TemplateResponse(request=request, name="dashboard_qr.html", context=context)
+
+@router.get("/api/shop/qr-poster/download-pdf")
+async def download_shop_poster_pdf(request: Request):
+    user, shop = get_current_user_and_shop(request)
+    if not user or not shop:
+        return RedirectResponse(url="/login", status_code=302)
+
+    base_url = str(request.base_url).rstrip("/")
+    customer_url = f"{base_url}/s/{shop['shop_id']}"
+
+    from web_server.pdf_poster_generator import create_shop_poster_pdf
+    pdf_bytes = create_shop_poster_pdf(shop, customer_url)
+
+    filename = f"QwikPrint_Counter_Poster_{shop['shop_id']}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+@router.get("/dashboard/billing", response_class=HTMLResponse)
+async def shop_dashboard_billing(request: Request):
+    user, shop, context = get_dashboard_context(request, "billing")
+    if not user or not shop:
+        return RedirectResponse(url="/login", status_code=302)
+    return templates.TemplateResponse(request=request, name="dashboard_billing.html", context=context)
 
 @router.post("/api/shop/details")
 async def update_shop_details(
@@ -74,7 +142,7 @@ async def update_shop_details(
 ):
     verify_shop_authorization(request, shop_id)
     db.update_shop_details(shop_id, name, owner_name, phone, address, email)
-    return RedirectResponse(url="/dashboard", status_code=303)
+    return RedirectResponse(url="/dashboard/profile", status_code=303)
 
 @router.post("/api/shop/pricing")
 async def update_pricing(
@@ -86,7 +154,7 @@ async def update_pricing(
 ):
     verify_shop_authorization(request, shop_id)
     db.update_shop_pricing(shop_id, bw_rate, color_rate, duplex_discount)
-    return RedirectResponse(url="/dashboard", status_code=303)
+    return RedirectResponse(url="/dashboard/rates", status_code=303)
 
 @router.post("/api/shop/paper-rates")
 async def update_shop_paper_rates(
@@ -100,10 +168,20 @@ async def update_shop_paper_rates(
         db.update_shop_paper_rates(shop_id, rates[:5])
     except Exception as e:
         print(f"[Paper Rates Error] {e}")
-    return RedirectResponse(url="/dashboard", status_code=303)
+    return RedirectResponse(url="/dashboard/rates", status_code=303)
 
 @router.post("/api/shop/regenerate-key")
 async def regenerate_key(request: Request, shop_id: str = Form(...)):
     verify_shop_authorization(request, shop_id)
     db.regenerate_shop_api_key(shop_id)
-    return RedirectResponse(url="/dashboard", status_code=303)
+    return RedirectResponse(url="/dashboard/spooler", status_code=303)
+
+@router.get("/shadcn-components", response_class=HTMLResponse)
+async def shadcn_components_page(request: Request):
+    user, shop = get_current_user_and_shop(request)
+    return templates.TemplateResponse(request=request, name="shadcn_components.html", context={
+        "user": user,
+        "shop": shop
+    })
+
+

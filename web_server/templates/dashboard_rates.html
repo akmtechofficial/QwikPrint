@@ -1,0 +1,84 @@
+{% extends "dashboard_base.html" %}
+
+{% block page_heading %}📜 Paper Sizes & Per-Page Rate Engine{% endblock %}
+
+{% block dashboard_content %}
+<div class="glass-card">
+    <div style="border-bottom: 1px solid var(--card-border); padding-bottom: 16px; margin-bottom: 20px;">
+        <h3 style="font-size: 18px; font-weight: 800; font-family: var(--font-display);">📜 Paper Sizes & Pricing Rate Matrix</h3>
+        <p style="font-size: 13px; color: var(--text-muted);">Configure up to 5 paper sheet sizes (A4, A3, Legal, Photo Paper) and individual B&W and Color rates.</p>
+    </div>
+
+    <form action="/api/shop/paper-rates" method="POST" id="paper-rates-form">
+        <input type="hidden" name="shop_id" value="{{ shop.shop_id }}">
+        <input type="hidden" name="paper_rates_json" id="paper_rates_json_input">
+
+        <div style="overflow-x: auto; margin-bottom: 20px;">
+            <table class="data-table" style="font-size: 13px;">
+                <thead>
+                    <tr>
+                        <th>Active</th>
+                        <th>Paper Size Name</th>
+                        <th>B&W Rate per Page (₹)</th>
+                        <th>Color Rate per Page (₹)</th>
+                    </tr>
+                </thead>
+                <tbody id="paper-table-body">
+                    {% for p in paper_rates %}
+                    <tr>
+                        <td style="text-align: center;">
+                            <input type="checkbox" class="paper-enabled-chk" {% if p.enabled %}checked{% endif %} style="width: 18px; height: 18px; cursor: pointer;">
+                        </td>
+                        <td>
+                            <input type="text" class="form-input paper-name-input" value="{{ p.name }}" style="padding: 8px 12px;">
+                        </td>
+                        <td>
+                            <input type="number" step="0.5" class="form-input paper-bw-input" value="{{ p.bw_rate }}" style="padding: 8px 12px;">
+                        </td>
+                        <td>
+                            <input type="number" step="0.5" class="form-input paper-color-input" value="{{ p.color_rate }}" style="padding: 8px 12px;">
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <button type="submit" onclick="buildPaperRatesJson()" class="btn-primary btn-success" style="padding: 12px 28px;">
+            💾 Save Paper Sizes & Rates
+        </button>
+    </form>
+
+    <!-- Duplex Settings Card -->
+    <div style="margin-top: 32px; border-top: 1px solid var(--card-border); padding-top: 24px;">
+        <h4 style="font-size: 16px; font-weight: 700; margin-bottom: 8px;">📄 Duplex (Both-Sided) Printing Discount</h4>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">Give customers a discount per sheet when printing double-sided.</p>
+        <form action="/api/shop/pricing" method="POST" style="display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; max-width: 500px;">
+            <input type="hidden" name="shop_id" value="{{ shop.shop_id }}">
+            <input type="hidden" name="bw_rate" value="{{ shop.bw_rate or 2.0 }}">
+            <input type="hidden" name="color_rate" value="{{ shop.color_rate or 10.0 }}">
+            <div style="flex: 1; min-width: 200px;">
+                <label class="form-label">Duplex Discount per sheet (₹):</label>
+                <input type="number" step="0.1" name="duplex_discount" class="form-input" value="{{ shop.duplex_discount if shop.duplex_discount is defined else 0.5 }}" placeholder="0 to disable duplex option">
+            </div>
+            <button type="submit" class="btn-primary" style="padding: 12px 22px;">💾 Save Duplex Setting</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    function buildPaperRatesJson() {
+        const rows = document.querySelectorAll('#paper-table-body tr');
+        const rates = [];
+        rows.forEach(r => {
+            const enabled = r.querySelector('.paper-enabled-chk').checked;
+            const name = r.querySelector('.paper-name-input').value.trim();
+            const bw = parseFloat(r.querySelector('.paper-bw-input').value) || 2.0;
+            const color = parseFloat(r.querySelector('.paper-color-input').value) || 10.0;
+            if (name) {
+                rates.push({ name: name, bw_rate: bw, color_rate: color, enabled: enabled });
+            }
+        });
+        document.getElementById('paper_rates_json_input').value = JSON.stringify(rates.slice(0, 5));
+    }
+</script>
+{% endblock %}

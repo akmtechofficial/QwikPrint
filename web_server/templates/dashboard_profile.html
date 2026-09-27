@@ -1,0 +1,50 @@
+{% extends "dashboard_base.html" %}
+
+{% block page_heading %}🏪 Store Profile & Identity Settings{% endblock %}
+
+{% block dashboard_content %}
+<div class="glass-card">
+    <div style="border-bottom: 1px solid var(--card-border); padding-bottom: 16px; margin-bottom: 24px;">
+        <h3 style="font-size: 18px; font-weight: 800; font-family: var(--font-display);">🏪 Store Identity & Contact Details</h3>
+        <p style="font-size: 13px; color: var(--text-muted);">Update your store details displayed on the customer upload portal and print receipts.</p>
+    </div>
+
+    <form action="/api/shop/details" method="POST" style="max-width: 650px;">
+        <input type="hidden" name="shop_id" value="{{ shop.shop_id }}">
+        
+        <div class="form-group">
+            <label class="form-label">Store ID (Read-only System Identifier):</label>
+            <input type="text" class="form-input" value="{{ shop.shop_id }}" readonly style="background: #09090b; color: var(--cyan-accent); font-weight: 700; font-family: monospace;">
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+            <div class="form-group">
+                <label class="form-label">Store Name:</label>
+                <input type="text" name="name" class="form-input" value="{{ shop.name }}" required placeholder="e.g. Speed Xerox & Print Hub">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Owner Full Name:</label>
+                <input type="text" name="owner_name" class="form-input" value="{{ shop.owner_name or '' }}" required placeholder="e.g. Rajesh Sharma">
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+            <div class="form-group">
+                <label class="form-label">Phone / WhatsApp Number:</label>
+                <input type="text" name="phone" class="form-input" value="{{ shop.phone or '' }}" required placeholder="e.g. 9876543210">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Support Email Address:</label>
+                <input type="email" name="email" class="form-input" value="{{ shop.email or '' }}" required placeholder="e.g. shopowner@gmail.com">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Store Address & Market Location:</label>
+            <input type="text" name="address" class="form-input" value="{{ shop.address or '' }}" required placeholder="e.g. Shop No. 12, Main Market, Near College Gate">
+        </div>
+
+        <button type="submit" class="btn-primary" style="padding: 12px 28px;">💾 Save Store Profile</button>
+    </form>
+</div>
+{% endblock %}

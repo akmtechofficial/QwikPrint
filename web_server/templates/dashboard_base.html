@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ shop.name }} - Shopkeeper Dashboard | QwikPrint{% endblock %}</title>
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="stylesheet" href="/static/css/style.css">
+    {% block extra_head %}{% endblock %}
+    <style>
+        /* Full Bleed SaaS Dashboard Layout (No artificial side spacing) */
+        html, body {
+            background-color: #09090b;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            overflow-x: hidden;
+        }
+
+        .dash-app-layout {
+            display: flex;
+            width: 100vw;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Docked Sidebar (Flush to left edge) */
+        .dash-sidebar-fixed {
+            width: 250px;
+            flex-shrink: 0;
+            background: #0d0d11;
+            border-right: 1px solid #27272a;
+            display: flex;
+            flex-direction: column;
+            padding: 24px 16px;
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            z-index: 50;
+            overflow-y: auto;
+        }
+
+        /* Main Full-Width Workspace */
+        .dash-workspace {
+            flex: 1;
+            margin-left: 250px;
+            display: flex;
+            flex-direction: column;
+            width: calc(100vw - 250px);
+            min-width: 0;
+            background: #09090b;
+        }
+
+        @media (max-width: 900px) {
+            .dash-app-layout {
+                flex-direction: column;
+            }
+            .dash-sidebar-fixed {
+                width: 100%;
+                position: static;
+                border-right: none;
+                border-bottom: 1px solid #27272a;
+            }
+            .dash-workspace {
+                margin-left: 0;
+                width: 100%;
+            }
+        }
+
+        /* Workspace Top Header Bar */
+        .dash-topbar {
+            padding: 24px 36px;
+            background: #09090b;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .dash-main-body {
+            padding: 0 36px 48px 36px;
+            width: 100%;
+            flex: 1;
+        }
+
+        .sidebar-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0 8px 24px 8px;
+            text-decoration: none;
+        }
+
+        .sidebar-nav-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .sidebar-nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            border-radius: 10px;
+            color: #a1a1aa;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.18s ease;
+        }
+
+        .sidebar-nav-link:hover {
+            background: rgba(39, 39, 42, 0.7);
+            color: #ffffff;
+        }
+
+        .sidebar-nav-link.active {
+            background: #18181b;
+            border: 1px solid #3f3f46;
+            color: #38bdf8;
+            font-weight: 600;
+        }
+
+        .sidebar-nav-link .icon {
+            font-size: 18px;
+            width: 22px;
+            text-align: center;
+        }
+
+        .sidebar-nav-badge {
+            margin-left: auto;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 10px;
+            text-transform: uppercase;
+        }
+
+        .shop-avatar-box {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #0ea5e9, #6366f1);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 16px;
+        }
+
+        /* Crisp Refined SaaS Cards (Matching reference screenshot style) */
+        .saas-card {
+            background: #121217;
+            border: 1px solid #27272a;
+            border-radius: 14px;
+            padding: 22px 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            transition: border-color 0.2s;
+        }
+
+        .saas-card:hover {
+            border-color: #3f3f46;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="dash-app-layout">
+        <!-- 📌 Flush Left Sidebar (No Top Website Header) -->
+        <aside class="dash-sidebar-fixed">
+            <a href="/dashboard" class="sidebar-brand">
+                <img src="/static/images/qwikprint_logo.png" alt="QwikPrint" style="height: 32px; width: 32px; border-radius: 8px;">
+                <div>
+                    <div style="font-weight: 800; font-size: 18px; color: #ffffff; font-family: 'Outfit';">QwikPrint</div>
+                    <div style="font-size: 11px; color: #38bdf8; font-weight: 600;">SaaS Control Panel</div>
+                </div>
+            </a>
+
+            <!-- Shop Identity Card in Sidebar -->
+            <div style="background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 12px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+                <div class="shop-avatar-box">{{ shop.name[0] if shop.name else 'S' }}</div>
+                <div style="overflow: hidden;">
+                    <div style="font-weight: 700; color: #ffffff; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ shop.name }}</div>
+                    <div style="font-size: 11px; color: #71717a;">ID: {{ shop.shop_id }}</div>
+                </div>
+            </div>
+
+            <!-- Sidebar Navigation Links -->
+            <nav class="sidebar-nav-group">
+                <a href="/dashboard" class="sidebar-nav-link {% if active_tab == 'overview' %}active{% endif %}">
+                    <span class="icon">📊</span>
+                    <span>Dashboard</span>
+                </a>
+
+                <a href="/dashboard/queue" class="sidebar-nav-link {% if active_tab == 'queue' %}active{% endif %}">
+                    <span class="icon">📋</span>
+                    <span>Live Print Queue</span>
+                    <span class="sidebar-nav-badge pill-success">Live</span>
+                </a>
+
+                <a href="/dashboard/rates" class="sidebar-nav-link {% if active_tab == 'rates' %}active{% endif %}">
+                    <span class="icon">📜</span>
+                    <span>Paper Sizes & Rates</span>
+                </a>
+
+                <a href="/dashboard/spooler" class="sidebar-nav-link {% if active_tab == 'spooler' %}active{% endif %}">
+                    <span class="icon">🔑</span>
+                    <span>Desktop Spooler API</span>
+                </a>
+
+                <a href="/dashboard/profile" class="sidebar-nav-link {% if active_tab == 'profile' %}active{% endif %}">
+                    <span class="icon">🏪</span>
+                    <span>Store Profile</span>
+                </a>
+
+                <a href="/dashboard/qr-poster" class="sidebar-nav-link {% if active_tab == 'qr_poster' %}active{% endif %}">
+                    <span class="icon">📱</span>
+                    <span>QR Code & Poster</span>
+                </a>
+
+                <a href="/dashboard/billing" class="sidebar-nav-link {% if active_tab == 'billing' %}active{% endif %}">
+                    <span class="icon">💳</span>
+                    <span>Billing & Plans</span>
+                    {% if shop.is_suspended %}
+                    <span class="sidebar-nav-badge pill-danger">Suspended</span>
+                    {% else %}
+                    <span class="sidebar-nav-badge pill-success">Active</span>
+                    {% endif %}
+                </a>
+            </nav>
+
+            <!-- Bottom Quick Logout -->
+            <div style="margin-top: auto; padding-top: 16px; border-top: 1px solid #27272a; display: flex; flex-direction: column; gap: 4px;">
+                <a href="/s/{{ shop.shop_id }}" target="_blank" class="sidebar-nav-link" style="color: #38bdf8;">
+                    <span class="icon">🔗</span>
+                    <span>Customer Portal ↗</span>
+                </a>
+                <a href="/logout" class="sidebar-nav-link" style="color: #fb7185;">
+                    <span class="icon">🚪</span>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- 🚀 Right Full-Width Workspace -->
+        <div class="dash-workspace">
+            
+            <!-- Dashboard Workspace Top Header (Matching reference UI screenshot title & action buttons!) -->
+            <header class="dash-topbar">
+                <div>
+                    <h1 style="font-size: 28px; font-weight: 800; font-family: 'Outfit', sans-serif; color: #ffffff;">
+                        {% block page_heading %}Shopkeeper Dashboard{% endblock %}
+                    </h1>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <a href="/dashboard/rates" class="btn-primary" style="font-size: 13.5px; padding: 10px 20px; border-radius: 10px; background: #3b82f6; box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4); text-decoration: none;">
+                        ⊕ Add New Paper Rate
+                    </a>
+                    <a href="/dashboard/queue" class="btn-secondary" style="font-size: 13.5px; padding: 10px 18px; border-radius: 10px; background: transparent; border: 1px solid #3f3f46; text-decoration: none;">
+                        View All Queue →
+                    </a>
+                </div>
+            </header>
+
+            <!-- Main Content Area -->
+            <main class="dash-main-body">
+                {% block dashboard_content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', function() {
+                const btn = this.querySelector('button[type="submit"], input[type="submit"], .btn-primary, .btn-success');
+                if (btn && !btn.classList.contains('no-spin')) {
+                    btn.classList.add('btn-loading');
+                    btn.style.pointerEvents = 'none';
+                }
+            });
+        });
+    });
+    </script>
+</body>
+</html>
+

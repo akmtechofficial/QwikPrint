@@ -1,0 +1,122 @@
+{% extends "dashboard_base.html" %}
+
+{% block page_heading %}⚡ Gen-Z Tech Store QR Counter Poster{% endblock %}
+
+{% block extra_head %}
+<style>
+    @media print {
+        body * { visibility: hidden; }
+        .printable-poster-sheet, .printable-poster-sheet * { visibility: visible; }
+        .printable-poster-sheet {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            background: #090d16 !important;
+        }
+        .no-print { display: none !important; }
+    }
+</style>
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="no-print" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+    <div>
+        <h2 style="font-size: 22px; font-weight: 800; font-family: 'Outfit', sans-serif; color: #ffffff;">⚡ Gen-Z Tech Printable Poster (A4)</h2>
+        <p style="font-size: 13.5px; color: #a1a1aa; margin-top: 2px;">Next-Gen dark-mode cyberpunk poster for your print shop counter. Accurate file upload portal QR code.</p>
+    </div>
+    
+    <div style="display: flex; gap: 12px;">
+        <a href="/api/shop/qr-poster/download-pdf" class="btn-primary" style="font-size: 14px; padding: 11px 22px; background: linear-gradient(135deg, #0ea5e9, #6366f1); color: #ffffff; text-decoration: none; border-radius: 10px; font-weight: 800; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 18px rgba(14, 165, 233, 0.4);">
+            📥 Download Printable PDF
+        </a>
+        <button onclick="window.print();" class="btn-primary btn-success" style="font-size: 14px; padding: 11px 22px; background: #10b981; color: #ffffff; border: none; border-radius: 10px; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 18px rgba(16, 185, 129, 0.4);">
+            🖨️ Print Poster (A4)
+        </button>
+    </div>
+</div>
+
+<!-- High-Definition Gen-Z Tech Poster Box -->
+<div class="printable-poster-sheet" style="background: #090d16; color: #f8fafc; max-width: 680px; margin: 0 auto; border-radius: 20px; border: 2px solid #38bdf8; padding: 30px 26px; box-shadow: 0 0 50px rgba(56, 189, 248, 0.25); text-align: center; font-family: 'Outfit', 'Inter', sans-serif; position: relative;">
+
+    <!-- Top Neon Badge Bar -->
+    <div style="background: #0f172a; color: #38bdf8; border: 1px solid #38bdf8; padding: 8px 16px; border-radius: 8px; font-weight: 800; font-size: 11px; letter-spacing: 1.2px; margin-bottom: 20px; text-transform: uppercase; box-shadow: 0 0 15px rgba(56, 189, 248, 0.2);">
+        ⚡ QWIKPRINT INSTANT PRINTING PORTAL ⚡
+    </div>
+
+    <!-- Store Title & Tech Subtitle -->
+    <h1 style="font-size: 30px; font-weight: 900; color: #ffffff; margin-bottom: 6px; text-transform: uppercase; letter-spacing: -0.5px; line-height: 1.2;">
+        {{ shop.name }}
+    </h1>
+    <div style="color: #a855f7; font-weight: 800; font-size: 12.5px; margin-bottom: 20px; letter-spacing: 0.5px;">
+        🚀 SKIP THE COUNTER LINE &bull; DIRECT MOBILE FILE UPLOAD &bull; SILENT PRINTING
+    </div>
+
+    <!-- Glowing QR Code Box -->
+    <div style="display: inline-block; background: #0f172a; border: 2px solid #38bdf8; border-radius: 20px; padding: 18px 24px 14px; margin-bottom: 20px; box-shadow: 0 0 30px rgba(56, 189, 248, 0.15);">
+        {% if qr_base64 %}
+        <div style="background: #ffffff; padding: 10px; border-radius: 12px; display: inline-block;">
+            <img src="{{ qr_base64 }}" alt="Shop QR Code" style="width: 195px; height: 195px; display: block;">
+        </div>
+        {% endif %}
+        
+        <div style="background: #0ea5e9; color: #ffffff; font-weight: 800; font-size: 11.5px; padding: 7px 18px; border-radius: 20px; margin-top: 12px; letter-spacing: 0.5px; box-shadow: 0 4px 14px rgba(14, 165, 233, 0.4);">
+            📱 SCAN WITH CAMERA OR GOOGLE LENS TO UPLOAD FILES
+        </div>
+        <div style="font-size: 10.5px; color: #94a3b8; font-weight: 700; margin-top: 8px;">
+            How to scan: Open Phone Camera &bull; Google Lens &bull; Chrome / Safari &bull; Any QR Scanner App
+        </div>
+    </div>
+
+    <!-- 3-Step Workflow -->
+    <div style="background: #0f172a; border: 1px solid #1e293b; border-radius: 14px; padding: 16px 18px; text-align: left; margin-bottom: 18px;">
+        <div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px;">
+            <div style="width: 28px; height: 28px; border-radius: 6px; background: #0ea5e9; color: #ffffff; font-weight: 900; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">01</div>
+            <div>
+                <div style="font-size: 13px; font-weight: 800; color: #38bdf8;">SCAN QR WITH CAMERA / GOOGLE LENS</div>
+                <div style="font-size: 11px; color: #cbd5e1; margin-top: 2px;">Point your Mobile Camera or Lens at the QR code above to open the instant file upload portal.</div>
+            </div>
+        </div>
+
+        <div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px;">
+            <div style="width: 28px; height: 28px; border-radius: 6px; background: #a855f7; color: #ffffff; font-weight: 900; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">02</div>
+            <div>
+                <div style="font-size: 13px; font-weight: 800; color: #a855f7;">UPLOAD DOCUMENT & CHOOSE SETTINGS</div>
+                <div style="font-size: 11px; color: #cbd5e1; margin-top: 2px;">Select PDF/Photos, choose B&W or Color, number of copies, and double-sided printing.</div>
+            </div>
+        </div>
+
+        <div style="display: flex; align-items: flex-start; gap: 12px;">
+            <div style="width: 28px; height: 28px; border-radius: 6px; background: #10b981; color: #ffffff; font-weight: 900; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">03</div>
+            <div>
+                <div style="font-size: 13px; font-weight: 800; color: #10b981;">PAY VIA UPI & COLLECT INSTANT PRINTS</div>
+                <div style="font-size: 11px; color: #cbd5e1; margin-top: 2px;">Pay online via PhonePe/GPay/Paytm or Cash at counter. Your pages print out automatically!</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- UPI Payment Bar -->
+    <div style="background: #0f172a; border: 1px solid #1e293b; padding: 8px 12px; border-radius: 8px; font-size: 11.5px; font-weight: 800; color: #38bdf8; margin-bottom: 16px;">
+        💳 <b>UPI PAYMENTS ACCEPTED:</b> GPay &bull; PhonePe &bull; Paytm &bull; BHIM &bull; Cards / Cash at Counter
+    </div>
+
+    <!-- Feature Pills -->
+    <div style="display: flex; justify-content: space-around; background: #0f172a; border: 1px solid #334155; padding: 9px 12px; border-radius: 10px; font-size: 11.5px; font-weight: 800; color: #f8fafc; margin-bottom: 18px;">
+        <span style="color: #38bdf8;">⚡ ZERO WAIT TIME</span>
+        <span style="color: #a855f7;">💬 NO WHATSAPP / CABLE</span>
+        <span style="color: #10b981;">🔒 100% PRIVATE & PURGED</span>
+    </div>
+
+    <!-- Footer Information -->
+    <div style="font-size: 11.5px; color: #f8fafc; font-weight: 700; border-top: 1px solid #1e293b; padding-top: 12px;">
+        📍 <b>Location:</b> {{ shop.address or 'Counter Location' }} &nbsp;&nbsp;|&nbsp;&nbsp; 📞 <b>Phone:</b> {{ shop.phone or 'N/A' }} &nbsp;&nbsp;|&nbsp;&nbsp; 👤 <b>Owner:</b> {{ shop.owner_name or 'Shop Owner' }}
+    </div>
+    <div style="font-size: 10px; color: #94a3b8; font-style: italic; margin-top: 5px;">
+        🛡️ <b>Zero Log Guarantee:</b> Documents are end-to-end encrypted and automatically destroyed after printing. Powered by QwikPrint SaaS System.
+    </div>
+
+</div>
+{% endblock %}

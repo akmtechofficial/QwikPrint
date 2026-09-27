@@ -159,25 +159,7 @@ class SupabaseDatabase:
             """)
             conn.commit()
         else:
-            # SQLite Table Init
-            for table_name, col_def in [
-                ("shops", ("owner_id", "TEXT")), ("shops", ("api_key", "TEXT")), ("shops", ("owner_name", "TEXT")), 
-                ("shops", ("email", "TEXT")), ("shops", ("phone", "TEXT")), ("shops", ("address", "TEXT")), 
-                ("shops", ("bw_rate", "REAL DEFAULT 2.0")), ("shops", ("color_rate", "REAL DEFAULT 10.0")), 
-                ("shops", ("duplex_discount", "REAL DEFAULT 0.5")), ("shops", ("paper_rates", "TEXT")),
-                ("shops", ("subscription_status", "TEXT DEFAULT 'active'")),
-                ("shops", ("plan_name", "TEXT DEFAULT 'Trial Plan'")),
-                ("shops", ("plan_expires_at", "TEXT")),
-                ("shops", ("is_suspended", "INTEGER DEFAULT 0")),
-                ("shops", ("registration_ip", "TEXT")),
-                ("shops", ("device_fingerprint", "TEXT")),
-                ("users", ("registration_ip", "TEXT")),
-                ("users", ("device_fingerprint", "TEXT"))
-            ]:
-                try:
-                    cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {col_def[0]} {col_def[1]};")
-                except Exception:
-                    pass
+            # SQLite Table Init - Create Tables First
             cursor.executescript("""
             CREATE TABLE IF NOT EXISTS users (
                 user_id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL,
@@ -210,6 +192,27 @@ class SupabaseDatabase:
                 status TEXT DEFAULT 'success', starts_at TEXT, expires_at TEXT, created_at TEXT
             );
             """)
+            conn.commit()
+
+            # Ensure all dynamic columns exist via ALTER TABLE
+            for table_name, col_def in [
+                ("shops", ("owner_id", "TEXT")), ("shops", ("api_key", "TEXT")), ("shops", ("owner_name", "TEXT")), 
+                ("shops", ("email", "TEXT")), ("shops", ("phone", "TEXT")), ("shops", ("address", "TEXT")), 
+                ("shops", ("bw_rate", "REAL DEFAULT 2.0")), ("shops", ("color_rate", "REAL DEFAULT 10.0")), 
+                ("shops", ("duplex_discount", "REAL DEFAULT 0.5")), ("shops", ("paper_rates", "TEXT")),
+                ("shops", ("subscription_status", "TEXT DEFAULT 'active'")),
+                ("shops", ("plan_name", "TEXT DEFAULT 'Trial Plan'")),
+                ("shops", ("plan_expires_at", "TEXT")),
+                ("shops", ("is_suspended", "INTEGER DEFAULT 0")),
+                ("shops", ("registration_ip", "TEXT")),
+                ("shops", ("device_fingerprint", "TEXT")),
+                ("users", ("registration_ip", "TEXT")),
+                ("users", ("device_fingerprint", "TEXT"))
+            ]:
+                try:
+                    cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {col_def[0]} {col_def[1]};")
+                except Exception:
+                    pass
             conn.commit()
 
         # Seed default plans if empty
@@ -271,7 +274,13 @@ class SupabaseDatabase:
 
     def is_ip_or_device_registered(self, registration_ip: str, device_fingerprint: str) -> tuple[bool, str]:
         """Checks if client IP or device fingerprint is already bound to an existing shop owner account."""
-        if not registration_ip and not device_fingerprint:
+        # Localhost / Development IP exemption so local testing never gets locked
+        dev_ips = ["127.0.0.1", "::1", "localhost", "0.0.0.0", "NONE", ""]
+        clean_ip = (registration_ip or "").strip()
+        if clean_ip in dev_ips:
+            clean_ip = "DEV_LOCAL_EXEMPT"
+
+        if clean_ip == "DEV_LOCAL_EXEMPT" and not device_fingerprint:
             return False, ""
         
         conn, is_pg = self.get_connection()
@@ -279,16 +288,16 @@ class SupabaseDatabase:
         
         q = """
         SELECT email FROM users 
-        WHERE (registration_ip IS NOT NULL AND registration_ip != '' AND registration_ip = %s)
+        WHERE (registration_ip IS NOT NULL AND registration_ip != '' AND registration_ip != 'DEV_LOCAL_EXEMPT' AND registration_ip = %s)
            OR (device_fingerprint IS NOT NULL AND device_fingerprint != '' AND device_fingerprint = %s)
         LIMIT 1;
         """ if is_pg else """
         SELECT email FROM users 
-        WHERE (registration_ip IS NOT NULL AND registration_ip != '' AND registration_ip = ?)
+        WHERE (registration_ip IS NOT NULL AND registration_ip != '' AND registration_ip != 'DEV_LOCAL_EXEMPT' AND registration_ip = ?)
            OR (device_fingerprint IS NOT NULL AND device_fingerprint != '' AND device_fingerprint = ?)
         LIMIT 1;
         """
-        cursor.execute(q, (registration_ip or "NONE", device_fingerprint or "NONE"))
+        cursor.execute(q, (clean_ip, device_fingerprint or "NONE"))
         row = cursor.fetchone()
         conn.close()
         
@@ -303,7 +312,9 @@ class SupabaseDatabase:
         user_id = f"USER_{uuid.uuid4().hex[:8].upper()}"
         shop_id = f"SHOP_{uuid.uuid4().hex[:6].upper()}"
         api_key = f"QWIK_KEY_{shop_id}_{uuid.uuid4().hex[:6].upper()}"
-        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        now_dt = datetime.datetime.now(datetime.timezone.utc)
+        now = now_dt.isoformat()
+        expires_at_str = (now_dt + datetime.timedelta(days=7)).isoformat()
 
         if is_pg:
             cursor.execute("""
@@ -312,9 +323,9 @@ class SupabaseDatabase:
             """, (user_id, email.lower().strip(), password_hash, full_name, phone, now, registration_ip, device_fingerprint))
             
             cursor.execute("""
-            INSERT INTO shops (shop_id, owner_id, api_key, name, owner_name, email, phone, address, bw_rate, color_rate, duplex_discount, created_at, registration_ip, device_fingerprint)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 2.0, 10.0, 0.5, %s, %s, %s);
-            """, (shop_id, user_id, api_key, shop_name, full_name, email, phone, "Main Market", now, registration_ip, device_fingerprint))
+            INSERT INTO shops (shop_id, owner_id, api_key, name, owner_name, email, phone, address, bw_rate, color_rate, duplex_discount, created_at, registration_ip, device_fingerprint, subscription_status, plan_name, plan_expires_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 2.0, 10.0, 0.5, %s, %s, %s, 'active', '7-Day Free Trial', %s);
+            """, (shop_id, user_id, api_key, shop_name, full_name, email, phone, "Main Market", now, registration_ip, device_fingerprint, expires_at_str))
             
             cursor.execute("""
             INSERT INTO devices (device_id, shop_id, device_name, secret_token, status, last_seen_at, created_at)
@@ -328,9 +339,9 @@ class SupabaseDatabase:
             """, (user_id, email.lower().strip(), password_hash, full_name, phone, now, registration_ip, device_fingerprint))
             
             cursor.execute("""
-            INSERT INTO shops (shop_id, owner_id, api_key, name, owner_name, email, phone, address, bw_rate, color_rate, duplex_discount, created_at, registration_ip, device_fingerprint)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'Main Market', 2.0, 10.0, 0.5, ?, ?, ?);
-            """, (shop_id, user_id, api_key, shop_name, full_name, email, phone, now, registration_ip, device_fingerprint))
+            INSERT INTO shops (shop_id, owner_id, api_key, name, owner_name, email, phone, address, bw_rate, color_rate, duplex_discount, created_at, registration_ip, device_fingerprint, subscription_status, plan_name, plan_expires_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'Main Market', 2.0, 10.0, 0.5, ?, ?, ?, 'active', '7-Day Free Trial', ?);
+            """, (shop_id, user_id, api_key, shop_name, full_name, email, phone, now, registration_ip, device_fingerprint, expires_at_str))
             
             cursor.execute("""
             INSERT INTO devices (device_id, shop_id, device_name, secret_token, status, last_seen_at, created_at)

@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+
+{% block title %}shadcn/ui Component System Showcase - QwikPrint{% endblock %}
+
+{% block extra_head %}
+<style>
+    .shadcn-demo-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+        gap: 28px;
+        padding: 40px;
+    }
+    .comp-box {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .comp-title {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 4px;
+        font-family: 'Outfit';
+    }
+    .comp-desc {
+        font-size: 0.85rem;
+        color: #64748b;
+        margin-bottom: 18px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; padding: 40px;">
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+        <span class="shadcn-badge shadcn-badge-default">shadcn/ui v2.5</span>
+        <span class="shadcn-badge shadcn-badge-secondary">Complete Design System</span>
+    </div>
+    <h1 style="font-family: 'Outfit'; font-size: 2.5rem; font-weight: 900; color: #0f172a;">
+        Official shadcn/ui Component Suite
+    </h1>
+    <p style="color: #64748b; font-size: 1.05rem;">
+        60+ Production-ready interactive UI components styled with crisp 1px borders and HSL design tokens.
+    </p>
+</div>
+
+<div class="shadcn-demo-grid">
+
+    <!-- 1. Accordion -->
+    <div class="comp-box">
+        <div class="comp-title">1. Accordion</div>
+        <div class="comp-desc">A vertically stacked set of interactive headings.</div>
+        <div class="shadcn-accordion">
+            <div class="shadcn-accordion-item active">
+                <button class="shadcn-accordion-trigger" onclick="this.parentElement.classList.toggle('active')">
+                    Is QwikPrint free to try?
+                    <span class="shadcn-accordion-icon">▼</span>
+                </button>
+                <div class="shadcn-accordion-content">
+                    Yes! You get a 5-day demo with unlimited print jobs for your Windows counter PC.
+                </div>
+            </div>
+            <div class="shadcn-accordion-item">
+                <button class="shadcn-accordion-trigger" onclick="this.parentElement.classList.toggle('active')">
+                    How does the desktop agent work?
+                    <span class="shadcn-accordion-icon">▼</span>
+                </button>
+                <div class="shadcn-accordion-content">
+                    It's a lightweight 1-click executable (.exe) that connects via API key and spools files directly to your USB printer.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Alert & Alert Dialog -->
+    <div class="comp-box">
+        <div class="comp-title">2. Alert & Alert Dialog</div>
+        <div class="comp-desc">Displays a callout for user attention or destructive actions.</div>
+        <div class="shadcn-alert">
+            <div>⚡</div>
+            <div>
+                <div class="shadcn-alert-title">System Status</div>
+                <div class="shadcn-alert-description">All printer cloud spooler nodes are 100% operational.</div>
+            </div>
+        </div>
+        <div class="shadcn-alert shadcn-alert-destructive">
+            <div>🚨</div>
+            <div>
+                <div class="shadcn-alert-title">Low Paper Warning</div>
+                <div class="shadcn-alert-description">Tray 1 paper level is below 15%.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Avatar & Badge -->
+    <div class="comp-box">
+        <div class="comp-title">3. Avatar & Badges</div>
+        <div class="comp-desc">User profile image representations and tag pills.</div>
+        <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
+            <div class="shadcn-avatar">
+                <div class="shadcn-avatar-fallback">QP</div>
+            </div>
+            <div class="shadcn-avatar">
+                <div class="shadcn-avatar-fallback" style="background: #0d9488; color: white;">AK</div>
+            </div>
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <span class="shadcn-badge shadcn-badge-default">Default</span>
+            <span class="shadcn-badge shadcn-badge-secondary">Secondary</span>
+            <span class="shadcn-badge shadcn-badge-destructive">Destructive</span>
+            <span class="shadcn-badge shadcn-badge-outline">Outline</span>
+        </div>
+    </div>
+
+    <!-- 4. Buttons & Button Group -->
+    <div class="comp-box">
+        <div class="comp-title">4. Buttons & Button Group</div>
+        <div class="comp-desc">Interactive button controls with active states and sizes.</div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px;">
+            <button class="shadcn-btn shadcn-btn-default">Default</button>
+            <button class="shadcn-btn shadcn-btn-teal">Teal Primary</button>
+            <button class="shadcn-btn shadcn-btn-secondary">Secondary</button>
+            <button class="shadcn-btn shadcn-btn-outline">Outline</button>
+            <button class="shadcn-btn shadcn-btn-destructive">Destructive</button>
+        </div>
+        <div class="shadcn-btn-group">
+            <button class="shadcn-btn shadcn-btn-outline">Day</button>
+            <button class="shadcn-btn shadcn-btn-teal">Week</button>
+            <button class="shadcn-btn shadcn-btn-outline">Month</button>
+        </div>
+    </div>
+
+    <!-- 5. Card -->
+    <div class="comp-box">
+        <div class="comp-title">5. Card Container</div>
+        <div class="comp-desc">Clean container layout for headers, content, and footers.</div>
+        <div class="shadcn-card" style="padding: 16px; margin: 0;">
+            <div class="shadcn-card-header">
+                <div class="shadcn-card-title">Live Print Counter</div>
+                <div class="shadcn-card-description">Real-time daily print metrics</div>
+            </div>
+            <div class="shadcn-card-content">
+                <strong>1,480 Pages</strong> printed today across 42 customer orders.
+            </div>
+            <div class="shadcn-card-footer">
+                <span class="shadcn-badge shadcn-badge-default">Active</span>
+                <button class="shadcn-btn shadcn-btn-outline shadcn-btn-sm">View Details</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 6. Form Inputs, Labels & OTP -->
+    <div class="comp-box">
+        <div class="comp-title">6. Inputs, Labels & Input OTP</div>
+        <div class="comp-desc">Form elements with focus rings and accessible labels.</div>
+        <div style="margin-bottom: 14px;">
+            <label class="shadcn-label">Shop Name</label>
+            <input type="text" class="shadcn-input" placeholder="e.g. Maan Cyber Cafe">
+        </div>
+        <div>
+            <label class="shadcn-label">Verification OTP</label>
+            <div class="shadcn-otp-group">
+                <input type="text" class="shadcn-otp-slot" value="4">
+                <input type="text" class="shadcn-otp-slot" value="8">
+                <input type="text" class="shadcn-otp-slot" value="2">
+                <input type="text" class="shadcn-otp-slot" value="9">
+            </div>
+        </div>
+    </div>
+
+    <!-- 7. Switch & Checkbox & Progress -->
+    <div class="comp-box">
+        <div class="comp-title">7. Switch, Checkbox & Progress</div>
+        <div class="comp-desc">Toggles, selection boxes, and progress indicators.</div>
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+            <span class="shadcn-label" style="margin:0;">Auto Spooling Mode</span>
+            <label class="shadcn-switch">
+                <input type="checkbox" checked>
+                <span class="shadcn-switch-slider"></span>
+            </label>
+        </div>
+        <div style="margin-bottom: 16px;">
+            <label style="font-size: 13.5px; color: #0f172a; font-weight: 600;">
+                <input type="checkbox" class="shadcn-checkbox" checked> Enable Cash Audio Chime
+            </label>
+        </div>
+        <div>
+            <div style="font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 6px;">Daily Spooling Load (74%)</div>
+            <div class="shadcn-progress">
+                <div class="shadcn-progress-bar" style="width: 74%;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 8. Data Table -->
+    <div class="comp-box" style="grid-column: 1 / -1;">
+        <div class="comp-title">8. Data Table Component</div>
+        <div class="comp-desc">Responsive clean data table with status badges and action links.</div>
+        <div class="shadcn-table-wrap">
+            <table class="shadcn-table">
+                <thead>
+                    <tr>
+                        <th>Job ID</th>
+                        <th>Document</th>
+                        <th>Pages</th>
+                        <th>Mode</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>#JOB-9812</strong></td>
+                        <td>admit_card_final.pdf</td>
+                        <td>2 Pages</td>
+                        <td>Color Single</td>
+                        <td><span class="shadcn-badge shadcn-badge-default">Printing</span></td>
+                        <td><button class="shadcn-btn shadcn-btn-outline shadcn-btn-sm">View</button></td>
+                    </tr>
+                    <tr>
+                        <td><strong>#JOB-9813</strong></td>
+                        <td>thesis_chapter1.docx</td>
+                        <td>45 Pages</td>
+                        <td>B&W Duplex</td>
+                        <td><span class="shadcn-badge shadcn-badge-secondary">Queued</span></td>
+                        <td><button class="shadcn-btn shadcn-btn-outline shadcn-btn-sm">View</button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

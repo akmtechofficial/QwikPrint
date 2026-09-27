@@ -14,7 +14,6 @@ router = APIRouter()
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "..", "templates"))
 
 PAYFLUX_SECRET_KEY = os.getenv("PAYFLUX_SECRET_KEY", os.getenv("PAYFLUX_API_KEY", "sk_test_your_merchant_secret_key"))
-PAYFLUX_WEBHOOK_SECRET = os.getenv("PAYFLUX_WEBHOOK_SECRET", "whsec_your_webhook_secret")
 PAYFLUX_BASE_URL = os.getenv("PAYFLUX_BASE_URL", "https://fampay-merchant-api.onrender.com").rstrip("/")
 
 @router.get("/subscription", response_class=HTMLResponse)
@@ -233,56 +232,3 @@ async def confirm_payflux_order(request: Request, payload: dict = Body(...)):
         "message": f"Successfully subscribed to {plan_name} for {duration_days} days!",
         "expires_at": result.get("plan_expires_at")
     }
-
-@router.post("/api/webhook/payflux")
-async def payflux_webhook(request: Request):
-    """
-    Server-to-Server Signed Webhook Verification Handler (HMAC-SHA256)
-    """
-    signature = request.headers.get("x-payflux-signature", "")
-    body_bytes = await request.body()
-    secret = PAYFLUX_WEBHOOK_SECRET
-
-    if secret and "whsec_your" not in secret and signature:
-        expected_signature = hmac.new(
-            secret.encode('utf-8'),
-            body_bytes,
-            hashlib.sha256
-        ).hexdigest()
-
-        if not hmac.compare_digest(signature, expected_signature):
-            raise HTTPException(status_code=401, detail="Invalid HMAC signature")
-
-    try:
-        data = await request.json()
-    except Exception:
-        data = {}
-
-    event = data.get("event")
-    event_payload = data.get("payload", {})
-
-    if event == "payment.success":
-        order_info = event_payload.get("order", {})
-        tx_info = event_payload.get("transaction", {})
-        
-        order_id = order_info.get("id") or f"ord_{uuid.uuid4().hex[:8]}"
-        tx_id = tx_info.get("id") or order_id
-        amount = float(order_info.get("amount", 0.0))
-        
-        # Fulfill order in database if shop match is found
-        shops = db.get_all_shops()
-        if shops:
-            target_shop = shops[0]
-            result = db.update_shop_subscription(target_shop["shop_id"], 30, "Payflux Webhook Renewal")
-            db.create_subscription_record({
-                "shop_id": target_shop["shop_id"],
-                "plan_id": "webhook-plan",
-                "plan_name": "Payflux Webhook Renewal",
-                "amount": amount,
-                "payment_gateway": "payflux_webhook",
-                "transaction_id": tx_id,
-                "status": "success",
-                "expires_at": result.get("plan_expires_at")
-            })
-
-    return JSONResponse(status_code=200, content={"received": True})

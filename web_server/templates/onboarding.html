@@ -1,21 +1,26 @@
 {% extends "base.html" %}
 
-{% block title %}QwikPrint - Complete Shop Setup{% endblock %}
+{% block title %}Complete Shop Setup - QwikPrint{% endblock %}
 
 {% block content %}
-<div style="max-width: 520px; margin: 40px auto; padding: 0 20px;">
-    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 36px 32px; box-shadow: 0 10px 25px rgba(0,0,0,0.05);">
+<div style="max-width: 460px; margin: 64px auto; padding: 0 24px;">
+    <div class="qp-card" style="padding: 36px 32px;">
         <div style="text-align: center; margin-bottom: 28px;">
-            <span class="shadcn-badge" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; font-size: 13px; padding: 6px 14px; margin-bottom: 12px; display: inline-flex; align-items: center; gap: 6px;">
-                🔐 Google Auth Verified
+            <span class="qp-badge qp-badge-blue" style="margin-bottom: 12px;">
+                <svg class="qp-icon text-blue" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                Google Account Verified
             </span>
-            <h2 style="font-size: 26px; font-weight: 800; color: #0f172a; margin-top: 8px;">Complete Your Shop Setup</h2>
-            <p style="color: #64748b; font-size: 14px; margin-top: 6px;">Enter your shop details to complete registration and select your plan.</p>
+            <h1 style="font-size: 24px; font-weight: 700; color: var(--qp-fg); margin-top: 8px;">
+                Complete Your Shop Setup
+            </h1>
+            <p style="color: var(--qp-fg-muted); font-size: 14px; margin-top: 6px; line-height: 1.5;">
+                Enter your shop details to activate your counter portal.
+            </p>
         </div>
 
         {% if error %}
-        <div class="shadcn-alert shadcn-alert-destructive" style="margin-bottom: 20px; border-radius: 10px;">
-            <div style="font-size: 14px; line-height: 1.5;">⚠️ {{ error }}</div>
+        <div style="background: var(--qp-danger-subtle); border: 1px solid rgba(220, 38, 38, 0.2); color: var(--qp-danger); padding: 12px; border-radius: var(--qp-radius-md); font-size: 13px; margin-bottom: 20px; line-height: 1.5;">
+            {{ error }}
         </div>
         {% endif %}
 
@@ -23,30 +28,31 @@
             <input type="hidden" name="email" value="{{ google_email }}">
             <input type="hidden" name="device_fp" value="{{ device_fp }}">
 
-            <div style="margin-bottom: 20px;">
-                <label class="shadcn-label">Verified Google Email</label>
-                <input type="email" class="shadcn-input" value="{{ google_email }}" disabled style="background: #f8fafc; color: #64748b; border-color: #cbd5e1; cursor: not-allowed; font-weight: 500;">
+            <div style="margin-bottom: 18px;">
+                <label style="display: block; font-size: 13px; font-weight: 500; color: var(--qp-fg-muted); margin-bottom: 6px;">Verified Google Email</label>
+                <input type="email" class="qp-input" value="{{ google_email }}" disabled style="background: #F8FAFC; color: var(--qp-fg-muted); cursor: not-allowed;">
             </div>
 
-            <div style="margin-bottom: 20px;">
-                <label class="shadcn-label">Shopkeeper Full Name <span style="color: #ef4444;">*</span></label>
-                <input type="text" name="full_name" class="shadcn-input" placeholder="Enter your full name..." value="{{ google_name }}" required style="font-size: 15px; height: 44px;">
+            <div style="margin-bottom: 18px;">
+                <label style="display: block; font-size: 13px; font-weight: 500; color: var(--qp-fg); margin-bottom: 6px;">Shopkeeper Full Name <span style="color: var(--qp-danger);">*</span></label>
+                <input type="text" name="full_name" class="qp-input" placeholder="Enter your full name..." value="{{ google_name }}" required>
             </div>
 
-            <div style="margin-bottom: 20px;">
-                <label class="shadcn-label">Print Shop Name <span style="color: #ef4444;">*</span></label>
-                <input type="text" name="shop_name" class="shadcn-input" placeholder="e.g. Speed Print & Photocopy Hub" value="" required autofocus style="font-size: 15px; height: 44px;">
+            <div style="margin-bottom: 18px;">
+                <label style="display: block; font-size: 13px; font-weight: 500; color: var(--qp-fg); margin-bottom: 6px;">Print Shop Name <span style="color: var(--qp-danger);">*</span></label>
+                <input type="text" name="shop_name" class="qp-input" placeholder="e.g. Speed Print & Photocopy Hub" value="" required autofocus>
             </div>
 
-            <div style="margin-bottom: 28px;">
-                <label class="shadcn-label">Mobile / WhatsApp Number <span style="color: #ef4444;">*</span></label>
-                <input type="tel" name="phone" class="shadcn-input" placeholder="e.g. +91 9876543210" value="" required style="font-size: 15px; height: 44px;">
+            <div style="margin-bottom: 24px;">
+                <label style="display: block; font-size: 13px; font-weight: 500; color: var(--qp-fg); margin-bottom: 6px;">Mobile / WhatsApp Number <span style="color: var(--qp-danger);">*</span></label>
+                <input type="tel" name="phone" class="qp-input" placeholder="e.g. +91 9876543210" value="" required>
             </div>
 
-            <button type="submit" class="btn-shop-login" style="width: 100%; justify-content: center; padding: 14px; font-size: 16px; background: linear-gradient(135deg, #0d9488, #0284c7); border-radius: 10px; font-weight: 700; cursor: pointer;">
+            <button type="submit" class="qp-btn qp-btn-primary" style="width: 100%; justify-content: center; font-size: 14px; font-weight: 600;">
                 Next: Select Plan →
             </button>
         </form>
     </div>
 </div>
 {% endblock %}
+

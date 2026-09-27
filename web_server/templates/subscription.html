@@ -3,91 +3,92 @@
 {% block title %}Subscription Plans & Billing - QwikPrint{% endblock %}
 
 {% block content %}
-<div style="max-width: 1040px; margin: 30px auto; padding: 0 16px;">
+<div style="max-width: 1040px; margin: 32px auto; padding: 0 24px;">
     
     {% if request.query_params.get('new_signup') == 'true' %}
     <!-- New Signup Welcome Notification -->
-    <div class="glass-card" style="margin-bottom: 28px; background: linear-gradient(135deg, rgba(56, 189, 248, 0.15) 0%, rgba(129, 140, 248, 0.15) 100%); border: 1px solid rgba(56, 189, 248, 0.4); display: flex; align-items: center; gap: 16px; padding: 20px 24px;">
-        <div style="font-size: 2rem;">🎉</div>
+    <div class="qp-card" style="margin-bottom: 24px; background: var(--qp-blue-subtle); border-color: rgba(37, 99, 235, 0.3); display: flex; align-items: center; gap: 16px; padding: 20px 24px;">
+        <svg class="qp-icon text-blue" viewBox="0 0 24 24" style="width: 28px; height: 28px;"><polyline points="20 6 9 17 4 12"/></svg>
         <div>
-            <h3 style="margin: 0 0 4px; color: var(--text-primary); font-family: var(--font-display); font-size: 1.15rem; font-weight: 700;">
+            <h3 style="margin: 0 0 4px; color: var(--qp-fg); font-size: 16px; font-weight: 700;">
                 Account Setup Complete! Select Your Subscription Plan
             </h3>
-            <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">
-                Your shop counter account has been created. Pick a plan below (including our <strong>₹0 Free Trial</strong>) to activate your Windows Desktop Spooler Agent and QR upload portal.
+            <p style="margin: 0; color: var(--qp-fg-muted); font-size: 13px;">
+                Your shop counter account is active. Pick a plan below (including our <strong>Trial Plan</strong>) to activate your Windows Desktop Spooler Agent and QR upload portal.
             </p>
         </div>
     </div>
     {% endif %}
 
     <!-- Active Status Banner -->
-    <div class="glass-card" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 32px; border-color: #e2e8f0; background: #ffffff;">
+    <div class="qp-card" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 32px;">
         <div>
-            <div style="font-size: 1.3rem; font-weight: 800; color: #0f172a; margin-bottom: 4px;">
-                Current Active Plan: <span style="color: #0d9488;">{{ shop.plan_name or '7 Days Free Trial' }}</span>
+            <div style="font-size: 18px; font-weight: 700; color: var(--qp-fg); margin-bottom: 4px;">
+                Current Active Plan: <span style="color: var(--qp-blue);">{{ shop.plan_name or 'Trial Plan' }}</span>
             </div>
-            <div style="color: #64748b; font-size: 0.9rem;">
+            <div style="color: var(--qp-fg-muted); font-size: 13px;">
                 Plan Expiration Date: <strong>{{ shop.plan_expires_at[:10] if shop.plan_expires_at else 'Active / Unlimited' }}</strong>
             </div>
         </div>
         <div>
             {% if shop.is_suspended %}
-            <span class="status-pill pill-danger" style="padding: 8px 18px; font-size: 0.9rem;">🚫 Account Suspended</span>
+            <span class="qp-badge qp-badge-danger" style="padding: 6px 14px; font-size: 13px;">Account Suspended</span>
             {% elif is_valid %}
-            <span class="status-pill pill-success" style="padding: 8px 18px; font-size: 0.9rem;">✅ Subscription Active</span>
+            <span class="qp-badge qp-badge-success" style="padding: 6px 14px; font-size: 13px;">Subscription Active</span>
             {% else %}
-            <span class="status-pill pill-danger" style="padding: 8px 18px; font-size: 0.9rem;">⚠️ Subscription Expired</span>
+            <span class="qp-badge qp-badge-warning" style="padding: 6px 14px; font-size: 13px;">Subscription Expired</span>
             {% endif %}
         </div>
     </div>
 
-    <div style="margin-bottom: 28px; text-align: center;">
-        <h2 style="color: #0f172a; font-size: 2rem; font-weight: 800; margin-bottom: 8px;">
+    <div style="margin-bottom: 32px; text-align: center;">
+        <h1 style="color: var(--qp-fg); font-size: 28px; font-weight: 700; margin-bottom: 8px;">
             Choose Your Subscription Package
-        </h2>
-        <p style="color: #64748b; font-size: 0.98rem; max-width: 650px; margin: 0 auto;">
+        </h1>
+        <p style="color: var(--qp-fg-muted); font-size: 14px; max-width: 600px; margin: 0 auto;">
             Select a plan to activate or renew your shop printing agent & QR customer upload portal via Payflux Secured Payment Gateway.
         </p>
     </div>
 
     <!-- Plans Grid -->
-    <div class="grid-3" style="gap: 24px; margin-bottom: 40px;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-bottom: 40px;">
         {% for p in plans %}
-        <div class="glass-card" style="margin: 0; padding: 28px; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
-            {% if p.price == 0 or 'trial' in p.name.lower() %}
-            <div style="position: absolute; top: -12px; right: 20px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff; padding: 4px 12px; border-radius: 9999px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);">
-                🎁 Special Trial Plan
+        {% set is_trial_plan = (p.price in (0, 1, 2) or 'trial' in p.name.lower() or 'free' in p.name.lower()) %}
+        <div class="qp-card" style="display: flex; flex-direction: column; justify-content: space-between; position: relative; {% if loop.index == 2 %}border-color: var(--qp-blue);{% endif %}">
+            {% if is_trial_plan %}
+            <div style="position: absolute; top: -12px; right: 20px; background: var(--qp-blue); color: #ffffff; padding: 3px 12px; border-radius: var(--qp-radius-full); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">
+                Trial Plan
             </div>
             {% elif loop.index == 2 %}
-            <div style="position: absolute; top: -12px; right: 20px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: #ffffff; padding: 4px 12px; border-radius: 9999px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);">
-                ⭐ Most Popular
+            <div style="position: absolute; top: -12px; right: 20px; background: var(--qp-blue); color: #ffffff; padding: 3px 12px; border-radius: var(--qp-radius-full); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">
+                Most Popular
             </div>
             {% endif %}
 
             <div>
-                <div style="font-size: 1.25rem; font-weight: 700; color: #0f172a; margin-bottom: 8px;">{{ p.name }}</div>
-                <div style="font-size: 2.2rem; font-weight: 800; color: #0d9488; margin: 12px 0;">
+                <div style="font-size: 18px; font-weight: 700; color: var(--qp-fg); margin-bottom: 8px;">{{ p.name }}</div>
+                <div style="font-size: 32px; font-weight: 700; color: var(--qp-fg); margin: 12px 0;">
                     ₹{{ "%.2f"|format(p.price) if p.price is defined else p.price }} 
-                    <span style="font-size: 0.85rem; color: #64748b; font-weight: 500;">/ {{ p.duration_days }} Days</span>
+                    <span style="font-size: 13px; color: var(--qp-fg-muted); font-weight: 400;">/ {{ p.duration_days }} Days</span>
                 </div>
-                <p style="color: #64748b; font-size: 0.88rem; margin-bottom: 24px; line-height: 1.5;">
+                <p style="color: var(--qp-fg-muted); font-size: 13px; margin-bottom: 24px; line-height: 1.5; min-height: 40px;">
                     {{ p.description or 'Unlimited print jobs, desktop agent auto-printing, instant QR code portal access & real-time customer uploads.' }}
                 </p>
 
-                <ul style="list-style: none; padding: 0; margin: 0 0 24px; display: flex; flex-direction: column; gap: 8px; font-size: 0.85rem; color: #334155;">
-                    <li style="display: flex; align-items: center; gap: 8px;"><span style="color: #10b981; font-weight: 800;">✓</span> Unlimited Customer Print Uploads</li>
-                    <li style="display: flex; align-items: center; gap: 8px;"><span style="color: #10b981; font-weight: 800;">✓</span> Windows Agent Auto-Print</li>
-                    <li style="display: flex; align-items: center; gap: 8px;"><span style="color: #10b981; font-weight: 800;">✓</span> Counter QR Poster & Pricing Engine</li>
-                </ul>
+                <div style="border-top: 1px solid var(--qp-border); padding-top: 16px; margin-bottom: 24px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: var(--qp-fg);">
+                    <div style="display: flex; align-items: center; gap: 8px;"><svg class="qp-icon text-blue" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Unlimited Customer Print Uploads</div>
+                    <div style="display: flex; align-items: center; gap: 8px;"><svg class="qp-icon text-blue" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Windows Agent Auto-Print</div>
+                    <div style="display: flex; align-items: center; gap: 8px;"><svg class="qp-icon text-blue" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Counter QR Poster & Pricing Engine</div>
+                </div>
             </div>
 
-            {% if p.price == 0 or 'trial' in p.name.lower() %}
-            <button class="btn-primary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; background: linear-gradient(135deg, #10b981, #059669);" onclick="initiatePayfluxPayment('{{ p.plan_id }}', '{{ p.name }}', {{ p.price }}, {{ p.duration_days }})">
-                🎁 Claim Free Trial →
+            {% if is_trial_plan %}
+            <button class="qp-btn qp-btn-primary" style="width: 100%; justify-content: center; font-weight: 600;" onclick="initiatePayfluxPayment('{{ p.plan_id }}', '{{ p.name }}', {{ p.price }}, {{ p.duration_days }})">
+                Claim Trial Plan (₹{{ p.price }}) →
             </button>
             {% else %}
-            <button class="btn-primary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700;" onclick="initiatePayfluxPayment('{{ p.plan_id }}', '{{ p.name }}', {{ p.price }}, {{ p.duration_days }})">
-                💳 Select Plan & Pay via Payflux →
+            <button class="qp-btn qp-btn-primary" style="width: 100%; justify-content: center; font-weight: 600;" onclick="initiatePayfluxPayment('{{ p.plan_id }}', '{{ p.name }}', {{ p.price }}, {{ p.duration_days }})">
+                Subscribe & Pay (₹{{ p.price }}) →
             </button>
             {% endif %}
         </div>
@@ -100,7 +101,7 @@ async function initiatePayfluxPayment(planId, planName, amount, durationDays) {
     const btn = event ? event.target.closest('button') : null;
     const origText = btn ? btn.innerHTML : '';
     if (btn) {
-        btn.innerHTML = "⏳ Redirecting to Payflux Checkout...";
+        btn.innerHTML = "Redirecting to Payflux Checkout...";
         btn.disabled = true;
     }
 
@@ -120,7 +121,7 @@ async function initiatePayfluxPayment(planId, planName, amount, durationDays) {
             });
             const confirmData = await confirmRes.json();
             if (confirmData.success) {
-                alert('🎉 Free Plan Activated Successfully!');
+                alert('Plan Activated Successfully!');
                 window.location.href = '/dashboard';
                 return;
             }
@@ -140,7 +141,7 @@ async function initiatePayfluxPayment(planId, planName, amount, durationDays) {
         const data = await res.json();
 
         if (!data.success) {
-            alert('❌ Gateway Error: ' + (data.detail || data.error || 'Failed to initiate payment order'));
+            alert('Gateway Error: ' + (data.detail || data.error || 'Failed to initiate payment order'));
             if (btn) { btn.innerHTML = origText; btn.disabled = false; }
             return;
         }
@@ -189,9 +190,10 @@ async function initiatePayfluxPayment(planId, planName, amount, durationDays) {
         window.location.href = "/payment-success?orderId=" + orderId;
 
     } catch (e) {
-        alert('❌ Network error: ' + e);
+        alert('Network error: ' + e);
         if (btn) { btn.innerHTML = origText; btn.disabled = false; }
     }
 }
 </script>
 {% endblock %}
+

@@ -98,6 +98,13 @@ async def update_existing_plan(plan_id: str, payload: dict = Body(...)):
 
 @router.delete("/api/admin/plans/{plan_id}")
 async def delete_plan(plan_id: str):
+    plans = db.get_plans()
+    target_plan = next((p for p in plans if p.get("plan_id") == plan_id), None)
+    if target_plan:
+        price = target_plan.get("price", 999)
+        name = (target_plan.get("name") or "").lower()
+        if price in (0, 1, 2) or "trial" in name or "free" in name:
+            raise HTTPException(status_code=400, detail="Trial / Free plans cannot be deleted. You can edit its price or duration.")
     db.delete_plan(plan_id)
     return {"success": True, "message": "Plan deleted"}
 

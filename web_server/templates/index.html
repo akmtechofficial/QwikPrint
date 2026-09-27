@@ -379,14 +379,27 @@
                 </div>
             </div>
 
+            {% set is_trial_plan = (p.price in (0, 1, 2) or 'trial' in p.name.lower() or 'free' in p.name.lower()) %}
             {% if shop %}
-            <a href="/subscription" class="qp-btn qp-btn-primary" style="width: 100%; text-align: center; justify-content: center;">
-                Manage Subscription
-            </a>
+                {% if is_trial_plan %}
+                <a href="/subscription" class="qp-btn qp-btn-primary" style="width: 100%; text-align: center; justify-content: center;">
+                    Claim Trial (₹{{ p.price }})
+                </a>
+                {% else %}
+                <a href="/subscription" class="qp-btn qp-btn-primary" style="width: 100%; text-align: center; justify-content: center;">
+                    Manage Subscription (₹{{ p.price }})
+                </a>
+                {% endif %}
             {% else %}
-            <a href="/register" class="qp-btn qp-btn-primary" style="width: 100%; text-align: center; justify-content: center;">
-                Start Free Trial
-            </a>
+                {% if is_trial_plan %}
+                <a href="/register" class="qp-btn qp-btn-primary" style="width: 100%; text-align: center; justify-content: center;">
+                    Claim Free Trial (₹{{ p.price }})
+                </a>
+                {% else %}
+                <a href="/register" class="qp-btn qp-btn-primary" style="width: 100%; text-align: center; justify-content: center;">
+                    Select Plan (₹{{ p.price }})
+                </a>
+                {% endif %}
             {% endif %}
         </div>
         {% endfor %}

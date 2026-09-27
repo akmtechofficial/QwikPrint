@@ -95,13 +95,13 @@
         background: #F8FAFC;
     }
     .btn-action {
-        padding: 6px 12px;
+        padding: 6px 14px;
         border-radius: var(--qp-radius-sm);
         font-size: 12px;
-        font-weight: 500;
+        font-weight: 600;
         cursor: pointer;
         border: 1px solid var(--qp-border);
-        background: #FFFFFF;
+        background: #F1F5F9;
         color: var(--qp-fg);
         transition: all 0.15s ease;
         display: inline-flex;
@@ -109,14 +109,18 @@
         gap: 6px;
     }
     .btn-action:hover {
-        background: #F1F5F9;
+        background: #E2E8F0;
     }
-    .btn-grant { background: var(--qp-blue); color: white; border-color: var(--qp-blue); }
-    .btn-grant:hover { background: #1D4ED8; }
-    .btn-suspend { background: var(--qp-danger); color: white; border-color: var(--qp-danger); }
-    .btn-suspend:hover { background: #B91C1C; }
-    .btn-unsuspend { background: #F59E0B; color: white; border-color: #F59E0B; }
-    .btn-add { background: var(--qp-blue); color: white; border-color: var(--qp-blue); }
+    .btn-grant { background: var(--qp-blue) !important; color: white !important; border-color: var(--qp-blue) !important; }
+    .btn-grant:hover { background: #1D4ED8 !important; }
+    .btn-reset-key { background: #475569 !important; color: white !important; border-color: #475569 !important; }
+    .btn-reset-key:hover { background: #334155 !important; }
+    .btn-edit-plan { background: var(--qp-blue) !important; color: white !important; border-color: var(--qp-blue) !important; }
+    .btn-edit-plan:hover { background: #1D4ED8 !important; }
+    .btn-suspend { background: var(--qp-danger) !important; color: white !important; border-color: var(--qp-danger) !important; }
+    .btn-suspend:hover { background: #B91C1C !important; }
+    .btn-unsuspend { background: #F59E0B !important; color: white !important; border-color: #F59E0B !important; }
+    .btn-add { background: var(--qp-blue) !important; color: white !important; border-color: var(--qp-blue) !important; }
     
     /* Modal */
     .modal-overlay {
@@ -239,7 +243,7 @@
                                 {% else %}
                                 <button class="btn-action btn-suspend" onclick="toggleSuspend('{{ s.shop_id }}', true)">Suspend</button>
                                 {% endif %}
-                                <button class="btn-action" onclick="resetShopKey('{{ s.shop_id }}')">Reset Key</button>
+                                <button class="btn-action btn-reset-key" onclick="resetShopKey('{{ s.shop_id }}')">Reset Key</button>
                                 <button class="btn-action btn-suspend" onclick="deleteShopCompletely('{{ s.shop_id }}', '{{ s.name }}')">Delete</button>
                             </div>
                         </td>
@@ -264,7 +268,7 @@
         <div style="background: var(--qp-blue-subtle); border: 1px solid rgba(37, 99, 235, 0.2); border-radius: var(--qp-radius-md); padding: 12px 16px; margin-bottom: 20px; font-size: 13px; color: var(--qp-blue); display: flex; align-items: center; gap: 10px;">
             <svg class="qp-icon text-blue" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
             <div>
-                <strong>Trial Package Rule:</strong> Packages priced at <strong>₹0, ₹1, or ₹2</strong> (or named 'Trial') are treated as 1-time Trial Plans for <strong>NEW signups</strong> and will be hidden from existing users once claimed.
+                <strong>Trial Package Rule:</strong> Packages priced at <strong>₹0, ₹1, or ₹2</strong> (or named 'Trial') are treated as 1-time Trial Plans for <strong>NEW signups</strong> and will be hidden from existing users once claimed. Trial plans can be EDITED but NOT DELETED.
             </div>
         </div>
 
@@ -281,10 +285,11 @@
                 </thead>
                 <tbody>
                     {% for p in plans %}
+                    {% set is_trial = (p.price in (0, 1, 2) or 'trial' in p.name.lower() or 'free' in p.name.lower()) %}
                     <tr>
                         <td>
                             <strong>{{ p.name }}</strong>
-                            {% if p.price in (0, 1, 2) or 'trial' in p.name.lower() or 'free' in p.name.lower() %}
+                            {% if is_trial %}
                             <span class="qp-badge qp-badge-blue" style="margin-left: 6px;">New Users Only</span>
                             {% endif %}
                         </td>
@@ -292,9 +297,13 @@
                         <td style="color: var(--qp-fg); font-weight: 700;">₹{{ "%.2f"|format(p.price) if p.price is defined else p.price }}</td>
                         <td>{{ p.description or 'N/A' }}</td>
                         <td>
-                            <div style="display: flex; gap: 6px;">
-                                <button class="btn-action" onclick='openEditPlanModal({{ p.plan_id|tojson }}, {{ p.name|tojson }}, {{ p.duration_days }}, {{ p.price }}, {{ (p.description or "")|tojson }})'>Edit</button>
+                            <div style="display: flex; gap: 6px; align-items: center;">
+                                <button class="btn-action btn-edit-plan" onclick='openEditPlanModal({{ p.plan_id|tojson }}, {{ p.name|tojson }}, {{ p.duration_days }}, {{ p.price }}, {{ (p.description or "")|tojson }})'>Edit</button>
+                                {% if not is_trial %}
                                 <button class="btn-action btn-suspend" onclick="deletePlan('{{ p.plan_id }}')">Delete</button>
+                                {% else %}
+                                <span style="font-size: 11px; color: var(--qp-fg-muted); font-weight: 500; margin-left: 4px;">(Protected Trial)</span>
+                                {% endif %}
                             </div>
                         </td>
                     </tr>

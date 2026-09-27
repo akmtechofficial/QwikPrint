@@ -302,7 +302,16 @@
                         <td>{{ p.description or 'N/A' }}</td>
                         <td>
                             <div style="display: flex; gap: 6px; align-items: center;">
-                                <button class="btn-action btn-edit-plan" onclick='openEditPlanModal({{ p.plan_id|tojson }}, {{ p.name|tojson }}, {{ p.duration_days }}, {{ p.price }}, {{ (p.description or "")|tojson }}, {{ (p.badge or "")|tojson }})'>Edit</button>
+                                <button class="btn-action btn-edit-plan" 
+                                        data-plan-id="{{ p.plan_id }}"
+                                        data-plan-name="{{ p.name }}"
+                                        data-plan-days="{{ p.duration_days }}"
+                                        data-plan-price="{{ p.price }}"
+                                        data-plan-desc="{{ p.description or '' }}"
+                                        data-plan-badge="{{ p.badge or '' }}"
+                                        onclick="handleEditPlanClick(this)">
+                                    Edit
+                                </button>
                                 {% if not is_trial %}
                                 <button class="btn-action btn-suspend" onclick="deletePlan('{{ p.plan_id }}')">Delete</button>
                                 {% else %}
@@ -448,6 +457,16 @@ function openPlanModal() {
     document.getElementById('plan-badge').value = "";
     document.getElementById('plan-desc').value = "";
     document.getElementById('plan-modal').style.display = 'flex';
+}
+
+function handleEditPlanClick(btn) {
+    const planId = btn.getAttribute('data-plan-id') || '';
+    const name = btn.getAttribute('data-plan-name') || '';
+    const days = parseInt(btn.getAttribute('data-plan-days') || '30');
+    const price = parseFloat(btn.getAttribute('data-plan-price') || '0');
+    const desc = btn.getAttribute('data-plan-desc') || '';
+    const badge = btn.getAttribute('data-plan-badge') || '';
+    openEditPlanModal(planId, name, days, price, desc, badge);
 }
 
 function openEditPlanModal(planId, name, days, price, desc, badge) {

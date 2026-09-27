@@ -137,11 +137,14 @@ async def create_payflux_order(request: Request, payload: dict = Body(...)):
                 res_json = resp.json()
                 if res_json.get("success") and res_json.get("data"):
                     pf_data = res_json["data"]
+                    checkout_token = pf_data.get("checkoutToken")
+                    pf_order_id = pf_data.get("id", order_id)
+                    checkout_url = pf_data.get("checkoutUrl") or f"{PAYFLUX_BASE_URL}/payflux/checkout?order_id={pf_order_id}&token={checkout_token}"
                     return {
                         "success": True,
-                        "orderId": pf_data.get("id", order_id),
-                        "checkoutToken": pf_data.get("checkoutToken"),
-                        "checkoutUrl": pf_data.get("checkoutUrl"),
+                        "orderId": pf_order_id,
+                        "checkoutToken": checkout_token,
+                        "checkoutUrl": checkout_url,
                         "upiId": pf_data.get("upiId"),
                         "amount": amount,
                         "plan_id": plan_id,
@@ -149,16 +152,17 @@ async def create_payflux_order(request: Request, payload: dict = Body(...)):
                         "duration_days": duration_days
                     }
         except Exception as e:
-            print(f"[Payflux Gateway Error] Server API call failed: {e}. Falling back to Payflux Checkout Modal.")
+            print(f"[Payflux Gateway Error] Server API call failed: {e}.")
 
-    # Sandbox / Local Gateway Order Response
+    # Hosted Payflux Redirect Order Response
     checkout_token = f"pfchk_{order_id}_{uuid.uuid4().hex[:12]}"
+    checkout_url = f"{PAYFLUX_BASE_URL}/payflux/checkout?order_id={order_id}&token={checkout_token}"
     return {
         "success": True,
-        "show_gateway_modal": True,
         "orderId": order_id,
         "order_id": order_id,
         "checkoutToken": checkout_token,
+        "checkoutUrl": checkout_url,
         "shop_id": shop_id,
         "plan_id": plan_id,
         "plan_name": plan_name,

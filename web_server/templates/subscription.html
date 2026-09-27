@@ -89,93 +89,38 @@
     </div>
 </div>
 
-<!-- PAYFLUX PAYMENT GATEWAY MODAL -->
-<div id="payment-gateway-modal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 99999; align-items: center; justify-content: center; padding: 16px;">
-    <div class="glass-card" style="width: 100%; max-width: 480px; padding: 0; overflow: hidden; border-color: rgba(56, 189, 248, 0.4); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);">
-        
-        <!-- Modal Header -->
-        <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 20px 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); display: flex; justify-content: space-between; align-items: center;">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <div style="width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%); display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
-                    💳
-                </div>
-                <div>
-                    <div style="font-weight: 800; color: #ffffff; font-family: var(--font-display); font-size: 1.1rem; line-height: 1.2;">Payflux Gateway</div>
-                    <div style="font-size: 0.72rem; color: #94a3b8; letter-spacing: 0.05em;">256-BIT SSL ENCRYPTED CHECKOUT</div>
-                </div>
-            </div>
-            <button onclick="closeGatewayModal()" style="background: none; border: none; color: #94a3b8; font-size: 1.4rem; cursor: pointer; padding: 4px;">✕</button>
-        </div>
-
-        <!-- Modal Body -->
-        <div style="padding: 24px;">
-            <!-- Order Summary Box -->
-            <div style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem; color: #94a3b8;">
-                    <span>Order Reference:</span>
-                    <strong id="modal-order-id" style="color: #e2e8f0; font-family: monospace;">PAY-1002948</strong>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem; color: #94a3b8;">
-                    <span>Package Name:</span>
-                    <strong id="modal-plan-name" style="color: #38bdf8;">7 Days Free Trial</strong>
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px dashed rgba(255, 255, 255, 0.1);">
-                    <span style="font-weight: 700; color: #ffffff; font-size: 0.95rem;">Total Gateway Amount:</span>
-                    <span id="modal-amount" style="font-size: 1.6rem; font-weight: 800; color: #4ade80; font-family: var(--font-display);">₹0.00</span>
-                </div>
-            </div>
-
-            <!-- Payment Method Tabs -->
-            <div style="margin-bottom: 20px;">
-                <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px;">
-                    Select Gateway Method
-                </label>
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
-                    <div class="pay-tab active" onclick="selectPayTab(this, 'upi')" style="border: 1px solid #38bdf8; background: rgba(56, 189, 248, 0.12); padding: 10px; border-radius: 8px; text-align: center; cursor: pointer;">
-                        <div style="font-size: 1.1rem;">⚡</div>
-                        <div style="font-size: 0.75rem; font-weight: 700; color: #ffffff; margin-top: 2px;">UPI / QR</div>
-                    </div>
-                    <div class="pay-tab" onclick="selectPayTab(this, 'card')" style="border: 1px solid rgba(255,255,255,0.1); background: rgba(30,41,59,0.4); padding: 10px; border-radius: 8px; text-align: center; cursor: pointer;">
-                        <div style="font-size: 1.1rem;">💳</div>
-                        <div style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; margin-top: 2px;">Cards</div>
-                    </div>
-                    <div class="pay-tab" onclick="selectPayTab(this, 'netbanking')" style="border: 1px solid rgba(255,255,255,0.1); background: rgba(30,41,59,0.4); padding: 10px; border-radius: 8px; text-align: center; cursor: pointer;">
-                        <div style="font-size: 1.1rem;">🏛️</div>
-                        <div style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; margin-top: 2px;">NetBanking</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- UPI Apps Badges -->
-            <div style="display: flex; justify-content: center; gap: 12px; margin-bottom: 24px; opacity: 0.85;">
-                <span style="background: rgba(255,255,255,0.06); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; color: #cbd5e1;">Google Pay</span>
-                <span style="background: rgba(255,255,255,0.06); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; color: #cbd5e1;">PhonePe</span>
-                <span style="background: rgba(255,255,255,0.06); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; color: #cbd5e1;">Paytm UPI</span>
-                <span style="background: rgba(255,255,255,0.06); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; color: #cbd5e1;">BHIM</span>
-            </div>
-
-            <!-- Gateway Submit Action Button -->
-            <button id="modal-pay-btn" onclick="submitGatewayPayment()" class="btn-primary" style="width: 100%; padding: 14px; font-size: 1rem; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);">
-                🔒 Pay ₹0.00 & Activate Subscription
-            </button>
-
-            <div style="text-align: center; margin-top: 14px; font-size: 0.75rem; color: #64748b;">
-                🛡️ Powered by Payflux Payment Gateway Engine (Official Partner)
-            </div>
-        </div>
-    </div>
-</div>
-
 <script>
-let currentOrder = null;
-
 async function initiatePayfluxPayment(planId, planName, amount, durationDays) {
-    try {
-        const btn = event.target;
-        const origText = btn.innerHTML;
-        btn.innerHTML = "⏳ Connecting to Payflux Gateway...";
+    const btn = event ? event.target.closest('button') : null;
+    const origText = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.innerHTML = "⏳ Redirecting to Payflux Checkout...";
         btn.disabled = true;
+    }
 
+    try {
+        // Free / ₹0 Plan Direct Activation
+        if (parseFloat(amount) <= 0) {
+            const confirmRes = await fetch('/api/payments/confirm-order', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    plan_id: planId,
+                    plan_name: planName,
+                    amount: 0.0,
+                    duration_days: durationDays,
+                    payment_method: 'free_trial'
+                })
+            });
+            const confirmData = await confirmRes.json();
+            if (confirmData.success) {
+                alert('🎉 Free Plan Activated Successfully!');
+                window.location.href = '/dashboard';
+                return;
+            }
+        }
+
+        // Paid Plans: Create Order & Redirect to Payflux Hosted Page / SDK
         const res = await fetch('/api/payments/create-order', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -187,130 +132,59 @@ async function initiatePayfluxPayment(planId, planName, amount, durationDays) {
             })
         });
         const data = await res.json();
-        
-        btn.innerHTML = origText;
-        btn.disabled = false;
+
+        if (!data.success) {
+            alert('❌ Gateway Error: ' + (data.detail || data.error || 'Failed to initiate payment order'));
+            if (btn) { btn.innerHTML = origText; btn.disabled = false; }
+            return;
+        }
 
         const orderId = data.orderId || data.order_id;
         const checkoutToken = data.checkoutToken;
 
-        // 1. Try Official Payflux JS SDK Popup Checkout
-        if (data.success && checkoutToken && typeof Payflux !== 'undefined' && typeof Payflux.open === 'function') {
-            try {
-                Payflux.open({
-                    orderId: orderId,
-                    checkoutToken: checkoutToken,
-                    onSuccess: async function(result) {
-                        console.log("Payment Confirmed by Backend Payflux SDK:", result);
-                        await fetch('/api/payments/confirm-order', {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({
-                                order_id: (result && result.orderId) ? result.orderId : orderId,
-                                plan_id: planId,
-                                plan_name: planName,
-                                amount: amount,
-                                duration_days: durationDays,
-                                payment_method: 'payflux_sdk'
-                            })
-                        });
-                        window.location.href = "/payment-success?orderId=" + ((result && result.orderId) ? result.orderId : orderId);
-                    },
-                    onFailure: function(error) {
-                        alert("Payment Failed: " + (error.message || "Transaction cancelled"));
-                    },
-                    onClose: function() {
-                        console.log("Customer closed the Payflux checkout modal");
-                    }
-                });
-                return;
-            } catch (err) {
-                console.warn("[Payflux SDK Warning] Payflux.open call exception, falling back to modal UI:", err);
-            }
+        // 1. Payflux JS SDK Checkout
+        if (checkoutToken && typeof Payflux !== 'undefined' && typeof Payflux.open === 'function') {
+            Payflux.open({
+                orderId: orderId,
+                checkoutToken: checkoutToken,
+                onSuccess: async function(result) {
+                    await fetch('/api/payments/confirm-order', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            order_id: (result && result.orderId) ? result.orderId : orderId,
+                            plan_id: planId,
+                            plan_name: planName,
+                            amount: amount,
+                            duration_days: durationDays,
+                            payment_method: 'payflux_sdk'
+                        })
+                    });
+                    window.location.href = "/payment-success?orderId=" + ((result && result.orderId) ? result.orderId : orderId);
+                },
+                onFailure: function(error) {
+                    alert("Payment Failed: " + (error.message || "Transaction cancelled"));
+                    if (btn) { btn.innerHTML = origText; btn.disabled = false; }
+                },
+                onClose: function() {
+                    if (btn) { btn.innerHTML = origText; btn.disabled = false; }
+                }
+            });
+            return;
         }
 
-        // 2. Direct Redirect URL if returned by Payflux API
-        if (data.success && data.checkoutUrl) {
+        // 2. Direct Hosted Payflux Redirect URL
+        if (data.checkoutUrl) {
             window.location.href = data.checkoutUrl;
             return;
         }
 
-        // 3. Fallback Interactive Gateway Modal
-        if (data.success) {
-            currentOrder = {
-                order_id: orderId,
-                plan_id: planId,
-                plan_name: planName,
-                amount: amount,
-                duration_days: durationDays || 30
-            };
+        // 3. Fallback Order Direct Success
+        window.location.href = "/payment-success?orderId=" + orderId;
 
-            document.getElementById('modal-order-id').innerText = orderId;
-            document.getElementById('modal-plan-name').innerText = planName;
-            document.getElementById('modal-amount').innerText = '₹' + amount.toFixed(2);
-            document.getElementById('modal-pay-btn').innerText = `🔒 Pay ₹${amount.toFixed(2)} & Activate Subscription`;
-
-            document.getElementById('payment-gateway-modal').style.display = 'flex';
-        } else {
-            alert('❌ Gateway Error: ' + (data.detail || data.error || 'Failed to create payment order'));
-        }
     } catch (e) {
         alert('❌ Network error: ' + e);
-    }
-}
-
-function closeGatewayModal() {
-    document.getElementById('payment-gateway-modal').style.display = 'none';
-}
-
-function selectPayTab(el, type) {
-    document.querySelectorAll('.pay-tab').forEach(t => {
-        t.style.border = '1px solid rgba(255,255,255,0.1)';
-        t.style.background = 'rgba(30,41,59,0.4)';
-        t.querySelector('div:last-child').style.color = '#94a3b8';
-    });
-    el.style.border = '1px solid #38bdf8';
-    el.style.background = 'rgba(56, 189, 248, 0.12)';
-    el.querySelector('div:last-child').style.color = '#ffffff';
-}
-
-async function submitGatewayPayment() {
-    if (!currentOrder) return;
-
-    const payBtn = document.getElementById('modal-pay-btn');
-    payBtn.disabled = true;
-    payBtn.innerHTML = "⏳ Verifying Payflux Payment Gateway Response...";
-
-    try {
-        const res = await fetch('/api/payments/confirm-order', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                order_id: currentOrder.order_id,
-                plan_id: currentOrder.plan_id,
-                plan_name: currentOrder.plan_name,
-                amount: currentOrder.amount,
-                duration_days: currentOrder.duration_days,
-                payment_method: 'payflux_upi'
-            })
-        });
-        const data = await res.json();
-
-        if (data.success) {
-            payBtn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
-            payBtn.innerHTML = "✅ Payment Verified & Plan Activated!";
-            setTimeout(() => {
-                window.location.href = '/dashboard';
-            }, 1200);
-        } else {
-            alert('❌ Gateway Confirmation Failed: ' + (data.detail || data.error || 'Please try again'));
-            payBtn.disabled = false;
-            payBtn.innerHTML = `🔒 Pay ₹${currentOrder.amount.toFixed(2)} & Activate Subscription`;
-        }
-    } catch (e) {
-        alert('❌ Network error: ' + e);
-        payBtn.disabled = false;
-        payBtn.innerHTML = `🔒 Pay ₹${currentOrder.amount.toFixed(2)} & Activate Subscription`;
+        if (btn) { btn.innerHTML = origText; btn.disabled = false; }
     }
 }
 </script>

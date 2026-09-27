@@ -308,10 +308,13 @@
                     <tr>
                         <td><strong>{{ p.name }}</strong></td>
                         <td>{{ p.duration_days }} Days</td>
-                        <td style="color: #4ade80; font-weight: 700;">₹{{ p.price }}</td>
-                        <td>{{ p.description }}</td>
+                        <td style="color: #4ade80; font-weight: 700;">₹{{ "%.2f"|format(p.price) if p.price is defined else p.price }}</td>
+                        <td>{{ p.description or 'N/A' }}</td>
                         <td>
-                            <button class="btn-action btn-suspend" onclick="deletePlan('{{ p.plan_id }}')">Delete</button>
+                            <div style="display: flex; gap: 6px;">
+                                <button class="btn-action" style="background: #0284c7; color: white;" onclick='openEditPlanModal({{ p.plan_id|tojson }}, {{ p.name|tojson }}, {{ p.duration_days }}, {{ p.price }}, {{ (p.description or "")|tojson }})'>✏️ Edit</button>
+                                <button class="btn-action btn-suspend" onclick="deletePlan('{{ p.plan_id }}')">🗑️ Delete</button>
+                            </div>
                         </td>
                     </tr>
                     {% else %}
@@ -387,10 +390,11 @@
     </div>
 </div>
 
-<!-- Modal 2: Create Pricing Plan -->
+<!-- Modal 2: Create / Edit Pricing Plan -->
 <div id="plan-modal" class="modal-overlay">
     <div class="modal-box">
-        <div class="modal-header">💰 Add Pricing Package</div>
+        <div class="modal-header" id="plan-modal-header">💰 Add Pricing Package</div>
+        <input type="hidden" id="plan-id" value="">
         <div class="form-group">
             <label class="form-label">Package Name:</label>
             <input type="text" id="plan-name" placeholder="e.g. 1 Month Starter" class="form-input">
@@ -401,7 +405,7 @@
         </div>
         <div class="form-group">
             <label class="form-label">Price (INR ₹):</label>
-            <input type="number" id="plan-price" placeholder="199" class="form-input">
+            <input type="number" step="0.01" id="plan-price" placeholder="199" class="form-input">
         </div>
         <div class="form-group">
             <label class="form-label">Description:</label>
@@ -409,7 +413,7 @@
         </div>
         <div class="modal-footer">
             <button class="btn-action" style="background: #334155; color: white;" onclick="closeModal('plan-modal')">Cancel</button>
-            <button class="btn-action btn-add" onclick="submitCreatePlan()">Save Package</button>
+            <button class="btn-action btn-add" id="plan-modal-submit-btn" onclick="submitCreatePlan()">Save Package</button>
         </div>
     </div>
 </div>
@@ -437,6 +441,24 @@ function openGrantModal(shopId, shopName) {
 }
 
 function openPlanModal() {
+    document.getElementById('plan-modal-header').innerText = "💰 Add New Pricing Package";
+    document.getElementById('plan-modal-submit-btn').innerText = "Save Package";
+    document.getElementById('plan-id').value = "";
+    document.getElementById('plan-name').value = "";
+    document.getElementById('plan-days').value = "";
+    document.getElementById('plan-price').value = "";
+    document.getElementById('plan-desc').value = "";
+    document.getElementById('plan-modal').style.display = 'flex';
+}
+
+function openEditPlanModal(planId, name, days, price, desc) {
+    document.getElementById('plan-modal-header').innerText = "✏️ Edit Pricing Package";
+    document.getElementById('plan-modal-submit-btn').innerText = "Update Package";
+    document.getElementById('plan-id').value = planId;
+    document.getElementById('plan-name').value = name;
+    document.getElementById('plan-days').value = days;
+    document.getElementById('plan-price').value = price;
+    document.getElementById('plan-desc').value = desc;
     document.getElementById('plan-modal').style.display = 'flex';
 }
 
@@ -486,6 +508,7 @@ async function toggleSuspend(shopId, suspend) {
 }
 
 async function submitCreatePlan() {
+    const planId = document.getElementById('plan-id').value;
     const name = document.getElementById('plan-name').value;
     const days = parseInt(document.getElementById('plan-days').value);
     const price = parseFloat(document.getElementById('plan-price').value);
@@ -496,18 +519,28 @@ async function submitCreatePlan() {
         return;
     }
 
+    const payload = {
+        name: name,
+        duration_days: days,
+        price: price,
+        description: desc
+    };
+    if (planId) {
+        payload.plan_id = planId;
+    }
+
     try {
         const res = await fetch('/api/admin/plans', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({name: name, duration_days: days, price: price, description: desc})
+            body: JSON.stringify(payload)
         });
         const data = await res.json();
         if (data.success) {
-            alert('✅ Plan created!');
+            alert(planId ? '✅ Plan updated successfully!' : '✅ Plan created successfully!');
             window.location.reload();
         } else {
-            alert('❌ Error: ' + data.error);
+            alert('❌ Error: ' + (data.detail || data.error || 'Failed to save plan'));
         }
     } catch (e) {
         alert('❌ Network error: ' + e);

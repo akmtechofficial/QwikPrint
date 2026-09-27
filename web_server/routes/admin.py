@@ -87,6 +87,15 @@ async def create_or_update_plan(payload: dict = Body(...)):
     db.save_plan(payload)
     return {"success": True, "message": "Plan saved successfully"}
 
+@router.put("/api/admin/plans/{plan_id}")
+@router.post("/api/admin/plans/{plan_id}")
+async def update_existing_plan(plan_id: str, payload: dict = Body(...)):
+    payload["plan_id"] = plan_id
+    if not payload.get("name") or not payload.get("duration_days") or payload.get("price") is None:
+        raise HTTPException(status_code=400, detail="Missing required fields: name, duration_days, price")
+    db.save_plan(payload)
+    return {"success": True, "message": "Plan updated successfully"}
+
 @router.delete("/api/admin/plans/{plan_id}")
 async def delete_plan(plan_id: str):
     db.delete_plan(plan_id)

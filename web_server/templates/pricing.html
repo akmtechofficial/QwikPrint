@@ -5,54 +5,51 @@
 {% block content %}
 <div style="text-align: center; max-width: 800px; margin: 40px auto 40px; padding: 0 16px;">
     <span class="status-pill pill-success" style="margin-bottom: 16px;">💎 100% Transparent Subscription Pricing</span>
-    <h1 style="font-size: clamp(2.2rem, 4vw, 3.2rem); font-weight: 800; font-family: var(--font-display); background: linear-gradient(135deg, #38bdf8 0%, #818cf8 50%, #c084fc 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 16px; line-height: 1.15;">
+    <h1 style="font-size: clamp(2.2rem, 4vw, 3.2rem); font-weight: 800; color: #0f172a; margin-bottom: 16px; line-height: 1.15;">
         Select the Ideal Plan for Your Print Counter
     </h1>
-    <p style="color: var(--text-muted); font-size: 1.1rem; line-height: 1.6;">
+    <p style="color: #64748b; font-size: 1.1rem; line-height: 1.6;">
         Unlimited customer uploads, automatic Windows Desktop Spooling, zero transaction commissions, and 24/7 priority support.
     </p>
 </div>
 
 <div class="grid-3" style="max-width: 1100px; margin: 0 auto 60px; padding: 0 16px; gap: 24px;">
     {% for p in plans %}
-    <div class="glass-card {% if loop.index == 2 %}featured-card{% endif %}" style="margin: 0; padding: 32px 28px; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
+    <div class="glass-card" style="margin: 0; padding: 32px 28px; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
         {% if loop.index == 2 %}
-        <div style="position: absolute; top: -14px; right: 24px; background: linear-gradient(135deg, var(--primary) 0%, #a855f7 100%); color: #ffffff; padding: 4px 14px; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);">
+        <div style="position: absolute; top: -14px; right: 24px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: #ffffff; padding: 4px 14px; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);">
             ⭐ Most Popular Choice
         </div>
         {% endif %}
         
         <div>
-            <div style="font-size: 1.35rem; font-weight: 700; color: var(--text-primary); font-family: var(--font-display);">{{ p.name }}</div>
-            <div style="font-size: 2.5rem; font-weight: 800; color: var(--cyan-accent); font-family: var(--font-display); margin: 12px 0 6px;">
-                ₹{{ p.price }} <span style="font-size: 0.9rem; color: var(--text-muted); font-weight: 500;">/ {{ p.duration_days }} Days</span>
+            <div style="font-size: 1.35rem; font-weight: 700; color: #0f172a;">{{ p.name }}</div>
+            <div style="font-size: 2.5rem; font-weight: 800; color: #0d9488; margin: 12px 0 6px;">
+                ₹{{ p.price }} <span style="font-size: 0.9rem; color: #64748b; font-weight: 500;">/ {{ p.duration_days }} Days</span>
             </div>
-            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 24px; min-height: 42px; line-height: 1.5;">
+            <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 24px; min-height: 42px; line-height: 1.5;">
                 {{ p.description or 'Full uninterrupted access to QwikPrint SaaS engine and Windows Agent.' }}
             </p>
 
-            <div style="border-top: 1px solid var(--card-border); padding-top: 20px; margin-bottom: 28px;">
+            <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; margin-bottom: 28px;">
                 <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px;">
-                    <li style="display: flex; align-items: center; gap: 10px; color: var(--text-secondary); font-size: 0.92rem;">
-                        <span style="color: var(--emerald-success); font-weight: 700;">✓</span> Unlimited Customer Print Job Uploads
+                    <li style="display: flex; align-items: center; gap: 10px; color: #334155; font-size: 0.92rem;">
+                        <span style="color: #10b981; font-weight: 800;">✓</span> Unlimited Customer Print Job Uploads
                     </li>
-                    <li style="display: flex; align-items: center; gap: 10px; color: var(--text-secondary); font-size: 0.92rem;">
-                        <span style="color: var(--emerald-success); font-weight: 700;">✓</span> 1-Click Windows Desktop Silent Spooler
+                    <li style="display: flex; align-items: center; gap: 10px; color: #334155; font-size: 0.92rem;">
+                        <span style="color: #10b981; font-weight: 800;">✓</span> 1-Click Windows Desktop Silent Spooler
                     </li>
-                    <li style="display: flex; align-items: center; gap: 10px; color: var(--text-secondary); font-size: 0.92rem;">
-                        <span style="color: var(--emerald-success); font-weight: 700;">✓</span> Dynamic Shop QR Code & Web Portal
+                    <li style="display: flex; align-items: center; gap: 10px; color: #334155; font-size: 0.92rem;">
+                        <span style="color: #10b981; font-weight: 800;">✓</span> Dynamic Shop QR Code & Web Portal
                     </li>
-                    <li style="display: flex; align-items: center; gap: 10px; color: var(--text-secondary); font-size: 0.92rem;">
-                        <span style="color: var(--emerald-success); font-weight: 700;">✓</span> Multi-Paper Pricing (A4, A3, Legal, Photo)
+                    <li style="display: flex; align-items: center; gap: 10px; color: #334155; font-size: 0.92rem;">
+                        <span style="color: #10b981; font-weight: 800;">✓</span> Multi-Paper Pricing (A4, A3, Legal, Photo)
                     </li>
-                    <li style="display: flex; align-items: center; gap: 10px; color: var(--text-secondary); font-size: 0.92rem;">
-                        <span style="color: var(--emerald-success); font-weight: 700;">✓</span> Payflux UPI & Counter Cash Verification
+                    <li style="display: flex; align-items: center; gap: 10px; color: #334155; font-size: 0.92rem;">
+                        <span style="color: #10b981; font-weight: 800;">✓</span> Payflux UPI & Counter Cash Verification
                     </li>
-                    <li style="display: flex; align-items: center; gap: 10px; color: var(--text-secondary); font-size: 0.92rem;">
-                        <span style="color: var(--emerald-success); font-weight: 700;">✓</span> Automated File Lifecycle Privacy Purge
-                    </li>
-                    <li style="display: flex; align-items: center; gap: 10px; color: var(--text-secondary); font-size: 0.92rem;">
-                        <span style="color: var(--emerald-success); font-weight: 700;">✓</span> Real-Time Analytics & Revenue Logs
+                    <li style="display: flex; align-items: center; gap: 10px; color: #334155; font-size: 0.92rem;">
+                        <span style="color: #10b981; font-weight: 800;">✓</span> Automated File Lifecycle Privacy Purge
                     </li>
                 </ul>
             </div>
@@ -65,21 +62,21 @@
         {% endif %}
     </div>
     {% else %}
-    <div class="glass-card featured-card" style="margin: 0; padding: 32px 28px; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
-        <div style="position: absolute; top: -14px; right: 24px; background: linear-gradient(135deg, var(--primary) 0%, #a855f7 100%); color: #ffffff; padding: 4px 14px; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">
+    <div class="glass-card" style="margin: 0; padding: 32px 28px; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
+        <div style="position: absolute; top: -14px; right: 24px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: #ffffff; padding: 4px 14px; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">
             ⭐ Recommended
         </div>
         <div>
-            <div style="font-size: 1.35rem; font-weight: 700; color: var(--text-primary); font-family: var(--font-display);">1 Month Pro</div>
-            <div style="font-size: 2.5rem; font-weight: 800; color: var(--cyan-accent); font-family: var(--font-display); margin: 12px 0 6px;">
-                ₹199 <span style="font-size: 0.9rem; color: var(--text-muted); font-weight: 500;">/ 30 Days</span>
+            <div style="font-size: 1.35rem; font-weight: 700; color: #0f172a;">1 Month Pro</div>
+            <div style="font-size: 2.5rem; font-weight: 800; color: #0d9488; margin: 12px 0 6px;">
+                ₹199 <span style="font-size: 0.9rem; color: #64748b; font-weight: 500;">/ 30 Days</span>
             </div>
-            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 24px;">Complete automated smart print ATM counter for 30 days.</p>
-            <div style="border-top: 1px solid var(--card-border); padding-top: 20px; margin-bottom: 28px;">
+            <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 24px;">Complete automated smart print ATM counter for 30 days.</p>
+            <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; margin-bottom: 28px;">
                 <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px;">
-                    <li style="display: flex; align-items: center; gap: 10px; color: var(--text-secondary); font-size: 0.92rem;"><span style="color: var(--emerald-success); font-weight: 700;">✓</span> Unlimited Print Jobs</li>
-                    <li style="display: flex; align-items: center; gap: 10px; color: var(--text-secondary); font-size: 0.92rem;"><span style="color: var(--emerald-success); font-weight: 700;">✓</span> Windows Desktop Agent</li>
-                    <li style="display: flex; align-items: center; gap: 10px; color: var(--text-secondary); font-size: 0.92rem;"><span style="color: var(--emerald-success); font-weight: 700;">✓</span> Payflux UPI & Cash Verification</li>
+                    <li style="display: flex; align-items: center; gap: 10px; color: #334155; font-size: 0.92rem;"><span style="color: #10b981; font-weight: 800;">✓</span> Unlimited Print Jobs</li>
+                    <li style="display: flex; align-items: center; gap: 10px; color: #334155; font-size: 0.92rem;"><span style="color: #10b981; font-weight: 800;">✓</span> Windows Desktop Agent</li>
+                    <li style="display: flex; align-items: center; gap: 10px; color: #334155; font-size: 0.92rem;"><span style="color: #10b981; font-weight: 800;">✓</span> Payflux UPI & Cash Verification</li>
                 </ul>
             </div>
         </div>
@@ -87,59 +84,4 @@
     </div>
     {% endfor %}
 </div>
-
-<!-- Plan Comparison Table -->
-<div style="max-width: 1100px; margin: 0 auto 70px; padding: 0 16px;">
-    <div style="text-align: center; margin-bottom: 28px;">
-        <h2 style="font-size: 1.8rem; font-weight: 800; color: var(--text-primary); font-family: var(--font-display);">Feature Comparison</h2>
-        <p style="color: var(--text-muted); font-size: 0.95rem;">Everything you need to automate your print counter with zero hassles.</p>
-    </div>
-
-    <div class="glass-card" style="padding: 0; overflow: hidden; margin: 0;">
-        <div style="overflow-x: auto;">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Feature / Capability</th>
-                        <th>Trial Plan</th>
-                        <th>Paid Subscription Plans</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><strong>Customer Print Uploads</strong></td>
-                        <td>Limited (7 Days)</td>
-                        <td><strong style="color: var(--emerald-success);">Unlimited</strong></td>
-                    </tr>
-                    <tr>
-                        <td><strong>Windows Desktop Agent (.exe)</strong></td>
-                        <td>Included</td>
-                        <td><strong style="color: var(--emerald-success);">Included + Auto-Updates</strong></td>
-                    </tr>
-                    <tr>
-                        <td><strong>Instant UPI via Payflux</strong></td>
-                        <td>Active</td>
-                        <td><strong style="color: var(--emerald-success);">Active (0% Commission)</strong></td>
-                    </tr>
-                    <tr>
-                        <td><strong>Counter Cash Audio Alert</strong></td>
-                        <td>Active</td>
-                        <td><strong style="color: var(--emerald-success);">Active</strong></td>
-                    </tr>
-                    <tr>
-                        <td><strong>Multi-Paper Rate Engine</strong></td>
-                        <td>Active</td>
-                        <td><strong style="color: var(--emerald-success);">Active (A4, A3, Legal, Photo)</strong></td>
-                    </tr>
-                    <tr>
-                        <td><strong>Support & Reliability</strong></td>
-                        <td>Community Support</td>
-                        <td><strong style="color: var(--cyan-accent);">Priority 24/7 WhatsApp Support</strong></td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
 {% endblock %}
-

@@ -21,12 +21,12 @@
     {% endif %}
 
     <!-- Active Status Banner -->
-    <div class="glass-card" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 32px; border-color: rgba(56, 189, 248, 0.3);">
+    <div class="glass-card" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 32px; border-color: #e2e8f0; background: #ffffff;">
         <div>
-            <div style="font-size: 1.3rem; font-weight: 800; color: var(--text-primary); font-family: var(--font-display); margin-bottom: 4px;">
-                Current Active Plan: <span style="color: var(--cyan-accent);">{{ shop.plan_name or '7 Days Free Trial' }}</span>
+            <div style="font-size: 1.3rem; font-weight: 800; color: #0f172a; margin-bottom: 4px;">
+                Current Active Plan: <span style="color: #0d9488;">{{ shop.plan_name or '7 Days Free Trial' }}</span>
             </div>
-            <div style="color: var(--text-muted); font-size: 0.9rem;">
+            <div style="color: #64748b; font-size: 0.9rem;">
                 Plan Expiration Date: <strong>{{ shop.plan_expires_at[:10] if shop.plan_expires_at else 'Active / Unlimited' }}</strong>
             </div>
         </div>
@@ -42,10 +42,10 @@
     </div>
 
     <div style="margin-bottom: 28px; text-align: center;">
-        <h2 style="color: var(--text-primary); font-family: var(--font-display); font-size: 2rem; font-weight: 800; margin-bottom: 8px;">
+        <h2 style="color: #0f172a; font-size: 2rem; font-weight: 800; margin-bottom: 8px;">
             Choose Your Subscription Package
         </h2>
-        <p style="color: var(--text-muted); font-size: 0.98rem; max-width: 650px; margin: 0 auto;">
+        <p style="color: #64748b; font-size: 0.98rem; max-width: 650px; margin: 0 auto;">
             Select a plan to activate or renew your shop printing agent & QR customer upload portal via Payflux Secured Payment Gateway.
         </p>
     </div>
@@ -53,31 +53,31 @@
     <!-- Plans Grid -->
     <div class="grid-3" style="gap: 24px; margin-bottom: 40px;">
         {% for p in plans %}
-        <div class="glass-card {% if loop.index == 2 or p.price == 0 %}featured-card{% endif %}" style="margin: 0; padding: 28px; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
-            {% if p.price == 0 %}
-            <div style="position: absolute; top: -12px; right: 20px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff; padding: 4px 12px; border-radius: 9999px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);">
-                🎁 100% Free Trial
+        <div class="glass-card" style="margin: 0; padding: 28px; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
+            {% if p.price == 0 or 'trial' in p.name.lower() %}
+            <div style="position: absolute; top: -12px; right: 20px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff; padding: 4px 12px; border-radius: 9999px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);">
+                🎁 Special Trial Plan
             </div>
             {% elif loop.index == 2 %}
-            <div style="position: absolute; top: -12px; right: 20px; background: linear-gradient(135deg, var(--primary) 0%, #a855f7 100%); color: #ffffff; padding: 4px 12px; border-radius: 9999px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);">
+            <div style="position: absolute; top: -12px; right: 20px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: #ffffff; padding: 4px 12px; border-radius: 9999px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);">
                 ⭐ Most Popular
             </div>
             {% endif %}
 
             <div>
-                <div style="font-size: 1.25rem; font-weight: 700; color: var(--text-primary); font-family: var(--font-display); margin-bottom: 8px;">{{ p.name }}</div>
-                <div style="font-size: 2.2rem; font-weight: 800; color: var(--cyan-accent); font-family: var(--font-display); margin: 12px 0;">
+                <div style="font-size: 1.25rem; font-weight: 700; color: #0f172a; margin-bottom: 8px;">{{ p.name }}</div>
+                <div style="font-size: 2.2rem; font-weight: 800; color: #0d9488; margin: 12px 0;">
                     ₹{{ "%.2f"|format(p.price) if p.price is defined else p.price }} 
-                    <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">/ {{ p.duration_days }} Days</span>
+                    <span style="font-size: 0.85rem; color: #64748b; font-weight: 500;">/ {{ p.duration_days }} Days</span>
                 </div>
-                <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 24px; line-height: 1.5;">
+                <p style="color: #64748b; font-size: 0.88rem; margin-bottom: 24px; line-height: 1.5;">
                     {{ p.description or 'Unlimited print jobs, desktop agent auto-printing, instant QR code portal access & real-time customer uploads.' }}
                 </p>
 
-                <ul style="list-style: none; padding: 0; margin: 0 0 24px; display: flex; flex-direction: column; gap: 8px; font-size: 0.85rem; color: var(--text-secondary);">
-                    <li style="display: flex; align-items: center; gap: 8px;"><span style="color: #10b981;">✓</span> Unlimited Customer Print Uploads</li>
-                    <li style="display: flex; align-items: center; gap: 8px;"><span style="color: #10b981;">✓</span> Windows Agent Auto-Print</li>
-                    <li style="display: flex; align-items: center; gap: 8px;"><span style="color: #10b981;">✓</span> Counter QR Poster & Pricing Engine</li>
+                <ul style="list-style: none; padding: 0; margin: 0 0 24px; display: flex; flex-direction: column; gap: 8px; font-size: 0.85rem; color: #334155;">
+                    <li style="display: flex; align-items: center; gap: 8px;"><span style="color: #10b981; font-weight: 800;">✓</span> Unlimited Customer Print Uploads</li>
+                    <li style="display: flex; align-items: center; gap: 8px;"><span style="color: #10b981; font-weight: 800;">✓</span> Windows Agent Auto-Print</li>
+                    <li style="display: flex; align-items: center; gap: 8px;"><span style="color: #10b981; font-weight: 800;">✓</span> Counter QR Poster & Pricing Engine</li>
                 </ul>
             </div>
 

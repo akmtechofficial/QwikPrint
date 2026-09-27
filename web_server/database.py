@@ -769,8 +769,8 @@ class SupabaseDatabase:
         shop = None
         try:
             cursor = conn.cursor(cursor_factory=RealDictCursor) if is_pg else conn.cursor()
-            query = "SELECT * FROM shops WHERE owner_id = %s;" if is_pg else "SELECT * FROM shops WHERE owner_id = ?;"
-            cursor.execute(query, (user_id,))
+            query = "SELECT * FROM shops WHERE owner_id = %s OR LOWER(TRIM(email)) = (SELECT LOWER(TRIM(email)) FROM users WHERE user_id = %s);" if is_pg else "SELECT * FROM shops WHERE owner_id = ? OR LOWER(TRIM(email)) = (SELECT LOWER(TRIM(email)) FROM users WHERE user_id = ?);"
+            cursor.execute(query, (user_id, user_id))
             row = cursor.fetchone()
             conn.close()
             if row:
@@ -782,7 +782,7 @@ class SupabaseDatabase:
             try:
                 s_conn = self.get_sqlite_conn()
                 s_cursor = s_conn.cursor()
-                s_cursor.execute("SELECT * FROM shops WHERE owner_id = ?;", (user_id,))
+                s_cursor.execute("SELECT * FROM shops WHERE owner_id = ? OR LOWER(TRIM(email)) = (SELECT LOWER(TRIM(email)) FROM users WHERE user_id = ?);", (user_id, user_id))
                 row = s_cursor.fetchone()
                 s_conn.close()
                 if row:
@@ -791,6 +791,21 @@ class SupabaseDatabase:
                 pass
 
         return shop
+
+    def get_user_by_device_or_ip(self, device_fp: str, ip: str = ""):
+        if not device_fp and not ip:
+            return None
+        try:
+            s_conn = self.get_sqlite_conn()
+            s_cursor = s_conn.cursor()
+            s_cursor.execute("SELECT * FROM users WHERE (device_fingerprint = ? AND device_fingerprint != '') OR (registration_ip = ? AND registration_ip != '' AND registration_ip != '127.0.0.1') ORDER BY created_at DESC LIMIT 1;", (device_fp, ip))
+            row = s_cursor.fetchone()
+            s_conn.close()
+            if row:
+                return dict(row)
+        except Exception:
+            pass
+        return None
 
     def is_ip_or_device_registered(self, ip: str, device_fp: str):
         if not ip and not device_fp:

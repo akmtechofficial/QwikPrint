@@ -31,13 +31,43 @@ async def subscription_page(request: Request):
             user_shop = {
                 "shop_id": "SHOP_DEFAULT",
                 "name": "My Printing Shop",
-                "plan_name": "Trial Plan",
+                "plan_name": "",
                 "plan_expires_at": "",
                 "is_suspended": False
             }
 
     is_valid, reason, exp_date = db.verify_shop_active_subscription(user_shop.get("shop_id"))
-    plans = db.get_plans()
+    all_plans = db.get_plans()
+
+    # Determine first-time signup status / trial eligibility
+    is_new_signup = request.query_params.get("new_signup") == "true"
+    current_plan_name = (user_shop.get("plan_name") or "").lower()
+    
+    # Trial is eligible if user is a new signup or has never activated a paid plan before
+    is_trial_eligible = is_new_signup or not user_shop.get("plan_expires_at") or "trial" in current_plan_name or not is_valid
+
+    filtered_plans = []
+    has_free_plan_in_db = False
+
+    for p in all_plans:
+        is_free = (float(p.get("price", 0)) == 0) or ("trial" in p.get("name", "").lower())
+        if is_free:
+            has_free_plan_in_db = True
+            if is_trial_eligible:
+                filtered_plans.append(p)
+        else:
+            filtered_plans.append(p)
+
+    # If new signup & no 0 INR trial plan exists in DB, dynamically inject the 7-Day Free Trial
+    if is_trial_eligible and not has_free_plan_in_db:
+        trial_plan = {
+            "plan_id": "plan_free_trial_7d",
+            "name": "7-Day Free Trial",
+            "price": 0.0,
+            "duration_days": 7,
+            "description": "100% Free 7-Day Full Access Trial for new print shopkeepers. Instant activation."
+        }
+        filtered_plans.insert(0, trial_plan)
 
     return templates.TemplateResponse(
         request=request,
@@ -46,7 +76,8 @@ async def subscription_page(request: Request):
             "shop": user_shop,
             "is_valid": is_valid,
             "reason": reason,
-            "plans": plans
+            "plans": filtered_plans,
+            "is_trial_eligible": is_trial_eligible
         }
     )
 

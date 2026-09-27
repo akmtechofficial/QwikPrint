@@ -81,9 +81,15 @@
                 </ul>
             </div>
 
-            <button class="btn-primary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700;" onclick="initiatePayfluxPayment('{{ p.plan_id }}', '{{ p.name }}', {{ p.price }}, {{ p.duration_days }})">
-                💳 Select Plan & Open Gateway
+            {% if p.price == 0 or 'trial' in p.name.lower() %}
+            <button class="btn-primary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; background: linear-gradient(135deg, #10b981, #059669);" onclick="initiatePayfluxPayment('{{ p.plan_id }}', '{{ p.name }}', {{ p.price }}, {{ p.duration_days }})">
+                🎁 Claim Free Trial →
             </button>
+            {% else %}
+            <button class="btn-primary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700;" onclick="initiatePayfluxPayment('{{ p.plan_id }}', '{{ p.name }}', {{ p.price }}, {{ p.duration_days }})">
+                💳 Select Plan & Pay via Payflux →
+            </button>
+            {% endif %}
         </div>
         {% endfor %}
     </div>

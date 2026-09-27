@@ -54,8 +54,12 @@
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-bottom: 40px;">
         {% for p in plans %}
         {% set is_trial_plan = (p.price in (0, 1, 2) or 'trial' in p.name.lower() or 'free' in p.name.lower()) %}
-        <div class="qp-card" style="display: flex; flex-direction: column; justify-content: space-between; position: relative; {% if loop.index == 2 %}border-color: var(--qp-blue);{% endif %}">
-            {% if is_trial_plan %}
+        <div class="qp-card" style="display: flex; flex-direction: column; justify-content: space-between; position: relative; {% if p.badge or loop.index == 2 %}border-color: var(--qp-blue);{% endif %}">
+            {% if p.badge %}
+            <div style="position: absolute; top: -12px; right: 20px; background: var(--qp-blue); color: #ffffff; padding: 3px 12px; border-radius: var(--qp-radius-full); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">
+                {{ p.badge }}
+            </div>
+            {% elif is_trial_plan %}
             <div style="position: absolute; top: -12px; right: 20px; background: var(--qp-blue); color: #ffffff; padding: 3px 12px; border-radius: var(--qp-radius-full); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">
                 Trial Plan
             </div>

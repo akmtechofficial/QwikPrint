@@ -15,8 +15,12 @@
 
 <div style="max-width: 1100px; margin: 0 auto 64px; padding: 0 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
     {% for p in plans %}
-    <div class="qp-card" style="display: flex; flex-direction: column; justify-content: space-between; position: relative; {% if loop.index == 2 %}border-color: var(--qp-blue);{% endif %}">
-        {% if loop.index == 2 %}
+    <div class="qp-card" style="display: flex; flex-direction: column; justify-content: space-between; position: relative; {% if p.badge or loop.index == 2 %}border-color: var(--qp-blue);{% endif %}">
+        {% if p.badge %}
+        <div style="position: absolute; top: -12px; right: 20px; background: var(--qp-blue); color: #ffffff; padding: 3px 12px; border-radius: var(--qp-radius-full); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">
+            {{ p.badge }}
+        </div>
+        {% elif loop.index == 2 %}
         <div style="position: absolute; top: -12px; right: 20px; background: var(--qp-blue); color: #ffffff; padding: 3px 12px; border-radius: var(--qp-radius-full); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">
             Most Popular
         </div>

@@ -352,7 +352,9 @@
             <div>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                     <div style="font-size: 18px; font-weight: 700; color: var(--qp-fg);">{{ p.name }}</div>
-                    {% if loop.index == 2 %}
+                    {% if p.badge %}
+                    <span class="qp-badge qp-badge-blue">{{ p.badge }}</span>
+                    {% elif loop.index == 2 %}
                     <span class="qp-badge qp-badge-blue">Recommended</span>
                     {% endif %}
                 </div>

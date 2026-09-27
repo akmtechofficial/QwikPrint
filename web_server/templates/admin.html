@@ -279,6 +279,7 @@
                         <th>Package Name</th>
                         <th>Duration</th>
                         <th>Price (INR)</th>
+                        <th>Badge Tag</th>
                         <th>Description</th>
                         <th>Actions</th>
                     </tr>
@@ -289,16 +290,19 @@
                     <tr>
                         <td>
                             <strong>{{ p.name }}</strong>
-                            {% if is_trial %}
+                            {% if p.badge %}
+                            <span class="qp-badge qp-badge-blue" style="margin-left: 6px;">{{ p.badge }}</span>
+                            {% elif is_trial %}
                             <span class="qp-badge qp-badge-blue" style="margin-left: 6px;">New Users Only</span>
                             {% endif %}
                         </td>
                         <td>{{ p.duration_days }} Days</td>
                         <td style="color: var(--qp-fg); font-weight: 700;">₹{{ "%.2f"|format(p.price) if p.price is defined else p.price }}</td>
+                        <td><span class="qp-badge qp-badge-neutral">{{ p.badge or 'None' }}</span></td>
                         <td>{{ p.description or 'N/A' }}</td>
                         <td>
                             <div style="display: flex; gap: 6px; align-items: center;">
-                                <button class="btn-action btn-edit-plan" onclick='openEditPlanModal({{ p.plan_id|tojson }}, {{ p.name|tojson }}, {{ p.duration_days }}, {{ p.price }}, {{ (p.description or "")|tojson }})'>Edit</button>
+                                <button class="btn-action btn-edit-plan" onclick='openEditPlanModal({{ p.plan_id|tojson }}, {{ p.name|tojson }}, {{ p.duration_days }}, {{ p.price }}, {{ (p.description or "")|tojson }}, {{ (p.badge or "")|tojson }})'>Edit</button>
                                 {% if not is_trial %}
                                 <button class="btn-action btn-suspend" onclick="deletePlan('{{ p.plan_id }}')">Delete</button>
                                 {% else %}
@@ -309,7 +313,7 @@
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="5" style="text-align: center; color: var(--qp-fg-muted); padding: 24px;">No plans configured yet. Click 'Create New Package' above.</td>
+                        <td colspan="6" style="text-align: center; color: var(--qp-fg-muted); padding: 24px;">No plans configured yet. Click 'Create New Package' above.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -398,6 +402,10 @@
             <input type="number" step="0.01" id="plan-price" placeholder="199" class="qp-input">
         </div>
         <div class="form-group">
+            <label class="form-label">Badge Tag (Optional):</label>
+            <input type="text" id="plan-badge" placeholder="e.g. Most Popular, Recommended, Best Value" class="qp-input">
+        </div>
+        <div class="form-group">
             <label class="form-label">Description:</label>
             <input type="text" id="plan-desc" placeholder="Full unlimited printing access for 30 days" class="qp-input">
         </div>
@@ -437,17 +445,19 @@ function openPlanModal() {
     document.getElementById('plan-name').value = "";
     document.getElementById('plan-days').value = "";
     document.getElementById('plan-price').value = "";
+    document.getElementById('plan-badge').value = "";
     document.getElementById('plan-desc').value = "";
     document.getElementById('plan-modal').style.display = 'flex';
 }
 
-function openEditPlanModal(planId, name, days, price, desc) {
+function openEditPlanModal(planId, name, days, price, desc, badge) {
     document.getElementById('plan-modal-header').innerText = "Edit Pricing Package";
     document.getElementById('plan-modal-submit-btn').innerText = "Update Package";
     document.getElementById('plan-id').value = planId;
     document.getElementById('plan-name').value = name;
     document.getElementById('plan-days').value = days;
     document.getElementById('plan-price').value = price;
+    document.getElementById('plan-badge').value = badge || "";
     document.getElementById('plan-desc').value = desc;
     document.getElementById('plan-modal').style.display = 'flex';
 }
@@ -502,6 +512,7 @@ async function submitCreatePlan() {
     const name = document.getElementById('plan-name').value;
     const days = parseInt(document.getElementById('plan-days').value);
     const price = parseFloat(document.getElementById('plan-price').value);
+    const badge = document.getElementById('plan-badge').value;
     const desc = document.getElementById('plan-desc').value;
 
     if (!name || isNaN(days) || isNaN(price)) {
@@ -513,6 +524,7 @@ async function submitCreatePlan() {
         name: name,
         duration_days: days,
         price: price,
+        badge: badge,
         description: desc
     };
     if (planId) {

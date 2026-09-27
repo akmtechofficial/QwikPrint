@@ -234,7 +234,8 @@ class SupabaseDatabase:
             ("shops", ("registration_ip", "TEXT")),
             ("shops", ("device_fingerprint", "TEXT")),
             ("users", ("registration_ip", "TEXT")),
-            ("users", ("device_fingerprint", "TEXT"))
+            ("users", ("device_fingerprint", "TEXT")),
+            ("plans", ("badge", "TEXT"))
         ]:
             try:
                 s_cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {col_def[0]} {col_def[1]};")
@@ -249,13 +250,13 @@ class SupabaseDatabase:
             if count == 0:
                 now = datetime.datetime.now(datetime.timezone.utc).isoformat()
                 default_plans = [
-                    ("plan-free", "7 Days Free Trial", 7, 0.0, "7 Days Full Unlimited Printing Access (100% Free Trial)", now),
-                    ("plan-1m", "1 Month Starter", 30, 199.0, "30 Days Unlimited Printing Access", now),
-                    ("plan-3m", "3 Months Pro", 90, 499.0, "90 Days Unlimited Printing Access (Save 15%)", now),
-                    ("plan-12m", "1 Year Enterprise", 365, 1499.0, "365 Days Unlimited Printing Access (Best Value)", now)
+                    ("plan-free", "7 Days Free Trial", 7, 0.0, "7 Days Full Unlimited Printing Access (100% Free Trial)", "Free Trial", now),
+                    ("plan-1m", "1 Month Starter", 30, 199.0, "30 Days Unlimited Printing Access", "", now),
+                    ("plan-3m", "3 Months Pro", 90, 499.0, "90 Days Unlimited Printing Access (Save 15%)", "Most Popular", now),
+                    ("plan-12m", "1 Year Enterprise", 365, 1499.0, "365 Days Unlimited Printing Access (Best Value)", "Best Value", now)
                 ]
                 for p in default_plans:
-                    s_cursor.execute("INSERT INTO plans (plan_id, name, duration_days, price, description, created_at) VALUES (?, ?, ?, ?, ?, ?);", p)
+                    s_cursor.execute("INSERT INTO plans (plan_id, name, duration_days, price, description, badge, created_at) VALUES (?, ?, ?, ?, ?, ?, ?);", p)
                 s_conn.commit()
         except Exception as e:
             print(f"[Database Warning] Error seeding SQLite default plans: {e}")
@@ -335,7 +336,8 @@ class SupabaseDatabase:
                 "name": "7 Days Free Trial",
                 "duration_days": 7,
                 "price": 0.0,
-                "description": "7 Days Full Unlimited Printing Access (100% Free Trial)"
+                "description": "7 Days Full Unlimited Printing Access (100% Free Trial)",
+                "badge": "Free Trial"
             }
             plans.insert(0, free_plan)
 
@@ -350,6 +352,7 @@ class SupabaseDatabase:
         duration_days = int(plan_data.get("duration_days", 30))
         price = float(plan_data.get("price", 0.0))
         description = plan_data.get("description", "")
+        badge = (plan_data.get("badge") or "").strip()
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
         # 1. Save to local SQLite (Guaranteed persistent mirror)
@@ -357,10 +360,10 @@ class SupabaseDatabase:
             s_conn = self.get_sqlite_conn()
             s_cursor = s_conn.cursor()
             q_sqlite = """
-            INSERT OR REPLACE INTO plans (plan_id, name, duration_days, price, description, created_at)
-            VALUES (?, ?, ?, ?, ?, ?);
+            INSERT OR REPLACE INTO plans (plan_id, name, duration_days, price, description, badge, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?);
             """
-            s_cursor.execute(q_sqlite, (plan_id, name, duration_days, price, description, now))
+            s_cursor.execute(q_sqlite, (plan_id, name, duration_days, price, description, badge, now))
             s_conn.commit()
             s_conn.close()
         except Exception as e:
@@ -372,15 +375,16 @@ class SupabaseDatabase:
             try:
                 cursor = conn.cursor()
                 q_pg = """
-                INSERT INTO plans (plan_id, name, duration_days, price, description, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                INSERT INTO plans (plan_id, name, duration_days, price, description, badge, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (plan_id) DO UPDATE SET
                     name = EXCLUDED.name,
                     duration_days = EXCLUDED.duration_days,
                     price = EXCLUDED.price,
-                    description = EXCLUDED.description;
+                    description = EXCLUDED.description,
+                    badge = EXCLUDED.badge;
                 """
-                cursor.execute(q_pg, (plan_id, name, duration_days, price, description, now))
+                cursor.execute(q_pg, (plan_id, name, duration_days, price, description, badge, now))
                 conn.commit()
                 conn.close()
             except Exception as e:

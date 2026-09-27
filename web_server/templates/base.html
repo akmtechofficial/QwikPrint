@@ -3,264 +3,122 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}QwikPrint - Scan the QR. Send it to print.{% endblock %}</title>
+    <title>{% block title %}QwikPrint - Print Counter Infrastructure Platform{% endblock %}</title>
     <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/style.css">
-    <!-- Payflux Multi-Platform Payment Gateway SDK -->
     <script src="https://fampay-merchant-api.onrender.com/payflux.js"></script>
     <style>
-        /* Light Theme Overrides for Full-Bleed Edge-to-Edge Public Landing Pages */
-        html, body {
-            width: 100%;
-            margin: 0;
-            padding: 0;
-            overflow-x: hidden;
-        }
-
-        body.light-theme {
-            color: #0f172a;
-        }
-
-        .top-announcement-bar {
-            width: 100%;
-            background: #0b132b;
-            color: #ffffff;
-            padding: 10px 32px;
-            font-size: 13.5px;
-            font-weight: 600;
+        .qp-announcement {
+            background-color: var(--qp-text-primary);
+            color: #FFFFFF;
+            padding: 8px 32px;
+            font-size: 13px;
+            font-weight: 500;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            flex-wrap: wrap;
-            gap: 16px;
-            font-family: 'Inter', sans-serif;
-            letter-spacing: 0.2px;
-            box-sizing: border-box;
         }
-
-        .top-announcement-bar a {
-            color: #facc15;
-            text-decoration: underline;
-            font-weight: 700;
+        .qp-announcement a {
+            color: #93C5FD;
+            font-weight: 600;
             margin-left: 6px;
         }
-
-        .top-announcement-bar .support-num {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: rgba(255, 255, 255, 0.12);
-            padding: 4px 14px;
-            border-radius: 20px;
-            color: #ffffff;
-        }
-
-        .app-header-light {
-            width: 100%;
-            background: #ffffff;
-            border-bottom: 1px solid #e2e8f0;
+        .qp-public-header {
+            background-color: var(--qp-bg-surface);
+            border-bottom: 1px solid var(--qp-border);
             position: sticky;
             top: 0;
             z-index: 1000;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.03);
         }
-
-        .header-inner {
-            width: 100%;
-            padding: 16px 40px;
+        .qp-header-inner {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 14px 32px;
             display: flex;
+            align-items: center;
             justify-content: space-between;
-            align-items: center;
-            box-sizing: border-box;
         }
-
-        .brand-logo-light {
-            display: flex;
-            align-items: center;
-            gap: 10px;
+        .qp-nav-link {
+            color: var(--qp-text-secondary);
+            font-size: 14px;
+            font-weight: 500;
             text-decoration: none;
+            transition: color 0.15s ease;
         }
-
-        .brand-logo-badge {
-            background: #facc15;
-            color: #0f172a;
-            font-weight: 900;
-            font-size: 17px;
-            padding: 6px 12px;
-            border-radius: 8px;
-            font-family: 'Outfit', sans-serif;
-            letter-spacing: -0.5px;
-        }
-
-        .brand-logo-name {
-            font-family: 'Outfit', sans-serif;
-            font-size: 24px;
-            font-weight: 900;
-            color: #0f172a;
-            letter-spacing: -0.5px;
-        }
-
-        .nav-links-light {
-            display: flex;
-            align-items: center;
-            gap: 32px;
-        }
-
-        .nav-link-item {
-            color: #334155;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 15px;
-            transition: color 0.2s;
-        }
-
-        .nav-link-item:hover {
-            color: #059669;
-        }
-
-        .btn-shop-login {
-            background: #0d9488;
-            color: #ffffff;
-            padding: 10px 24px;
-            border-radius: 8px;
-            font-weight: 700;
-            font-size: 14.5px;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            transition: background 0.2s, transform 0.2s;
-            border: none;
-        }
-
-        .btn-shop-login:hover {
-            background: #0f766e;
-            color: #ffffff;
-            transform: translateY(-1px);
-        }
-
-        /* Floating WhatsApp Button */
-        .whatsapp-float {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            background: #25d366;
-            color: #ffffff;
-            padding: 12px 22px;
-            border-radius: 30px;
-            font-weight: 700;
-            font-size: 14.5px;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            box-shadow: 0 10px 25px rgba(37, 211, 102, 0.4);
-            z-index: 9999;
-            transition: transform 0.2s ease;
-        }
-
-        .whatsapp-float:hover {
-            transform: scale(1.05);
-            color: #ffffff;
-        }
-
-        @media (max-width: 900px) {
-            .nav-links-light {
-                display: none;
-            }
-            .header-inner {
-                padding: 14px 20px;
-            }
-            .top-announcement-bar {
-                padding: 10px 16px;
-                font-size: 12px;
-            }
+        .qp-nav-link:hover {
+            color: var(--qp-primary);
         }
     </style>
     {% block extra_head %}{% endblock %}
 </head>
-<body class="light-theme">
+<body>
 
-    <!-- Full-Bleed Top Announcement Strip -->
-    <div class="top-announcement-bar">
-        <div>✨ <strong>5-day demo available for print shops</strong> <a href="/register">Create shop →</a></div>
-        <div class="support-num">Support Number : 📱 <strong>+91 91226 91369</strong></div>
+    <!-- Technical Announcement Strip -->
+    <div class="qp-announcement">
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="qp-badge qp-badge-blue" style="font-size: 11px; padding: 2px 8px;">v2.4 Live</span>
+            <span>Automated Windows Desktop Spooler & QR Upload Counter Infrastructure.</span>
+            <a href="/register">Start Free Trial →</a>
+        </div>
+        <div style="font-size: 12.5px; color: #94A3B8;">
+            Direct Support: <strong style="color: #FFFFFF;">+91 91226 91369</strong>
+        </div>
     </div>
 
-    <!-- Full-Bleed Clean White Navigation Bar -->
-    <header class="app-header-light">
-        <div class="header-inner">
-            <a href="/" class="brand-logo-light">
-                <div class="brand-logo-badge">QP</div>
-                <span class="brand-logo-name">QwikPrint</span>
+    <!-- Public Navigation Bar -->
+    <header class="qp-public-header">
+        <div class="qp-header-inner">
+            <a href="/" class="qp-brand-logo">
+                <div class="qp-brand-icon">QP</div>
+                <span class="qp-brand-title">QwikPrint</span>
             </a>
 
-            <nav class="nav-links-light">
-                <a href="#how-it-works" class="nav-link-item">How it works</a>
-                <a href="#print-services" class="nav-link-item">Print services</a>
-                <a href="#for-shops" class="nav-link-item">For shops</a>
-                <a href="/pricing" class="nav-link-item">Pricing</a>
-                <a href="#setup-guide" class="nav-link-item">Setup guide</a>
-                <a href="#agent-program" class="nav-link-item">Agent program</a>
+            <nav style="display: flex; align-items: center; gap: 28px;">
+                <a href="/#how-it-works" class="qp-nav-link">Architecture</a>
+                <a href="/#services" class="qp-nav-link">Print Engine</a>
+                <a href="/pricing" class="qp-nav-link">Pricing</a>
+                <a href="/#setup" class="qp-nav-link">Spooler Setup</a>
             </nav>
 
-            <div>
+            <div style="display: flex; align-items: center; gap: 12px;">
                 {% if shop %}
-                <a href="/dashboard" class="btn-shop-login">
-                    📊 Shop Dashboard
+                <a href="/dashboard" class="qp-btn qp-btn-primary">
+                    <svg class="qp-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+                    <span>Shop Dashboard</span>
                 </a>
                 {% else %}
-                <a href="/login" class="btn-shop-login">
-                    📲 Shop login
-                </a>
+                <a href="/login" class="qp-btn qp-btn-outline">Sign In</a>
+                <a href="/register" class="qp-btn qp-btn-primary">Create Shop</a>
                 {% endif %}
             </div>
         </div>
     </header>
 
-    <!-- Main Public Page Content Container (100% Full Width) -->
-    <main style="width: 100%; min-height: calc(100vh - 220px);">
+    <!-- Main Content Slot -->
+    <main style="min-height: calc(100vh - 200px);">
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Full-Bleed Clean White Theme Footer -->
-    <footer style="width: 100%; border-top: 1px solid #e2e8f0; background: #ffffff; padding: 40px 40px; color: #475569; box-sizing: border-box;">
-        <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <div class="brand-logo-badge" style="font-size: 13px; padding: 4px 8px;">QP</div>
-                <span style="font-weight: 800; font-size: 1.1rem; color: #0f172a; font-family: 'Outfit';">QwikPrint</span>
-                <span style="color: #64748b; font-size: 0.88rem;">© 2026. Automated Print Counter SaaS Platform. All rights reserved.</span>
+    <!-- Technical Public Footer -->
+    <footer style="background-color: var(--qp-bg-surface); border-top: 1px solid var(--qp-border); padding: 40px 32px; color: var(--qp-text-muted);">
+        <div style="max-width: 1280px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="qp-brand-icon" style="width: 26px; height: 26px; font-size: 12px;">QP</div>
+                <span style="font-weight: 700; color: var(--qp-text-primary); font-family: 'Outfit';">QwikPrint Infrastructure</span>
+                <span style="font-size: 13px;">© 2026 QwikPrint Systems Inc. All rights reserved.</span>
             </div>
 
-            <div style="display: flex; gap: 28px; font-size: 0.95rem; font-weight: 600;">
-                <a href="/" style="color: #475569; text-decoration: none;">Home</a>
-                <a href="/pricing" style="color: #475569; text-decoration: none;">Pricing</a>
-                <a href="/login" style="color: #475569; text-decoration: none;">Shopkeeper Login</a>
-                <a href="/register" style="color: #0d9488; text-decoration: none;">Create Free Account</a>
+            <div style="display: flex; gap: 24px; font-size: 13.5px; font-weight: 500;">
+                <a href="/" style="color: var(--qp-text-muted);">Home</a>
+                <a href="/pricing" style="color: var(--qp-text-muted);">Pricing</a>
+                <a href="/login" style="color: var(--qp-text-muted);">Shop Login</a>
+                <a href="/register" style="color: var(--qp-primary);">Create Account</a>
             </div>
         </div>
     </footer>
 
-    <!-- Floating WhatsApp Button -->
-    <a href="https://wa.me/919122691369?text=Hi%20QwikPrint%20Team%2C%20I%20want%20to%20know%20more%20about%20the%20print%20counter%20automation!" target="_blank" class="whatsapp-float">
-        💬 WhatsApp
-    </a>
-
-    <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        document.querySelectorAll('form').forEach(form => {
-            form.addEventListener('submit', function() {
-                const btn = this.querySelector('button[type="submit"], input[type="submit"], .btn-primary, .btn-success');
-                if (btn && !btn.classList.contains('no-spin')) {
-                    btn.classList.add('btn-loading');
-                    btn.style.pointerEvents = 'none';
-                }
-            });
-        });
-    });
-    </script>
 </body>
 </html>

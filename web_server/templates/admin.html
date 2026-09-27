@@ -1,100 +1,69 @@
 {% extends "base.html" %}
 
-{% block title %}Master Admin Panel - QwikPrint{% endblock %}
+{% block title %}Master Admin Control Center - QwikPrint{% endblock %}
 
 {% block extra_head %}
 <style>
     .admin-container {
-        max-width: 1300px;
-        margin: 30px auto;
-        padding: 0 20px;
+        max-width: 1200px;
+        margin: 32px auto;
+        padding: 0 24px;
     }
     .admin-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 25px;
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.9));
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 16px;
-        padding: 20px 28px;
-        backdrop-filter: blur(12px);
+        margin-bottom: 24px;
+        background: var(--qp-bg-card);
+        border: 1px solid var(--qp-border);
+        border-radius: var(--qp-radius-lg);
+        padding: 20px 24px;
+        box-shadow: var(--qp-shadow-sm);
     }
     .admin-title {
-        font-size: 1.6rem;
-        font-weight: 800;
-        background: linear-gradient(135deg, #38bdf8, #818cf8);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--qp-fg);
         display: flex;
         align-items: center;
-        gap: 12px;
-    }
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 18px;
-        margin-bottom: 30px;
-    }
-    .stat-card {
-        background: rgba(30, 41, 59, 0.7);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 14px;
-        padding: 20px;
-        transition: transform 0.2s, border-color 0.2s;
-    }
-    .stat-card:hover {
-        transform: translateY(-3px);
-        border-color: rgba(56, 189, 248, 0.3);
-    }
-    .stat-label {
-        color: #94a3b8;
-        font-size: 0.88rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    .stat-value {
-        font-size: 1.8rem;
-        font-weight: 800;
-        margin-top: 8px;
-        color: #f8fafc;
+        gap: 10px;
     }
     .admin-tabs {
         display: flex;
-        gap: 12px;
-        margin-bottom: 24px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        gap: 8px;
+        margin-bottom: 20px;
+        border-bottom: 1px solid var(--qp-border);
         padding-bottom: 12px;
     }
     .tab-btn {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        color: #94a3b8;
-        padding: 10px 20px;
-        border-radius: 10px;
-        font-weight: 600;
+        background: transparent;
+        border: 1px solid var(--qp-border);
+        color: var(--qp-fg-muted);
+        padding: 8px 16px;
+        border-radius: var(--qp-radius-md);
+        font-size: 13px;
+        font-weight: 500;
         cursor: pointer;
-        transition: all 0.2s;
+        transition: all 0.15s ease;
     }
     .tab-btn.active, .tab-btn:hover {
-        background: #0284c7;
-        color: #ffffff;
-        border-color: #38bdf8;
-        box-shadow: 0 4px 14px rgba(2, 132, 199, 0.3);
+        background: var(--qp-blue-subtle);
+        color: var(--qp-blue);
+        border-color: rgba(37, 99, 235, 0.3);
     }
     .panel-section {
-        background: rgba(30, 41, 59, 0.7);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 16px;
+        background: var(--qp-bg-card);
+        border: 1px solid var(--qp-border);
+        border-radius: var(--qp-radius-lg);
         padding: 24px;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
+        box-shadow: var(--qp-shadow-sm);
     }
     .section-title {
-        font-size: 1.25rem;
-        font-weight: 700;
-        color: #f8fafc;
-        margin-bottom: 18px;
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--qp-fg);
+        margin-bottom: 20px;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -105,81 +74,73 @@
     .admin-table {
         width: 100%;
         border-collapse: collapse;
-        color: #cbd5e1;
-        font-size: 0.92rem;
+        font-size: 13px;
+        color: var(--qp-fg);
     }
     .admin-table th {
-        background: rgba(15, 23, 42, 0.8);
-        padding: 12px 16px;
+        background: #F8FAFC;
+        padding: 10px 14px;
         text-align: left;
-        color: #94a3b8;
+        color: var(--qp-fg-muted);
         font-weight: 600;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        border-bottom: 1px solid var(--qp-border);
+        white-space: nowrap;
     }
     .admin-table td {
-        padding: 14px 16px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--qp-border);
+        vertical-align: middle;
     }
     .admin-table tr:hover td {
-        background: rgba(255, 255, 255, 0.03);
+        background: #F8FAFC;
     }
-    .badge {
-        padding: 4px 10px;
-        border-radius: 20px;
-        font-size: 0.78rem;
-        font-weight: 700;
-        text-transform: uppercase;
-    }
-    .badge-active { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.4); }
-    .badge-expired { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
-    .badge-suspended { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
     .btn-action {
         padding: 6px 12px;
-        border-radius: 8px;
-        font-size: 0.82rem;
-        font-weight: 600;
+        border-radius: var(--qp-radius-sm);
+        font-size: 12px;
+        font-weight: 500;
         cursor: pointer;
-        border: none;
-        transition: transform 0.15s, opacity 0.15s;
+        border: 1px solid var(--qp-border);
+        background: #FFFFFF;
+        color: var(--qp-fg);
+        transition: all 0.15s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
     }
-    .btn-action:hover { opacity: 0.9; transform: scale(1.02); }
-    .btn-grant { background: linear-gradient(135deg, #10b981, #059669); color: white; }
-    .btn-suspend { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; }
-    .btn-unsuspend { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; }
-    .btn-add { background: linear-gradient(135deg, #0284c7, #2563eb); color: white; padding: 8px 16px; border-radius: 10px; }
+    .btn-action:hover {
+        background: #F1F5F9;
+    }
+    .btn-grant { background: var(--qp-blue); color: white; border-color: var(--qp-blue); }
+    .btn-grant:hover { background: #1D4ED8; }
+    .btn-suspend { background: var(--qp-danger); color: white; border-color: var(--qp-danger); }
+    .btn-suspend:hover { background: #B91C1C; }
+    .btn-unsuspend { background: #F59E0B; color: white; border-color: #F59E0B; }
+    .btn-add { background: var(--qp-blue); color: white; border-color: var(--qp-blue); }
     
     /* Modal */
     .modal-overlay {
         position: fixed;
         top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(15, 23, 42, 0.85);
-        backdrop-filter: blur(8px);
+        background: rgba(15, 23, 42, 0.4);
+        backdrop-filter: blur(4px);
         display: none;
         justify-content: center;
         align-items: center;
         z-index: 1000;
     }
     .modal-box {
-        background: #1e293b;
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        border-radius: 16px;
+        background: #FFFFFF;
+        border: 1px solid var(--qp-border);
+        border-radius: var(--qp-radius-lg);
         width: 100%;
         max-width: 480px;
         padding: 24px;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+        box-shadow: var(--qp-shadow-md);
     }
-    .modal-header { font-size: 1.2rem; font-weight: 700; color: #f8fafc; margin-bottom: 16px; }
+    .modal-header { font-size: 16px; font-weight: 600; color: var(--qp-fg); margin-bottom: 16px; }
     .form-group { margin-bottom: 16px; }
-    .form-label { display: block; color: #94a3b8; font-size: 0.88rem; margin-bottom: 6px; }
-    .form-input {
-        width: 100%;
-        background: #0f172a;
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        color: white;
-        padding: 10px 14px;
-        border-radius: 8px;
-        font-size: 0.95rem;
-    }
+    .form-label { display: block; color: var(--qp-fg-muted); font-size: 13px; font-weight: 500; margin-bottom: 6px; }
     .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
 </style>
 {% endblock %}
@@ -188,53 +149,60 @@
 <div class="admin-container">
     <div class="admin-header">
         <div>
-            <div class="admin-title">👑 Master Admin Control Center</div>
-            <div style="color: #94a3b8; font-size: 0.9rem; margin-top: 4px;">System Overview, Shop Management, Subscriptions & Pricing Control</div>
+            <div class="admin-title">
+                <svg class="qp-icon text-blue" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                Master Admin Control Center
+            </div>
+            <div style="color: var(--qp-fg-muted); font-size: 13px; margin-top: 4px;">System Overview, Shop Management, Subscriptions & Pricing Control</div>
         </div>
         <div>
-            <span class="badge badge-active" style="padding: 8px 16px; font-size: 0.85rem;">Role: Super Admin</span>
+            <span class="qp-badge qp-badge-blue">Super Admin</span>
         </div>
     </div>
 
     <!-- Top Statistics Grid -->
-    <div class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-label">Total Registered Shops</div>
-            <div class="stat-value" id="stat-shops">{{ stats.total_shops }}</div>
+    <div class="qp-kpi-grid">
+        <div class="qp-kpi-card">
+            <div class="qp-kpi-label">TOTAL REGISTERED SHOPS</div>
+            <div class="qp-kpi-val" id="stat-shops">{{ stats.total_shops }}</div>
+            <div class="qp-kpi-sub">Active platform counters</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-label">Suspended Accounts</div>
-            <div class="stat-value" style="color: #f87171;" id="stat-suspended">{{ stats.suspended_shops }}</div>
+        <div class="qp-kpi-card">
+            <div class="qp-kpi-label">SUSPENDED ACCOUNTS</div>
+            <div class="qp-kpi-val" style="color: var(--qp-danger);" id="stat-suspended">{{ stats.suspended_shops }}</div>
+            <div class="qp-kpi-sub">Restricted shop profiles</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-label">Completed Print Jobs</div>
-            <div class="stat-value" style="color: #38bdf8;">{{ stats.completed_print_jobs }}</div>
+        <div class="qp-kpi-card">
+            <div class="qp-kpi-label">COMPLETED PRINT JOBS</div>
+            <div class="qp-kpi-val" style="color: var(--qp-blue);">{{ stats.completed_print_jobs }}</div>
+            <div class="qp-kpi-sub">Processed through spooler</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-label">Subscription Revenue</div>
-            <div class="stat-value" style="color: #4ade80;">₹{{ "%.2f"|format(stats.subscription_revenue) }}</div>
+        <div class="qp-kpi-card">
+            <div class="qp-kpi-label">SUBSCRIPTION REVENUE</div>
+            <div class="qp-kpi-val">₹{{ "%.2f"|format(stats.subscription_revenue) }}</div>
+            <div class="qp-kpi-sub">Total Payflux volume</div>
         </div>
     </div>
 
     <!-- Navigation Tabs -->
     <div class="admin-tabs">
-        <button class="tab-btn active" onclick="switchTab('shops-tab')">🏪 Shops & Subscriptions</button>
-        <button class="tab-btn" onclick="switchTab('plans-tab')">💰 Pricing Packages</button>
-        <button class="tab-btn" onclick="switchTab('tx-tab')">💳 Payflux Payments Log</button>
+        <button class="tab-btn active" onclick="switchTab('shops-tab')">Shops & Subscriptions</button>
+        <button class="tab-btn" onclick="switchTab('plans-tab')">Pricing Packages</button>
+        <button class="tab-btn" onclick="switchTab('tx-tab')">Payflux Payments Log</button>
     </div>
 
     <!-- Tab 1: Shops Management -->
     <div id="shops-tab" class="panel-section">
         <div class="section-title">
-            <span>Manage Registered Shops</span>
-            <input type="text" id="shop-search" placeholder="Search by name, email or phone..." class="form-input" style="max-width: 300px; padding: 6px 12px; font-size: 0.85rem;" onkeyup="filterShops()">
+            <span>Registered Shop Accounts</span>
+            <input type="text" id="shop-search" placeholder="Search by name, email or phone..." class="qp-input" style="max-width: 280px; padding: 6px 12px; font-size: 13px;" onkeyup="filterShops()">
         </div>
         <div class="table-responsive">
             <table class="admin-table">
                 <thead>
                     <tr>
                         <th>Shop Name</th>
-                        <th>Owner Email / Phone</th>
+                        <th>Owner Contact</th>
                         <th>Plan</th>
                         <th>Expires At</th>
                         <th>Status</th>
@@ -245,40 +213,40 @@
                     {% for s in shops %}
                     <tr class="shop-row">
                         <td>
-                            <strong style="color: #f8fafc;">{{ s.name }}</strong><br>
-                            <small style="color: #64748b;">ID: {{ s.shop_id }}</small>
+                            <strong style="color: var(--qp-fg);">{{ s.name }}</strong><br>
+                            <small style="color: var(--qp-fg-muted);">ID: {{ s.shop_id }}</small>
                         </td>
                         <td>
                             {{ s.email or s.owner_name or 'N/A' }}<br>
-                            <small style="color: #94a3b8;">📞 {{ s.phone or 'N/A' }}</small>
+                            <small style="color: var(--qp-fg-muted);">{{ s.phone or 'No phone' }}</small>
                         </td>
                         <td>{{ s.plan_name or 'Trial Plan' }}</td>
                         <td>{{ s.plan_expires_at or 'Permanent / No Limit' }}</td>
                         <td>
                             {% if s.is_suspended %}
-                            <span class="badge badge-suspended">Suspended</span>
+                            <span class="qp-badge qp-badge-danger">Suspended</span>
                             {% elif s.subscription_status == 'active' or not s.plan_expires_at %}
-                            <span class="badge badge-active">Active</span>
+                            <span class="qp-badge qp-badge-success">Active</span>
                             {% else %}
-                            <span class="badge badge-expired">Expired</span>
+                            <span class="qp-badge qp-badge-warning">Expired</span>
                             {% endif %}
                         </td>
                         <td>
                             <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                                <button class="btn-action btn-grant" onclick="openGrantModal('{{ s.shop_id }}', '{{ s.name }}')">➕ Grant Days</button>
+                                <button class="btn-action btn-grant" onclick="openGrantModal('{{ s.shop_id }}', '{{ s.name }}')">Extend Validity</button>
                                 {% if s.is_suspended %}
                                 <button class="btn-action btn-unsuspend" onclick="toggleSuspend('{{ s.shop_id }}', false)">Unsuspend</button>
                                 {% else %}
                                 <button class="btn-action btn-suspend" onclick="toggleSuspend('{{ s.shop_id }}', true)">Suspend</button>
                                 {% endif %}
-                                <button class="btn-action" style="background: #64748b; color: white;" onclick="resetShopKey('{{ s.shop_id }}')">🔑 Reset Key</button>
-                                <button class="btn-action" style="background: #dc2626; color: white;" onclick="deleteShopCompletely('{{ s.shop_id }}', '{{ s.name }}')">🗑️ Delete Shop</button>
+                                <button class="btn-action" onclick="resetShopKey('{{ s.shop_id }}')">Reset Key</button>
+                                <button class="btn-action btn-suspend" onclick="deleteShopCompletely('{{ s.shop_id }}', '{{ s.name }}')">Delete</button>
                             </div>
                         </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="6" style="text-align: center; color: #94a3b8; padding: 24px;">No registered shops found in database.</td>
+                        <td colspan="6" style="text-align: center; color: var(--qp-fg-muted); padding: 24px;">No registered shops found in database.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -289,14 +257,14 @@
     <!-- Tab 2: Pricing Packages -->
     <div id="plans-tab" class="panel-section" style="display: none;">
         <div class="section-title">
-            <span>Manage Subscription Plans</span>
-            <button class="btn-action btn-add" onclick="openPlanModal()">➕ Create New Plan</button>
+            <span>Subscription Pricing Packages</span>
+            <button class="qp-btn qp-btn-primary" style="padding: 6px 14px; font-size: 13px;" onclick="openPlanModal()">+ Create New Package</button>
         </div>
         
-        <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; padding: 14px 18px; margin-bottom: 20px; font-size: 0.88rem; color: #bae6fd; display: flex; align-items: center; gap: 12px;">
-            <div style="font-size: 1.4rem;">🎁</div>
+        <div style="background: var(--qp-blue-subtle); border: 1px solid rgba(37, 99, 235, 0.2); border-radius: var(--qp-radius-md); padding: 12px 16px; margin-bottom: 20px; font-size: 13px; color: var(--qp-blue); display: flex; align-items: center; gap: 10px;">
+            <svg class="qp-icon text-blue" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
             <div>
-                <strong>New User Trial Plan Rule:</strong> Set the price of any package to <strong>₹0, ₹1, or ₹2</strong> (or name it 'Trial'). It will be fixed as a 1-time Trial Plan for <strong>NEW signups</strong> and will be permanently hidden from existing users once claimed.
+                <strong>Trial Package Rule:</strong> Packages priced at <strong>₹0, ₹1, or ₹2</strong> (or named 'Trial') are treated as 1-time Trial Plans for <strong>NEW signups</strong> and will be hidden from existing users once claimed.
             </div>
         </div>
 
@@ -304,11 +272,11 @@
             <table class="admin-table">
                 <thead>
                     <tr>
-                        <th>Plan Name</th>
-                        <th>Duration (Days)</th>
-                        <th>Price (₹)</th>
+                        <th>Package Name</th>
+                        <th>Duration</th>
+                        <th>Price (INR)</th>
                         <th>Description</th>
-                        <th>Action</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -317,22 +285,22 @@
                         <td>
                             <strong>{{ p.name }}</strong>
                             {% if p.price in (0, 1, 2) or 'trial' in p.name.lower() or 'free' in p.name.lower() %}
-                            <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); margin-left: 6px; font-size: 0.72rem;">🆕 New Users Only</span>
+                            <span class="qp-badge qp-badge-blue" style="margin-left: 6px;">New Users Only</span>
                             {% endif %}
                         </td>
                         <td>{{ p.duration_days }} Days</td>
-                        <td style="color: #4ade80; font-weight: 700;">₹{{ "%.2f"|format(p.price) if p.price is defined else p.price }}</td>
+                        <td style="color: var(--qp-fg); font-weight: 700;">₹{{ "%.2f"|format(p.price) if p.price is defined else p.price }}</td>
                         <td>{{ p.description or 'N/A' }}</td>
                         <td>
                             <div style="display: flex; gap: 6px;">
-                                <button class="btn-action" style="background: #0284c7; color: white;" onclick='openEditPlanModal({{ p.plan_id|tojson }}, {{ p.name|tojson }}, {{ p.duration_days }}, {{ p.price }}, {{ (p.description or "")|tojson }})'>✏️ Edit</button>
-                                <button class="btn-action btn-suspend" onclick="deletePlan('{{ p.plan_id }}')">🗑️ Delete</button>
+                                <button class="btn-action" onclick='openEditPlanModal({{ p.plan_id|tojson }}, {{ p.name|tojson }}, {{ p.duration_days }}, {{ p.price }}, {{ (p.description or "")|tojson }})'>Edit</button>
+                                <button class="btn-action btn-suspend" onclick="deletePlan('{{ p.plan_id }}')">Delete</button>
                             </div>
                         </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="5" style="text-align: center; color: #94a3b8; padding: 24px;">No plans configured yet. Click 'Create New Plan' above.</td>
+                        <td colspan="5" style="text-align: center; color: var(--qp-fg-muted); padding: 24px;">No plans configured yet. Click 'Create New Package' above.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -342,7 +310,7 @@
 
     <!-- Tab 3: Payflux Payments Log -->
     <div id="tx-tab" class="panel-section" style="display: none;">
-        <div class="section-title">Payflux Payment History</div>
+        <div class="section-title">Payflux Transaction Logs</div>
         <div class="table-responsive">
             <table class="admin-table">
                 <thead>
@@ -360,18 +328,18 @@
                 <tbody>
                     {% for tx in subscriptions %}
                     <tr>
-                        <td><small>{{ tx.subscription_id }}</small></td>
+                        <td><small style="color: var(--qp-fg-muted);">{{ tx.subscription_id }}</small></td>
                         <td>{{ tx.shop_id }}</td>
                         <td>{{ tx.plan_name }}</td>
-                        <td style="color: #4ade80; font-weight: 700;">₹{{ tx.amount }}</td>
-                        <td><small>{{ tx.transaction_id }}</small></td>
-                        <td><span class="badge" style="background: rgba(99, 102, 241, 0.2); color: #818cf8;">{{ tx.payment_gateway }}</span></td>
-                        <td><span class="badge badge-active">{{ tx.status }}</span></td>
+                        <td style="font-weight: 700; color: var(--qp-fg);">₹{{ tx.amount }}</td>
+                        <td><small style="color: var(--qp-fg-muted);">{{ tx.transaction_id }}</small></td>
+                        <td><span class="qp-badge qp-badge-neutral">{{ tx.payment_gateway }}</span></td>
+                        <td><span class="qp-badge qp-badge-success">{{ tx.status }}</span></td>
                         <td>{{ tx.created_at[:10] if tx.created_at else '' }}</td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="8" style="text-align: center; color: #94a3b8; padding: 24px;">No subscription transactions logged yet.</td>
+                        <td colspan="8" style="text-align: center; color: var(--qp-fg-muted); padding: 24px;">No subscription transactions logged yet.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -383,13 +351,13 @@
 <!-- Modal 1: Grant Subscription Validity -->
 <div id="grant-modal" class="modal-overlay">
     <div class="modal-box">
-        <div class="modal-header">➕ Extend Shop Validity</div>
-        <div style="color: #94a3b8; font-size: 0.88rem; margin-bottom: 16px;" id="grant-shop-name">Extend subscription for selected shop</div>
+        <div class="modal-header">Extend Shop Subscription Validity</div>
+        <div style="color: var(--qp-fg-muted); font-size: 13px; margin-bottom: 16px;" id="grant-shop-name">Extend subscription for selected shop</div>
         <input type="hidden" id="grant-shop-id">
         <div class="form-group">
             <label class="form-label">Select Extension Duration:</label>
-            <select id="grant-days" class="form-input">
-                <option value="7">7 Days (1 Week Free Trial)</option>
+            <select id="grant-days" class="qp-select">
+                <option value="7">7 Days (1 Week Extension)</option>
                 <option value="30" selected>30 Days (1 Month)</option>
                 <option value="90">90 Days (3 Months)</option>
                 <option value="365">365 Days (1 Year)</option>
@@ -397,8 +365,8 @@
             </select>
         </div>
         <div class="modal-footer">
-            <button class="btn-action" style="background: #334155; color: white;" onclick="closeModal('grant-modal')">Cancel</button>
-            <button class="btn-action btn-grant" onclick="submitGrantValidity()">Confirm Validity Extension</button>
+            <button class="qp-btn qp-btn-secondary" onclick="closeModal('grant-modal')">Cancel</button>
+            <button class="qp-btn qp-btn-primary" onclick="submitGrantValidity()">Confirm Validity Extension</button>
         </div>
     </div>
 </div>
@@ -406,27 +374,27 @@
 <!-- Modal 2: Create / Edit Pricing Plan -->
 <div id="plan-modal" class="modal-overlay">
     <div class="modal-box">
-        <div class="modal-header" id="plan-modal-header">💰 Add Pricing Package</div>
+        <div class="modal-header" id="plan-modal-header">Add Pricing Package</div>
         <input type="hidden" id="plan-id" value="">
         <div class="form-group">
             <label class="form-label">Package Name:</label>
-            <input type="text" id="plan-name" placeholder="e.g. 1 Month Starter" class="form-input">
+            <input type="text" id="plan-name" placeholder="e.g. 1 Month Starter" class="qp-input">
         </div>
         <div class="form-group">
             <label class="form-label">Duration (Days):</label>
-            <input type="number" id="plan-days" placeholder="30" class="form-input">
+            <input type="number" id="plan-days" placeholder="30" class="qp-input">
         </div>
         <div class="form-group">
             <label class="form-label">Price (INR ₹):</label>
-            <input type="number" step="0.01" id="plan-price" placeholder="199" class="form-input">
+            <input type="number" step="0.01" id="plan-price" placeholder="199" class="qp-input">
         </div>
         <div class="form-group">
             <label class="form-label">Description:</label>
-            <input type="text" id="plan-desc" placeholder="Full unlimited printing access for 30 days" class="form-input">
+            <input type="text" id="plan-desc" placeholder="Full unlimited printing access for 30 days" class="qp-input">
         </div>
         <div class="modal-footer">
-            <button class="btn-action" style="background: #334155; color: white;" onclick="closeModal('plan-modal')">Cancel</button>
-            <button class="btn-action btn-add" id="plan-modal-submit-btn" onclick="submitCreatePlan()">Save Package</button>
+            <button class="qp-btn qp-btn-secondary" onclick="closeModal('plan-modal')">Cancel</button>
+            <button class="qp-btn qp-btn-primary" id="plan-modal-submit-btn" onclick="submitCreatePlan()">Save Package</button>
         </div>
     </div>
 </div>
@@ -454,7 +422,7 @@ function openGrantModal(shopId, shopName) {
 }
 
 function openPlanModal() {
-    document.getElementById('plan-modal-header').innerText = "💰 Add New Pricing Package";
+    document.getElementById('plan-modal-header').innerText = "Add New Pricing Package";
     document.getElementById('plan-modal-submit-btn').innerText = "Save Package";
     document.getElementById('plan-id').value = "";
     document.getElementById('plan-name').value = "";
@@ -465,7 +433,7 @@ function openPlanModal() {
 }
 
 function openEditPlanModal(planId, name, days, price, desc) {
-    document.getElementById('plan-modal-header').innerText = "✏️ Edit Pricing Package";
+    document.getElementById('plan-modal-header').innerText = "Edit Pricing Package";
     document.getElementById('plan-modal-submit-btn').innerText = "Update Package";
     document.getElementById('plan-id').value = planId;
     document.getElementById('plan-name').value = name;
@@ -491,13 +459,13 @@ async function submitGrantValidity() {
         });
         const data = await res.json();
         if (data.success) {
-            alert('✅ Subscription validity extended successfully!');
+            alert('Subscription validity extended successfully.');
             window.location.reload();
         } else {
-            alert('❌ Error: ' + (data.error || 'Failed to update'));
+            alert('Error: ' + (data.error || 'Failed to update'));
         }
     } catch (e) {
-        alert('❌ Request failed: ' + e);
+        alert('Request failed: ' + e);
     }
 }
 
@@ -513,10 +481,10 @@ async function toggleSuspend(shopId, suspend) {
         if (data.success) {
             window.location.reload();
         } else {
-            alert('❌ Failed: ' + data.error);
+            alert('Failed: ' + data.error);
         }
     } catch (e) {
-        alert('❌ Network error: ' + e);
+        alert('Network error: ' + e);
     }
 }
 
@@ -550,13 +518,13 @@ async function submitCreatePlan() {
         });
         const data = await res.json();
         if (data.success) {
-            alert(planId ? '✅ Plan updated successfully!' : '✅ Plan created successfully!');
+            alert(planId ? 'Plan updated successfully.' : 'Plan created successfully.');
             window.location.reload();
         } else {
-            alert('❌ Error: ' + (data.detail || data.error || 'Failed to save plan'));
+            alert('Error: ' + (data.detail || data.error || 'Failed to save plan'));
         }
     } catch (e) {
-        alert('❌ Network error: ' + e);
+        alert('Network error: ' + e);
     }
 }
 
@@ -568,10 +536,10 @@ async function deletePlan(planId) {
         if (data.success) {
             window.location.reload();
         } else {
-            alert('❌ Failed to delete');
+            alert('Failed to delete');
         }
     } catch (e) {
-        alert('❌ Error: ' + e);
+        alert('Error: ' + e);
     }
 }
 
@@ -581,13 +549,13 @@ async function resetShopKey(shopId) {
         const res = await fetch('/api/admin/shops/' + shopId + '/reset-key', { method: 'POST' });
         const data = await res.json();
         if (data.success) {
-            alert('✅ API Key Regenerated:\n' + data.new_api_key);
+            alert('API Key Regenerated:\n' + data.new_api_key);
             window.location.reload();
         } else {
-            alert('❌ Reset failed: ' + (data.error || 'Server error'));
+            alert('Reset failed: ' + (data.error || 'Server error'));
         }
     } catch (e) {
-        alert('❌ Network error: ' + e);
+        alert('Network error: ' + e);
     }
 }
 
@@ -597,14 +565,15 @@ async function deleteShopCompletely(shopId, shopName) {
         const res = await fetch('/api/admin/shops/' + shopId, { method: 'DELETE' });
         const data = await res.json();
         if (data.success) {
-            alert('✅ Shop and all related data permanently deleted.');
+            alert('Shop and all related data permanently deleted.');
             window.location.reload();
         } else {
-            alert('❌ Delete failed: ' + (data.error || 'Server error'));
+            alert('Delete failed: ' + (data.error || 'Server error'));
         }
     } catch (e) {
-        alert('❌ Network error: ' + e);
+        alert('Network error: ' + e);
     }
 }
 </script>
 {% endblock %}
+

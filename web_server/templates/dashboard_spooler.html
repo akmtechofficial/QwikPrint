@@ -1,37 +1,40 @@
 {% extends "dashboard_base.html" %}
 
-{% block page_heading %}🔑 Windows Desktop Spooler & API Key Pairing{% endblock %}
+{% block page_heading %}Desktop Spooler API{% endblock %}
 
 {% block dashboard_content %}
-<div class="glass-card" style="border-color: var(--primary-light);">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 18px;">
-        <div style="display: flex; align-items: center; gap: 12px;">
-            <span style="font-size: 32px;">🔑</span>
-            <div>
-                <h3 style="font-size: 18px; font-weight: 800; font-family: var(--font-display); color: #ffffff;">Desktop Spooler Pairing API Key</h3>
-                <p style="font-size: 13px; color: var(--text-muted);">Paste this API Key into your Windows Desktop Print Agent software to pair your printer counter.</p>
-            </div>
+<div class="qp-card">
+    <div class="qp-card-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
+        <div>
+            <h3 class="qp-card-title">Windows Desktop Spooler API License</h3>
+            <p class="qp-card-description">Paste this API Key into your local Windows Desktop Print Agent software to link your print counter.</p>
         </div>
-        <span class="status-pill pill-success" style="font-size: 12px;">🔒 1 API Key = 1 PC Bound License</span>
+        <span class="qp-badge qp-badge-blue">1-PC Bound License</span>
     </div>
 
     <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 24px;">
-        <input type="text" id="api-key-input" class="form-input" value="{{ api_key }}" readonly style="flex: 1; font-family: monospace; font-size: 17px; font-weight: 700; color: var(--cyan-accent); background: #09090b; border-color: var(--primary-light); text-align: center;">
-        <button onclick="navigator.clipboard.writeText('{{ api_key }}'); alert('API Key copied to clipboard! Paste it into Desktop Agent.');" class="btn-primary" style="padding: 12px 24px;">
-            📋 Copy API Key
+        <input type="text" id="api-key-input" class="qp-input" value="{{ api_key }}" readonly style="flex: 1; min-width: 280px; font-family: monospace; font-size: 16px; font-weight: 700; text-align: center; background-color: var(--qp-bg-subtle);">
+        
+        <button onclick="navigator.clipboard.writeText('{{ api_key }}'); alert('API License Key copied to clipboard!');" class="qp-btn qp-btn-primary">
+            <svg class="qp-icon" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <span>Copy Key</span>
         </button>
+
         <form action="/api/shop/regenerate-key" method="POST" style="margin: 0;">
             <input type="hidden" name="shop_id" value="{{ shop.shop_id }}">
-            <button type="submit" class="btn-secondary" style="padding: 12px 18px; font-size: 13px;">🔄 Regenerate Key</button>
+            <button type="submit" class="qp-btn qp-btn-outline">
+                <svg class="qp-icon" viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                <span>Regenerate Key</span>
+            </button>
         </form>
     </div>
 
-    <div style="background: rgba(9, 9, 11, 0.8); border: 1px solid var(--card-border); border-radius: 14px; padding: 20px;">
-        <h4 style="font-size: 15px; font-weight: 700; color: #ffffff; margin-bottom: 12px;">💻 How to Connect Your Windows Print Counter:</h4>
-        <ol style="color: var(--text-body); font-size: 13.5px; padding-left: 20px; display: flex; flex-direction: column; gap: 8px;">
-            <li>Download & Install the <strong>QwikPrint Windows Desktop Spooler (.exe)</strong> on your main print counter PC.</li>
-            <li>Launch the app and paste your unique <strong>API Key</strong> shown above.</li>
-            <li>Select your connected USB/Network Xerox Printer and click <strong>"Start Automated Spooling"</strong>.</li>
+    <div style="background-color: var(--qp-bg-subtle); border: 1px solid var(--qp-border); border-radius: var(--qp-radius-lg); padding: 24px;">
+        <h4 style="font-size: 15px; font-weight: 700; color: var(--qp-text-primary); margin-bottom: 12px;">Desktop Spooler Installation & Pairing Guide:</h4>
+        <ol style="color: var(--qp-text-secondary); font-size: 14px; padding-left: 20px; display: flex; flex-direction: column; gap: 10px;">
+            <li>Download and install the official <strong>QwikPrint Windows Desktop Spooler (.exe)</strong> on your counter PC.</li>
+            <li>Launch the spooler app and paste your unique <strong>API License Key</strong> displayed above.</li>
+            <li>Select your connected USB or Network Printer and click <strong>"Start Automated Spooling"</strong>.</li>
         </ol>
     </div>
 </div>

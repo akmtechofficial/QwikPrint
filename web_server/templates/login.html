@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}QwikPrint - Shopkeeper Sign In{% endblock %}
+{% block title %}Sign In - QwikPrint{% endblock %}
 
 {% block extra_head %}
 <!-- Firebase App and Auth SDKs (v10 compat mode) -->
@@ -9,30 +9,28 @@
 {% endblock %}
 
 {% block content %}
-<div style="max-width: 480px; margin: 50px auto; padding: 0 20px;">
-    <div class="glass-card" style="padding: 40px 36px; text-align: center;">
+<div style="max-width: 440px; margin: 64px auto; padding: 0 24px;">
+    <div class="qp-card" style="padding: 36px 32px; text-align: center;">
         
-        <div style="margin-bottom: 28px;">
-            <span class="status-pill pill-success" style="margin-bottom: 14px; font-size: 13.5px;">
-                🔐 Shopkeeper Sign In
-            </span>
-            <h2 style="font-size: 28px; font-weight: 800; color: #0f172a; margin-top: 10px; line-height: 1.2;">
-                Sign In to Your Dashboard
-            </h2>
-            <p style="color: #64748b; font-size: 14.5px; margin-top: 8px; line-height: 1.5;">
-                Manage print jobs, rate engine, and active spooler status.
+        <div style="margin-bottom: 24px;">
+            <span class="qp-badge qp-badge-blue" style="margin-bottom: 12px;">Shopkeeper Portal</span>
+            <h1 style="font-size: 24px; font-weight: 700; color: var(--qp-fg); margin-top: 8px;">
+                Sign In to Dashboard
+            </h1>
+            <p style="color: var(--qp-fg-muted); font-size: 14px; margin-top: 6px; line-height: 1.5;">
+                Manage print jobs, rate engine, and connected desktop spoolers.
             </p>
         </div>
 
         {% if error %}
-        <div style="background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; padding: 14px; border-radius: 12px; font-size: 14px; margin-bottom: 24px; text-align: left; line-height: 1.5;">
-            ⚠️ {{ error }}
+        <div style="background: var(--qp-danger-subtle); border: 1px solid rgba(220, 38, 38, 0.2); color: var(--qp-danger); padding: 12px; border-radius: var(--qp-radius-md); font-size: 13px; margin-bottom: 20px; text-align: left; line-height: 1.5;">
+            {{ error }}
         </div>
         {% endif %}
 
         <!-- Continue with Google Button -->
-        <button type="button" id="google-signin-btn" class="btn-google" style="margin-bottom: 24px;">
-            <svg width="22" height="22" viewBox="0 0 24 24">
+        <button type="button" id="google-signin-btn" class="qp-btn qp-btn-secondary" style="width: 100%; justify-content: center; gap: 10px; margin-bottom: 20px;">
+            <svg width="18" height="18" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                 <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
@@ -48,8 +46,8 @@
             <input type="hidden" name="device_fp" id="google-fp-input">
         </form>
 
-        <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; font-size: 14px; color: #64748b;">
-            Don't have a shop account yet? <a href="/register" style="color: #0d9488; font-weight: 700; text-decoration: none;">Register New Shop →</a>
+        <div style="border-top: 1px solid var(--qp-border); padding-top: 16px; font-size: 13px; color: var(--qp-fg-muted);">
+            Don't have a shop account yet? <a href="/register" style="color: var(--qp-blue); font-weight: 600; text-decoration: none;">Register Shop →</a>
         </div>
     </div>
 </div>
@@ -101,7 +99,7 @@ document.getElementById('google-signin-btn').addEventListener('click', function(
     const originalText = btn.innerHTML;
     btn.style.opacity = "0.7";
     btn.style.pointerEvents = "none";
-    btn.innerHTML = `⏳ Connecting Google Sign-In...`;
+    btn.innerHTML = `Connecting Google Sign-In...`;
 
     const provider = new firebase.auth.GoogleAuthProvider();
     auth.signInWithPopup(provider)
@@ -129,3 +127,4 @@ window.addEventListener('load', function() {
 });
 </script>
 {% endblock %}
+

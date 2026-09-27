@@ -3,85 +3,89 @@
 {% block title %}Pricing & Subscription Plans - QwikPrint{% endblock %}
 
 {% block content %}
-<div style="text-align: center; max-width: 800px; margin: 40px auto 40px; padding: 0 16px;">
-    <span class="status-pill pill-success" style="margin-bottom: 16px;">💎 100% Transparent Subscription Pricing</span>
-    <h1 style="font-size: clamp(2.2rem, 4vw, 3.2rem); font-weight: 800; color: #0f172a; margin-bottom: 16px; line-height: 1.15;">
-        Select the Ideal Plan for Your Print Counter
+<div style="text-align: center; max-width: 720px; margin: 48px auto 40px; padding: 0 24px;">
+    <span class="qp-badge qp-badge-blue" style="margin-bottom: 12px;">Transparent Subscription Plans</span>
+    <h1 style="font-size: clamp(2rem, 3.5vw, 2.8rem); font-weight: 700; color: var(--qp-fg); margin-bottom: 16px; line-height: 1.15;">
+        Select the right plan for your shop
     </h1>
-    <p style="color: #64748b; font-size: 1.1rem; line-height: 1.6;">
-        Unlimited customer uploads, automatic Windows Desktop Spooling, zero transaction commissions, and 24/7 priority support.
+    <p style="color: var(--qp-fg-muted); font-size: 15px; line-height: 1.6;">
+        Unlimited customer uploads, automatic Windows Desktop Spooling, zero transaction commissions, and priority support.
     </p>
 </div>
 
-<div class="grid-3" style="max-width: 1100px; margin: 0 auto 60px; padding: 0 16px; gap: 24px;">
+<div style="max-width: 1100px; margin: 0 auto 64px; padding: 0 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
     {% for p in plans %}
-    <div class="glass-card" style="margin: 0; padding: 32px 28px; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
+    <div class="qp-card" style="display: flex; flex-direction: column; justify-content: space-between; position: relative; {% if loop.index == 2 %}border-color: var(--qp-blue);{% endif %}">
         {% if loop.index == 2 %}
-        <div style="position: absolute; top: -14px; right: 24px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: #ffffff; padding: 4px 14px; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);">
-            ⭐ Most Popular Choice
+        <div style="position: absolute; top: -12px; right: 20px; background: var(--qp-blue); color: #ffffff; padding: 3px 12px; border-radius: var(--qp-radius-full); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">
+            Most Popular
         </div>
         {% endif %}
         
         <div>
-            <div style="font-size: 1.35rem; font-weight: 700; color: #0f172a;">{{ p.name }}</div>
-            <div style="font-size: 2.5rem; font-weight: 800; color: #0d9488; margin: 12px 0 6px;">
-                ₹{{ p.price }} <span style="font-size: 0.9rem; color: #64748b; font-weight: 500;">/ {{ p.duration_days }} Days</span>
+            <div style="font-size: 18px; font-weight: 700; color: var(--qp-fg);">{{ p.name }}</div>
+            <div style="font-size: 36px; font-weight: 700; color: var(--qp-fg); margin: 12px 0 6px;">
+                ₹{{ p.price }} <span style="font-size: 13px; color: var(--qp-fg-muted); font-weight: 400;">/ {{ p.duration_days }} Days</span>
             </div>
-            <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 24px; min-height: 42px; line-height: 1.5;">
+            <p style="color: var(--qp-fg-muted); font-size: 13px; margin-bottom: 24px; min-height: 40px; line-height: 1.5;">
                 {{ p.description or 'Full uninterrupted access to QwikPrint SaaS engine and Windows Agent.' }}
             </p>
 
-            <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; margin-bottom: 28px;">
-                <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px;">
-                    <li style="display: flex; align-items: center; gap: 10px; color: #334155; font-size: 0.92rem;">
-                        <span style="color: #10b981; font-weight: 800;">✓</span> Unlimited Customer Print Job Uploads
+            <div style="border-top: 1px solid var(--qp-border); padding-top: 20px; margin-bottom: 28px;">
+                <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px;">
+                    <li style="display: flex; align-items: center; gap: 10px; color: var(--qp-fg); font-size: 13px; font-weight: 500;">
+                        <svg class="qp-icon text-blue" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                        Unlimited Customer Print Job Uploads
                     </li>
-                    <li style="display: flex; align-items: center; gap: 10px; color: #334155; font-size: 0.92rem;">
-                        <span style="color: #10b981; font-weight: 800;">✓</span> 1-Click Windows Desktop Silent Spooler
+                    <li style="display: flex; align-items: center; gap: 10px; color: var(--qp-fg); font-size: 13px; font-weight: 500;">
+                        <svg class="qp-icon text-blue" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                        1-Click Windows Desktop Silent Spooler
                     </li>
-                    <li style="display: flex; align-items: center; gap: 10px; color: #334155; font-size: 0.92rem;">
-                        <span style="color: #10b981; font-weight: 800;">✓</span> Dynamic Shop QR Code & Web Portal
+                    <li style="display: flex; align-items: center; gap: 10px; color: var(--qp-fg); font-size: 13px; font-weight: 500;">
+                        <svg class="qp-icon text-blue" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                        Dynamic Shop QR Code & Web Portal
                     </li>
-                    <li style="display: flex; align-items: center; gap: 10px; color: #334155; font-size: 0.92rem;">
-                        <span style="color: #10b981; font-weight: 800;">✓</span> Multi-Paper Pricing (A4, A3, Legal, Photo)
+                    <li style="display: flex; align-items: center; gap: 10px; color: var(--qp-fg); font-size: 13px; font-weight: 500;">
+                        <svg class="qp-icon text-blue" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                        Multi-Paper Pricing (A4, A3, Legal, Photo)
                     </li>
-                    <li style="display: flex; align-items: center; gap: 10px; color: #334155; font-size: 0.92rem;">
-                        <span style="color: #10b981; font-weight: 800;">✓</span> Payflux UPI & Counter Cash Verification
+                    <li style="display: flex; align-items: center; gap: 10px; color: var(--qp-fg); font-size: 13px; font-weight: 500;">
+                        <svg class="qp-icon text-blue" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                        Payflux UPI & Counter Cash Verification
                     </li>
-                    <li style="display: flex; align-items: center; gap: 10px; color: #334155; font-size: 0.92rem;">
-                        <span style="color: #10b981; font-weight: 800;">✓</span> Automated File Lifecycle Privacy Purge
+                    <li style="display: flex; align-items: center; gap: 10px; color: var(--qp-fg); font-size: 13px; font-weight: 500;">
+                        <svg class="qp-icon text-blue" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                        Automated File Privacy Purge
                     </li>
                 </ul>
             </div>
         </div>
 
         {% if shop %}
-        <a href="/subscription" class="btn-primary" style="width: 100%; text-align: center; text-decoration: none; font-size: 0.95rem;">💳 Subscribe / Renew via Payflux</a>
+        <a href="/subscription" class="qp-btn qp-btn-primary" style="width: 100%; text-align: center; justify-content: center;">Subscribe / Renew via Payflux</a>
         {% else %}
-        <a href="/register" class="btn-primary" style="width: 100%; text-align: center; text-decoration: none; font-size: 0.95rem;">🚀 Start Free Trial (Google Sign-Up)</a>
+        <a href="/register" class="qp-btn qp-btn-primary" style="width: 100%; text-align: center; justify-content: center;">Start Free Trial</a>
         {% endif %}
     </div>
     {% else %}
-    <div class="glass-card" style="margin: 0; padding: 32px 28px; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
-        <div style="position: absolute; top: -14px; right: 24px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: #ffffff; padding: 4px 14px; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">
-            ⭐ Recommended
-        </div>
+    <div class="qp-card" style="display: flex; flex-direction: column; justify-content: space-between; position: relative;">
         <div>
-            <div style="font-size: 1.35rem; font-weight: 700; color: #0f172a;">1 Month Pro</div>
-            <div style="font-size: 2.5rem; font-weight: 800; color: #0d9488; margin: 12px 0 6px;">
-                ₹199 <span style="font-size: 0.9rem; color: #64748b; font-weight: 500;">/ 30 Days</span>
+            <div style="font-size: 18px; font-weight: 700; color: var(--qp-fg);">1 Month Starter</div>
+            <div style="font-size: 36px; font-weight: 700; color: var(--qp-fg); margin: 12px 0 6px;">
+                ₹199 <span style="font-size: 13px; color: var(--qp-fg-muted); font-weight: 400;">/ 30 Days</span>
             </div>
-            <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 24px;">Complete automated smart print ATM counter for 30 days.</p>
-            <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; margin-bottom: 28px;">
-                <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px;">
-                    <li style="display: flex; align-items: center; gap: 10px; color: #334155; font-size: 0.92rem;"><span style="color: #10b981; font-weight: 800;">✓</span> Unlimited Print Jobs</li>
-                    <li style="display: flex; align-items: center; gap: 10px; color: #334155; font-size: 0.92rem;"><span style="color: #10b981; font-weight: 800;">✓</span> Windows Desktop Agent</li>
-                    <li style="display: flex; align-items: center; gap: 10px; color: #334155; font-size: 0.92rem;"><span style="color: #10b981; font-weight: 800;">✓</span> Payflux UPI & Cash Verification</li>
+            <p style="color: var(--qp-fg-muted); font-size: 13px; margin-bottom: 24px;">Complete automated print counter subscription for 30 days.</p>
+            <div style="border-top: 1px solid var(--qp-border); padding-top: 20px; margin-bottom: 28px;">
+                <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px;">
+                    <li style="display: flex; align-items: center; gap: 10px; color: var(--qp-fg); font-size: 13px; font-weight: 500;"><svg class="qp-icon text-blue" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Unlimited Print Jobs</li>
+                    <li style="display: flex; align-items: center; gap: 10px; color: var(--qp-fg); font-size: 13px; font-weight: 500;"><svg class="qp-icon text-blue" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Windows Desktop Agent</li>
+                    <li style="display: flex; align-items: center; gap: 10px; color: var(--qp-fg); font-size: 13px; font-weight: 500;"><svg class="qp-icon text-blue" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Payflux UPI & Cash Verification</li>
                 </ul>
             </div>
         </div>
-        <a href="/register" class="btn-primary" style="width: 100%; text-align: center; text-decoration: none;">🚀 Start Free Trial</a>
+        <a href="/register" class="qp-btn qp-btn-primary" style="width: 100%; text-align: center; justify-content: center;">Start Free Trial</a>
     </div>
     {% endfor %}
 </div>
 {% endblock %}
+

@@ -1,60 +1,73 @@
 {% extends "dashboard_base.html" %}
 
-{% block page_heading %}📋 Live Print Queue & Transactions{% endblock %}
+{% block page_heading %}Print Queue{% endblock %}
+
+{% block header_actions %}
+<button onclick="window.location.reload();" class="qp-btn qp-btn-sm qp-btn-outline">
+    <svg class="qp-icon" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+    <span>Refresh Queue</span>
+</button>
+{% endblock %}
 
 {% block dashboard_content %}
-<div class="glass-card">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 20px;">
+<div class="qp-card">
+    <div class="qp-card-header" style="display: flex; justify-content: space-between; align-items: center;">
         <div>
-            <h3 style="font-size: 18px; font-weight: 800; font-family: var(--font-display);">📋 Live Customer Jobs Queue</h3>
-            <p style="font-size: 13px; color: var(--text-muted);">Real-time print jobs synced directly with your Windows Desktop Spooler.</p>
+            <h3 class="qp-card-title">Active Print Queue & Transactions</h3>
+            <p class="qp-card-description">Monitor and manage incoming customer document orders synced with local printers.</p>
         </div>
-        <button onclick="window.location.reload();" class="btn-primary" style="font-size: 13px; padding: 8px 18px;">
-            🔄 Refresh Queue
-        </button>
+        <span class="qp-badge qp-badge-blue">Real-Time Sync</span>
     </div>
 
-    <div style="overflow-x: auto;">
-        <table class="data-table">
+    <div class="qp-table-container">
+        <table class="qp-table">
             <thead>
                 <tr>
-                    <th>Job ID</th>
-                    <th>Document Name</th>
-                    <th>Pages & Copies</th>
+                    <th>Job Reference</th>
+                    <th>Document Filename</th>
+                    <th>Specifications</th>
                     <th>Status</th>
-                    <th>Total Cost</th>
-                    <th>Action</th>
+                    <th>Amount</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for job in jobs %}
                 <tr>
-                    <td style="font-weight: 700; color: var(--primary-light);">#{{ job.job_id[-8:] }}</td>
-                    <td>{{ job.original_filename }}</td>
-                    <td>{{ job.page_count }} pg × {{ job.copies }} copy</td>
+                    <td style="font-family: monospace; font-weight: 600; color: var(--qp-primary);">#{{ job.job_id[-8:] }}</td>
+                    <td style="font-weight: 500;">{{ job.original_filename }}</td>
+                    <td>{{ job.page_count }} pages × {{ job.copies }} copies</td>
                     <td>
                         {% if job.status == 'PRINTED' %}
-                        <span class="status-pill pill-success">PRINTED</span>
+                        <span class="qp-badge qp-badge-success">PRINTED</span>
                         {% elif job.status == 'PAYMENT_PENDING' %}
-                        <span class="status-pill pill-warning">CASH PENDING</span>
+                        <span class="qp-badge qp-badge-warning">CASH PENDING</span>
                         {% elif job.status == 'QUEUED' %}
-                        <span class="status-pill pill-success">QUEUED</span>
+                        <span class="qp-badge qp-badge-blue">QUEUED</span>
                         {% else %}
-                        <span class="status-pill pill-danger">{{ job.status }}</span>
+                        <span class="qp-badge qp-badge-danger">{{ job.status }}</span>
                         {% endif %}
                     </td>
-                    <td style="font-weight: 700; color: #ffffff;">₹{{ "%.2f"|format(job.total_cost) }}</td>
+                    <td style="font-weight: 700; color: var(--qp-text-primary);">₹{{ "%.2f"|format(job.total_cost) }}</td>
                     <td>
                         {% if job.status == 'PAYMENT_PENDING' %}
-                        <button onclick="approveCash('{{ job.job_id }}')" class="btn-primary btn-success" style="padding: 6px 14px; font-size: 12px;">Confirm Cash</button>
+                        <button onclick="approveCash('{{ job.job_id }}')" class="qp-btn qp-btn-sm qp-btn-primary">Confirm Cash</button>
                         {% else %}
-                        <span style="color: var(--text-muted); font-size: 12px;">Completed</span>
+                        <span style="color: var(--qp-text-muted); font-size: 12px;">Completed</span>
                         {% endif %}
                     </td>
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="6" style="padding: 24px; text-align: center; color: var(--text-muted);">No print transactions in queue.</td>
+                    <td colspan="6">
+                        <div class="qp-empty-state" style="border: none;">
+                            <div class="qp-empty-icon">
+                                <svg class="qp-icon" viewBox="0 0 24 24" style="width: 24px; height: 24px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                            </div>
+                            <div class="qp-empty-title">No Active Jobs in Queue</div>
+                            <div class="qp-empty-description">Customer document uploads will appear here in real time once submitted via your QR portal.</div>
+                        </div>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -70,7 +83,7 @@
                 if (data.success) {
                     location.reload();
                 } else {
-                    alert("Failed to confirm cash.");
+                    alert("Failed to confirm cash payment.");
                 }
             });
     }

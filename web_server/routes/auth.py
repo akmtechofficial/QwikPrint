@@ -152,12 +152,28 @@ async def onboarding_page(request: Request):
     
     if pending_cookie and "|" in pending_cookie:
         parts = pending_cookie.split("|")
-        google_email = parts[0]
+        google_email = parts[0].lower().strip()
         if len(parts) > 1:
             google_name = parts[1]
         if len(parts) > 2 and not device_fp:
             device_fp = parts[2]
             
+    if google_email:
+        existing_user = db.get_user_by_email(google_email)
+        if existing_user:
+            # User already completed onboarding! Log in directly & redirect to /dashboard or /admin
+            existing_shop = db.get_user_shop(existing_user["user_id"])
+            shop_id = existing_shop["shop_id"] if existing_shop else "SHOP_ADMIN_001"
+            session_token = create_session_data(existing_user["user_id"], shop_id)
+            superadmin_email = os.getenv("SUPERADMIN_EMAIL", "akashkapri12109@gmail.com").lower().strip()
+            is_admin_email = (google_email == "akashkapri12109@gmail.com" or google_email == superadmin_email)
+            target_url = "/admin" if (existing_user.get("role") == "super_admin" or is_admin_email) else "/dashboard"
+            
+            redirect_resp = RedirectResponse(url=target_url, status_code=303)
+            redirect_resp.delete_cookie(key="qwikprint_pending_google", path="/")
+            redirect_resp.set_cookie(key="qwikprint_session", value=session_token, httponly=True, max_age=86400 * 365, path="/", samesite="lax")
+            return redirect_resp
+
     if not google_email:
         return RedirectResponse(url="/register", status_code=302)
 
@@ -200,6 +216,7 @@ async def onboarding_submit(
     is_admin_email = (clean_email == "akashkapri12109@gmail.com" or clean_email == superadmin_email)
 
     existing_user = db.get_user_by_email(clean_email)
+    is_new_user = False
     if existing_user:
         user = existing_user
         if is_admin_email and user.get("role") != "super_admin":
@@ -207,6 +224,7 @@ async def onboarding_submit(
             user["role"] = "super_admin"
         shop = db.get_user_shop(user["user_id"])
     else:
+        is_new_user = True
         # Multi-Account Lock per IP & Device Fingerprint
         is_blocked, existing_email = db.is_ip_or_device_registered(client_ip, fp)
         
@@ -238,8 +256,15 @@ async def onboarding_submit(
         except Exception as e:
             print(f"[Warning] Could not trigger email notifications: {e}")
 
-    target_url = "/admin" if (user.get("role") == "super_admin" or is_admin_email) else "/subscription?new_signup=true"
-    session_token = create_session_data(user["user_id"], shop["shop_id"])
+    shop_id = shop["shop_id"] if shop else "SHOP_ADMIN_001"
+    if user.get("role") == "super_admin" or is_admin_email:
+        target_url = "/admin"
+    elif is_new_user:
+        target_url = "/subscription?new_signup=true"
+    else:
+        target_url = "/dashboard"
+
+    session_token = create_session_data(user["user_id"], shop_id)
     redirect_resp = RedirectResponse(url=target_url, status_code=303)
     redirect_resp.delete_cookie(key="qwikprint_pending_google", path="/")
     redirect_resp.set_cookie(key="qwikprint_session", value=session_token, httponly=True, max_age=86400 * 365, path="/", samesite="lax")

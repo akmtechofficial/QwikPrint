@@ -638,6 +638,7 @@ class SupabaseDatabase:
         return shops
 
     def create_user_and_shop(self, email: str, password_hash: str, full_name: str = "", phone: str = "", shop_name: str = "", registration_ip: str = "", device_fingerprint: str = ""):
+        clean_email = email.lower().strip()
         conn, is_pg = self.get_connection()
         user_id = f"usr-{uuid.uuid4().hex[:8]}"
         shop_id = f"shop-{uuid.uuid4().hex[:8]}"
@@ -646,12 +647,12 @@ class SupabaseDatabase:
         trial_exp = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=7)).isoformat()
 
         user_data = {
-            "user_id": user_id, "email": email, "password_hash": password_hash,
+            "user_id": user_id, "email": clean_email, "password_hash": password_hash,
             "full_name": full_name or "Shop Owner", "phone": phone or "N/A", "role": "shop_owner", "created_at": now
         }
         shop_data = {
             "shop_id": shop_id, "owner_id": user_id, "api_key": api_key, "name": shop_name or "My Print Shop",
-            "owner_name": full_name or "Shop Owner", "email": email, "phone": phone or "N/A",
+            "owner_name": full_name or "Shop Owner", "email": clean_email, "phone": phone or "N/A",
             "address": "Main Xerox Counter", "bw_rate": 2.0, "color_rate": 10.0, "duplex_discount": 0.5,
             "created_at": now, "subscription_status": "active", "plan_name": "7-Day Free Trial", "plan_expires_at": trial_exp
         }
@@ -661,9 +662,9 @@ class SupabaseDatabase:
             s_conn = self.get_sqlite_conn()
             s_cursor = s_conn.cursor()
             s_cursor.execute("INSERT INTO users (user_id, email, password_hash, full_name, phone, role, created_at, registration_ip, device_fingerprint) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);",
-                             (user_id, email, password_hash, user_data["full_name"], user_data["phone"], "shop_owner", now, registration_ip, device_fingerprint))
+                             (user_id, clean_email, password_hash, user_data["full_name"], user_data["phone"], "shop_owner", now, registration_ip, device_fingerprint))
             s_cursor.execute("INSERT INTO shops (shop_id, owner_id, api_key, name, owner_name, email, phone, address, bw_rate, color_rate, duplex_discount, created_at, subscription_status, plan_name, plan_expires_at, registration_ip, device_fingerprint) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-                             (shop_id, user_id, api_key, shop_data["name"], shop_data["owner_name"], email, shop_data["phone"], shop_data["address"], 2.0, 10.0, 0.5, now, "active", "7-Day Free Trial", trial_exp, registration_ip, device_fingerprint))
+                             (shop_id, user_id, api_key, shop_data["name"], shop_data["owner_name"], clean_email, shop_data["phone"], shop_data["address"], 2.0, 10.0, 0.5, now, "active", "7-Day Free Trial", trial_exp, registration_ip, device_fingerprint))
             s_conn.commit()
             s_conn.close()
         except Exception as e:
@@ -674,9 +675,9 @@ class SupabaseDatabase:
             try:
                 cursor = conn.cursor()
                 cursor.execute("INSERT INTO users (user_id, email, password_hash, full_name, phone, role, created_at) VALUES (%s, %s, %s, %s, %s, %s, %s);",
-                               (user_id, email, password_hash, user_data["full_name"], user_data["phone"], "shop_owner", now))
+                               (user_id, clean_email, password_hash, user_data["full_name"], user_data["phone"], "shop_owner", now))
                 cursor.execute("INSERT INTO shops (shop_id, owner_id, api_key, name, owner_name, email, phone, address, bw_rate, color_rate, duplex_discount, created_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);",
-                               (shop_id, user_id, api_key, shop_data["name"], shop_data["owner_name"], email, shop_data["phone"], shop_data["address"], 2.0, 10.0, 0.5, now))
+                               (shop_id, user_id, api_key, shop_data["name"], shop_data["owner_name"], clean_email, shop_data["phone"], shop_data["address"], 2.0, 10.0, 0.5, now))
                 conn.commit()
                 conn.close()
             except Exception as e:
@@ -685,12 +686,15 @@ class SupabaseDatabase:
         return user_data, shop_data
 
     def get_user_by_email(self, email: str):
+        if not email:
+            return None
+        clean_email = email.lower().strip()
         conn, is_pg = self.get_connection()
         user = None
         try:
             cursor = conn.cursor(cursor_factory=RealDictCursor) if is_pg else conn.cursor()
-            query = "SELECT * FROM users WHERE LOWER(email) = %s;" if is_pg else "SELECT * FROM users WHERE LOWER(email) = ?;"
-            cursor.execute(query, (email.lower().strip(),))
+            query = "SELECT * FROM users WHERE LOWER(TRIM(email)) = %s;" if is_pg else "SELECT * FROM users WHERE LOWER(TRIM(email)) = ?;"
+            cursor.execute(query, (clean_email,))
             row = cursor.fetchone()
             conn.close()
             if row:
@@ -702,7 +706,7 @@ class SupabaseDatabase:
             try:
                 s_conn = self.get_sqlite_conn()
                 s_cursor = s_conn.cursor()
-                s_cursor.execute("SELECT * FROM users WHERE LOWER(email) = ?;", (email.lower().strip(),))
+                s_cursor.execute("SELECT * FROM users WHERE LOWER(TRIM(email)) = ?;", (clean_email,))
                 row = s_cursor.fetchone()
                 s_conn.close()
                 if row:

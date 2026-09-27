@@ -292,6 +292,14 @@
             <span>Manage Subscription Plans</span>
             <button class="btn-action btn-add" onclick="openPlanModal()">➕ Create New Plan</button>
         </div>
+        
+        <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; padding: 14px 18px; margin-bottom: 20px; font-size: 0.88rem; color: #bae6fd; display: flex; align-items: center; gap: 12px;">
+            <div style="font-size: 1.4rem;">🎁</div>
+            <div>
+                <strong>New User Trial Plan Rule:</strong> Set the price of any package to <strong>₹0, ₹1, or ₹2</strong> (or name it 'Trial'). It will be fixed as a 1-time Trial Plan for <strong>NEW signups</strong> and will be permanently hidden from existing users once claimed.
+            </div>
+        </div>
+
         <div class="table-responsive">
             <table class="admin-table">
                 <thead>
@@ -306,7 +314,12 @@
                 <tbody>
                     {% for p in plans %}
                     <tr>
-                        <td><strong>{{ p.name }}</strong></td>
+                        <td>
+                            <strong>{{ p.name }}</strong>
+                            {% if p.price in (0, 1, 2) or 'trial' in p.name.lower() or 'free' in p.name.lower() %}
+                            <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); margin-left: 6px; font-size: 0.72rem;">🆕 New Users Only</span>
+                            {% endif %}
+                        </td>
                         <td>{{ p.duration_days }} Days</td>
                         <td style="color: #4ade80; font-weight: 700;">₹{{ "%.2f"|format(p.price) if p.price is defined else p.price }}</td>
                         <td>{{ p.description or 'N/A' }}</td>

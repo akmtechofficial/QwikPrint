@@ -42,30 +42,44 @@ async def subscription_page(request: Request):
     # Determine first-time signup status / trial eligibility
     is_new_signup = request.query_params.get("new_signup") == "true"
     current_plan_name = (user_shop.get("plan_name") or "").lower()
-    
-    # Trial is eligible if user is a new signup or has never activated a paid plan before
-    is_trial_eligible = is_new_signup or not user_shop.get("plan_expires_at") or "trial" in current_plan_name or not is_valid
+    shop_id = user_shop.get("shop_id")
+
+    # Check if shop has ever completed a paid subscription or claimed a plan
+    has_paid_before = False
+    if shop_id:
+        subs = db.get_subscriptions()
+        for sub in subs:
+            if sub.get("shop_id") == shop_id and sub.get("status") == "success":
+                has_paid_before = True
+                break
+
+    # Trial is eligible ONLY for new signups or users who have never had/claimed a plan before
+    is_trial_eligible = (is_new_signup or not user_shop.get("plan_expires_at") or "trial" in current_plan_name) and not has_paid_before
 
     filtered_plans = []
     has_free_plan_in_db = False
 
     for p in all_plans:
-        is_free = (float(p.get("price", 0)) == 0) or ("trial" in p.get("name", "").lower())
-        if is_free:
+        p_name = p.get("name", "").lower()
+        p_price = float(p.get("price", 0))
+        is_trial_plan = (p_price in (0.0, 1.0, 2.0)) or ("trial" in p_name) or ("free" in p_name)
+
+        if is_trial_plan:
             has_free_plan_in_db = True
+            # ONLY include trial plan for new signups / trial eligible users
             if is_trial_eligible:
                 filtered_plans.append(p)
         else:
             filtered_plans.append(p)
 
-    # If new signup & no 0 INR trial plan exists in DB, dynamically inject the 7-Day Free Trial
+    # If new signup & no trial plan exists in DB, dynamically inject a 7-Day Free Trial (₹0)
     if is_trial_eligible and not has_free_plan_in_db:
         trial_plan = {
             "plan_id": "plan_free_trial_7d",
-            "name": "7-Day Free Trial",
+            "name": "7-Day Trial Offer",
             "price": 0.0,
             "duration_days": 7,
-            "description": "100% Free 7-Day Full Access Trial for new print shopkeepers. Instant activation."
+            "description": "100% Special Signup Trial for new print shopkeepers. Instant activation."
         }
         filtered_plans.insert(0, trial_plan)
 

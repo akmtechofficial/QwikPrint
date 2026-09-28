@@ -172,12 +172,15 @@ async def download_desktop_agent():
     with open(exe_path, "rb") as f:
         content = f.read()
 
+    file_size = len(content)
     return Response(
         content=content,
-        media_type="application/octet-stream",
+        media_type="application/vnd.microsoft.portable-executable",
         headers={
-            "Content-Disposition": "attachment; filename=QwikPrint_Desktop_Spooler_v2.4.exe",
-            "Cache-Control": "public, max-age=3600"
+            "Content-Disposition": 'attachment; filename="QwikPrint_Desktop_Spooler_v2.4.exe"',
+            "Content-Length": str(file_size),
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "public, max-age=86400"
         }
     )
 

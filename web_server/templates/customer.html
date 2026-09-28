@@ -1394,7 +1394,9 @@
         updateModalCanvas();
     }
 
-    function updateModalCanvas() {
+    let activePdfRenderTask = null;
+
+    async function updateModalCanvas() {
         const file = uploadedFiles[activeModalFileIdx];
         if (!file) return;
 
@@ -1402,14 +1404,23 @@
         const ctx = canvas.getContext('2d');
         const zoom = (parseInt(document.getElementById('crop-zoom').value) || 100) / 100;
 
+        if (activePdfRenderTask) {
+            try { activePdfRenderTask.cancel(); } catch(e){}
+            activePdfRenderTask = null;
+        }
+
         let srcImg = file.imgObj;
         if (file.is_pdf && file.pdfDoc) {
-            file.pdfDoc.getPage(1).then(page => {
+            try {
+                const page = await file.pdfDoc.getPage(1);
                 const viewport = page.getViewport({ scale: 1.0 * zoom });
                 canvas.width = viewport.width;
                 canvas.height = viewport.height;
-                page.render({ canvasContext: ctx, viewport: viewport });
-            });
+                const renderTask = page.render({ canvasContext: ctx, viewport: viewport });
+                activePdfRenderTask = renderTask;
+                await renderTask.promise;
+                positionCropBox();
+            } catch (err) { /* cancelled or render error */ }
             return;
         }
 
@@ -1671,7 +1682,7 @@
                     document.getElementById('detail-filename').innerText =
                         fname.length > 28 ? fname.slice(0, 28) + '…' : fname;
                     document.getElementById('detail-pages').innerText =
-                        `${firstFile ? firstFile.pages : 1} pg × ${document.getElementById('copies').value} copy`;
+                        `${firstFile ? (firstFile.page_count || 1) : 1} pg × ${document.getElementById('copies').value} copy`;
                     const colorTxt = document.getElementById('color-mode-val').value === 'bw' ? 'B&W' : 'Color';
                     const paperSz  = document.getElementById('paper-size-val').value;
                     document.getElementById('detail-opts').innerText = `${paperSz} • ${colorTxt}`;

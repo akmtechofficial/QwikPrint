@@ -184,23 +184,33 @@ async def submit_print_job(
         duplex=duplex
     )
 
-    job = db.create_print_job(
-        shop_id=shop_id,
-        original_filename=original_filename,
-        file_path=safe_file_path,
-        page_count=page_count,
-        copies=copies,
-        color_mode=color_mode,
-        duplex=duplex,
-        page_range=page_range,
-        payment_method=payment_method,
-        total_cost=server_calculated_cost
-    )
+    if server_calculated_cost <= 0.0 and total_cost > 0.0:
+        server_calculated_cost = total_cost
+
+    initial_status = "PENDING_CASH" if payment_method == "cash" else "PAYMENT_PENDING"
+    payment_status = "pending"
+
+    job_data = {
+        "shop_id": shop_id,
+        "original_filename": original_filename,
+        "file_path": safe_file_path,
+        "page_count": page_count,
+        "copies": copies,
+        "color_mode": color_mode,
+        "duplex": duplex,
+        "page_range": page_range,
+        "payment_method": payment_method,
+        "payment_status": payment_status,
+        "total_cost": server_calculated_cost,
+        "status": initial_status
+    }
+
+    job_id = db.create_print_job(job_data)
 
     return {
         "success": True,
-        "job_id": job["job_id"],
-        "status": job["status"],
+        "job_id": job_id,
+        "status": initial_status,
         "total_cost": server_calculated_cost,
         "message": "Print job submitted successfully!"
     }

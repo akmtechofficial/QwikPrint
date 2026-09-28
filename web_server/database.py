@@ -847,6 +847,55 @@ class SupabaseDatabase:
 
         return jobs
 
+    def get_job(self, job_id: str) -> dict:
+        conn, is_pg = self.get_connection()
+        job = None
+        try:
+            cursor = conn.cursor(cursor_factory=RealDictCursor) if is_pg else conn.cursor()
+            query = "SELECT * FROM print_jobs WHERE job_id = %s;" if is_pg else "SELECT * FROM print_jobs WHERE job_id = ?;"
+            cursor.execute(query, (job_id,))
+            row = cursor.fetchone()
+            conn.close()
+            if row:
+                job = dict(row)
+        except Exception:
+            pass
+
+        if not job:
+            try:
+                s_conn = self.get_sqlite_conn()
+                s_cursor = s_conn.cursor()
+                s_cursor.execute("SELECT * FROM print_jobs WHERE job_id = ?;", (job_id,))
+                row = s_cursor.fetchone()
+                s_conn.close()
+                if row:
+                    job = dict(row)
+            except Exception:
+                pass
+
+        return job
+
+    def calculate_print_cost(self, shop_id: str, paper_size: str, page_count: int, copies: int, color_mode: str, duplex: str) -> float:
+        shop = self.get_shop(shop_id)
+        if not shop:
+            return 0.0
+        
+        rates = self.get_shop_paper_rates(shop_id)
+        paper_rate = next((r for r in rates if r.get("name", "").lower() == str(paper_size).lower()), None)
+        
+        if paper_rate:
+            unit_rate = float(paper_rate["color_rate"]) if color_mode == "color" else float(paper_rate["bw_rate"])
+        else:
+            unit_rate = float(shop.get("color_rate", 10.0)) if color_mode == "color" else float(shop.get("bw_rate", 2.0))
+
+        total_cost = unit_rate * max(1, int(page_count)) * max(1, int(copies))
+
+        if duplex != "single" and float(shop.get("duplex_discount", 0) or 0) > 0:
+            discount = float(shop["duplex_discount"])
+            total_cost = max(0.0, total_cost - (discount * max(1, int(page_count)) * max(1, int(copies))))
+
+        return round(float(total_cost), 2)
+
     def create_print_job(self, job_data: dict) -> str:
         job_id = f"job-{uuid.uuid4().hex[:8]}"
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()

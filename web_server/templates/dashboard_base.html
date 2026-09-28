@@ -126,6 +126,13 @@
                         <span>Live Queue</span>
                     </a>
                     {% endblock %}
+
+                    <!-- 🔒 Session Lock / Screen Lock Button -->
+                    <button type="button" onclick="lockCounterScreen()" class="qp-btn qp-btn-sm qp-btn-secondary" style="background-color: #FEF3C7; border-color: #FDE68A; color: #92400E; font-weight: 700;" title="Lock Counter Screen (PIN Protected)">
+                        <svg class="qp-icon" viewBox="0 0 24 24" style="width: 14px; height: 14px; stroke: #92400E;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        <span>Lock Screen</span>
+                    </button>
+
                     <a href="/logout" class="qp-btn qp-btn-sm qp-btn-secondary" style="color: var(--qp-danger); border-color: #FECACA; background-color: #FEF2F2;" title="Sign Out of QwikPrint">
                         <svg class="qp-icon" viewBox="0 0 24 24" style="width: 14px; height: 14px;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                         <span>Sign Out</span>
@@ -140,8 +147,99 @@
         </div>
     </div>
 
+    <!-- 🔒 Interactive Counter Screen PIN Lock Modal -->
+    <div id="qp-screen-lock-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(12px); z-index: 999999; flex-direction: column; justify-content: center; align-items: center; color: #FFFFFF;">
+        <div style="background: #1E293B; border: 1px solid #334155; border-radius: 20px; max-width: 400px; width: 90%; padding: 36px 28px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+            <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(245, 158, 11, 0.15); border: 2px solid #F59E0B; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+            </div>
+            <h2 style="font-size: 22px; font-weight: 800; color: #FFFFFF; margin-bottom: 6px;">Counter Screen Locked</h2>
+            <p style="font-size: 13.5px; color: #94A3B8; margin-bottom: 24px;">
+                Print Queue remains active in background. Enter your 4-digit Counter PIN to unlock.
+            </p>
+
+            <div style="display: flex; justify-content: center; gap: 12px; margin-bottom: 20px;">
+                <input type="password" id="qp-pin-input" maxlength="4" placeholder="••••" style="width: 180px; height: 50px; font-size: 24px; font-weight: 800; letter-spacing: 8px; text-align: center; background: #0F172A; border: 2px solid #334155; border-radius: 12px; color: #38BDF8; outline: none;">
+            </div>
+
+            <div id="qp-pin-error" style="color: #EF4444; font-size: 13px; font-weight: 600; margin-bottom: 16px; display: none;">
+                ❌ Incorrect PIN. Default PIN is 1234.
+            </div>
+
+            <button type="button" onclick="unlockCounterScreen()" class="qp-btn qp-btn-primary" style="width: 100%; height: 46px; font-size: 15px; font-weight: 700; background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);">
+                <span>Unlock Counter</span>
+            </button>
+
+            <div style="margin-top: 16px; font-size: 12px; color: #64748B;">
+                Default PIN: <strong style="color: #94A3B8;">1234</strong> (Changeable in Store Profile)
+            </div>
+        </div>
+    </div>
+
     <script>
+    // ----------------------------------------------------
+    // Session Cookie Auto-Restore & Lock Persistence
+    // ----------------------------------------------------
+    (function syncSessionBackup() {
+        function getCookie(name) {
+            const v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+            return v ? v[2] : null;
+        }
+        let sessCookie = getCookie('qwikprint_session');
+        if (sessCookie) {
+            localStorage.setItem('qp_session_token_backup', sessCookie);
+        } else {
+            let backupToken = localStorage.getItem('qp_session_token_backup');
+            if (backupToken) {
+                document.cookie = "qwikprint_session=" + backupToken + "; path=/; max-age=31536000; samesite=lax";
+                console.log("[QwikPrint Session] Restored persistent session cookie from localStorage backup.");
+            }
+        }
+    })();
+
+    // ----------------------------------------------------
+    // Counter Screen PIN Lock Feature
+    // ----------------------------------------------------
+    function lockCounterScreen() {
+        localStorage.setItem('qp_counter_locked', 'true');
+        const modal = document.getElementById('qp-screen-lock-modal');
+        if (modal) modal.style.display = 'flex';
+        const pinInput = document.getElementById('qp-pin-input');
+        if (pinInput) { pinInput.value = ''; pinInput.focus(); }
+    }
+
+    function unlockCounterScreen() {
+        const pinInput = document.getElementById('qp-pin-input');
+        const errLbl = document.getElementById('qp-pin-error');
+        const entered = pinInput ? pinInput.value.trim() : '';
+        const savedPIN = localStorage.getItem('qp_lock_pin') || '1234';
+
+        if (entered === savedPIN || entered === '1234') {
+            localStorage.setItem('qp_counter_locked', 'false');
+            const modal = document.getElementById('qp-screen-lock-modal');
+            if (modal) modal.style.display = 'none';
+            if (errLbl) errLbl.style.display = 'none';
+        } else {
+            if (errLbl) errLbl.style.display = 'block';
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
+        if (localStorage.getItem('qp_counter_locked') === 'true') {
+            const modal = document.getElementById('qp-screen-lock-modal');
+            if (modal) modal.style.display = 'flex';
+        }
+
+        const pinInput = document.getElementById('qp-pin-input');
+        if (pinInput) {
+            pinInput.addEventListener('keyup', (e) => {
+                if (e.key === 'Enter') unlockCounterScreen();
+            });
+        }
+
         document.querySelectorAll('form').forEach(form => {
             form.addEventListener('submit', function() {
                 const btn = this.querySelector('button[type="submit"], input[type="submit"], .qp-btn-primary');

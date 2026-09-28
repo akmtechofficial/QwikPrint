@@ -63,7 +63,7 @@ async def login_submit(
 
     shop = db.get_user_shop(user["user_id"])
     shop_id = shop["shop_id"] if shop else "SHOP_ADMIN_001"
-    session_token = create_session_data(user["user_id"], shop_id)
+    session_token = create_session_data(user["user_id"], shop_id, user.get("email", ""))
     
     superadmin_email = os.getenv("SUPERADMIN_EMAIL", "akashkapri12109@gmail.com").lower().strip()
     target_url = request.query_params.get("next")
@@ -137,7 +137,7 @@ async def google_auth(
                 print(f"[Warning] Failed to auto-create shop: {e}")
 
         shop_id = shop["shop_id"] if shop else "SHOP_ADMIN_001"
-        session_token = create_session_data(user["user_id"], shop_id)
+        session_token = create_session_data(user["user_id"], shop_id, clean_email)
         
         target_url = "/admin" if (user.get("role") == "super_admin" or is_admin_email) else "/dashboard"
 
@@ -167,7 +167,7 @@ async def google_auth(
             print(f"[Warning] Could not trigger email notifications: {e}")
 
         shop_id = shop["shop_id"] if shop else "SHOP_ADMIN_001"
-        session_token = create_session_data(user["user_id"], shop_id)
+        session_token = create_session_data(user["user_id"], shop_id, clean_email)
 
         target_url = "/admin" if (user.get("role") == "super_admin" or is_admin_email) else "/dashboard"
         redirect_resp = RedirectResponse(url=target_url, status_code=303)

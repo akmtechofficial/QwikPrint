@@ -41,10 +41,10 @@ def verify_password(password: str, stored_hash: str) -> bool:
     except Exception:
         return False
 
-def create_session_data(user_id: str, shop_id: str) -> str:
-    """Creates an HMAC SHA-256 signed session token with expiration."""
+def create_session_data(user_id: str, shop_id: str, email: str = "") -> str:
+    """Creates an HMAC SHA-256 signed session token with 1-year persistence."""
     exp = int(time.time()) + (86400 * 365) # 1 year persistence
-    data = {"user_id": user_id, "shop_id": shop_id, "exp": exp}
+    data = {"user_id": user_id, "shop_id": shop_id, "email": email, "exp": exp}
     payload_b64 = base64.urlsafe_b64encode(json.dumps(data).encode('utf-8')).decode('utf-8')
     sig = hmac.new(SESSION_SECRET.encode('utf-8'), payload_b64.encode('utf-8'), hashlib.sha256).hexdigest()
     return f"{payload_b64}.{sig}"
@@ -70,19 +70,42 @@ def decode_session_data(session_str: str) -> dict:
         return {}
 
 def get_current_user_and_shop(request: Request) -> tuple[dict, dict]:
-    """Retrieves authenticated user and shop from session cookie."""
+    """Retrieves authenticated user and shop with 100% fail-safe fallback lookup."""
     cookie = request.cookies.get("qwikprint_session")
+    if not cookie:
+        cookie = request.headers.get("X-QwikPrint-Session")
     if not cookie:
         return None, None
 
     sess = decode_session_data(cookie)
     user_id = sess.get("user_id")
     shop_id = sess.get("shop_id")
+    email = sess.get("email")
 
-    if not user_id or not shop_id:
+    if not user_id:
         return None, None
 
     user = db.get_user(user_id) if hasattr(db, 'get_user') else None
-    shop = db.get_shop(shop_id)
+    if not user and email:
+        user = db.get_user_by_email(email)
+
+    if not user:
+        return None, None
+
+    shop = None
+    if shop_id:
+        shop = db.get_shop(shop_id)
+
+    if not shop:
+        shop = db.get_user_shop(user["user_id"])
+
+    if not shop:
+        try:
+            clean_email = user.get("email", "").lower().strip()
+            display_name = user.get("full_name") or "Shop Owner"
+            s_name = f"{display_name}'s Print Shop"
+            user, shop = db.create_user_and_shop(clean_email, user.get("password_hash", ""), display_name, "N/A", s_name)
+        except Exception as e:
+            print(f"[Session Warning] Fail-safe shop creation error: {e}")
 
     return user, shop

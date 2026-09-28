@@ -1346,4 +1346,21 @@ class SupabaseDatabase:
 
         return True
 
+    def get_active_file_paths(self) -> set:
+        """Returns lowercase basenames of active non-expired print job files."""
+        active_paths = set()
+        active_statuses = ("PAYMENT_PENDING", "QUEUED", "CLAIMED", "PRINTING")
+        try:
+            s_conn = self.get_sqlite_conn()
+            s_cursor = s_conn.cursor()
+            s_cursor.execute("SELECT file_path FROM print_jobs WHERE status IN ('PAYMENT_PENDING', 'QUEUED', 'CLAIMED', 'PRINTING');")
+            rows = s_cursor.fetchall()
+            s_conn.close()
+            for r in rows:
+                if r and r[0]:
+                    active_paths.add(os.path.basename(r[0]).lower())
+        except Exception:
+            pass
+        return active_paths
+
 db = SupabaseDatabase()

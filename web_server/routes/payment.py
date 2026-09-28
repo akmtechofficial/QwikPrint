@@ -1,8 +1,6 @@
 import os
 import uuid
 import time
-import hmac
-import hashlib
 import requests
 from fastapi import APIRouter, Request, HTTPException, Body
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -19,93 +17,67 @@ PAYFLUX_BASE_URL = os.getenv("PAYFLUX_BASE_URL", "https://fampay-merchant-api.on
 @router.get("/subscription", response_class=HTMLResponse)
 async def subscription_page(request: Request):
     user, shop = get_current_user_and_shop(request)
-    if not user and not shop:
+    if not user or not shop:
         return RedirectResponse(url="/login?next=/subscription", status_code=302)
 
-    user_shop = shop
-    if not user_shop:
-        shops = db.get_all_shops()
-        if shops:
-            user_shop = shops[0]
-        else:
-            user_shop = {
-                "shop_id": "SHOP_DEFAULT",
-                "name": "My Printing Shop",
-                "plan_name": "",
-                "plan_expires_at": "",
-                "is_suspended": False
-            }
-
-    is_valid, reason, exp_date = db.verify_shop_active_subscription(user_shop.get("shop_id"))
+    shop_id = shop["shop_id"]
+    sub_state = db.get_subscription_state(shop_id)
+    is_trial_eligible = db.is_trial_eligible(shop_id)
     all_plans = db.get_plans()
 
-    # Determine first-time signup status / trial eligibility
-    is_new_signup = request.query_params.get("new_signup") == "true"
-    current_plan_name = (user_shop.get("plan_name") or "").lower()
-    shop_id = user_shop.get("shop_id")
-
-    # Check if shop has ever completed a paid subscription or claimed a plan
-    has_paid_before = False
-    if shop_id:
-        subs = db.get_subscriptions()
-        for sub in subs:
-            if sub.get("shop_id") == shop_id and sub.get("status") == "success":
-                has_paid_before = True
-                break
-
-    # Trial is eligible ONLY for new signups or users who have never had/claimed a plan before
-    is_trial_eligible = (is_new_signup or not user_shop.get("plan_expires_at") or "trial" in current_plan_name) and not has_paid_before
-
     filtered_plans = []
-    has_free_plan_in_db = False
-
     for p in all_plans:
         p_name = p.get("name", "").lower()
         p_price = float(p.get("price", 0))
         is_trial_plan = (p_price in (0.0, 1.0, 2.0)) or ("trial" in p_name) or ("free" in p_name)
 
         if is_trial_plan:
-            has_free_plan_in_db = True
-            # ONLY include trial plan for new signups / trial eligible users
             if is_trial_eligible:
                 filtered_plans.append(p)
         else:
             filtered_plans.append(p)
 
-    # If new signup & no trial plan exists in DB, dynamically inject a 7-Day Free Trial (₹0)
-    if is_trial_eligible and not has_free_plan_in_db:
-        trial_plan = {
-            "plan_id": "plan_free_trial_7d",
-            "name": "7-Day Trial Offer",
-            "price": 0.0,
-            "duration_days": 7,
-            "description": "100% Special Signup Trial for new print shopkeepers. Instant activation."
-        }
-        filtered_plans.insert(0, trial_plan)
-
-    return templates.TemplateResponse(
+    resp = templates.TemplateResponse(
         request=request,
         name="subscription.html",
         context={
-            "shop": user_shop,
-            "is_valid": is_valid,
-            "reason": reason,
+            "shop": shop,
+            "user": user,
+            "is_valid": sub_state["is_valid"],
+            "reason": sub_state["reason"],
+            "sub_state": sub_state,
             "plans": filtered_plans,
             "is_trial_eligible": is_trial_eligible
         }
     )
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
+    return resp
 
 @router.get("/pricing", response_class=HTMLResponse)
 async def pricing_page(request: Request):
     user, shop = get_current_user_and_shop(request)
     plans = db.get_plans()
+    is_trial_eligible = db.is_trial_eligible(shop["shop_id"]) if shop else True
+
+    filtered_plans = []
+    for p in plans:
+        p_name = p.get("name", "").lower()
+        p_price = float(p.get("price", 0))
+        is_trial_plan = (p_price in (0.0, 1.0, 2.0)) or ("trial" in p_name) or ("free" in p_name)
+        if is_trial_plan:
+            if is_trial_eligible:
+                filtered_plans.append(p)
+        else:
+            filtered_plans.append(p)
+
     return templates.TemplateResponse(
         request=request,
         name="pricing.html",
         context={
             "shop": shop,
             "user": user,
-            "plans": plans
+            "plans": filtered_plans,
+            "is_trial_eligible": is_trial_eligible
         }
     )
 
@@ -113,49 +85,46 @@ async def pricing_page(request: Request):
 @router.post("/api/create-order")
 async def create_payflux_order(request: Request, payload: dict = Body(...)):
     user, shop = get_current_user_and_shop(request)
-    shop_id = shop.get("shop_id") if shop else payload.get("shop_id")
-    
-    if not shop_id:
-        shops = db.get_all_shops()
-        if shops:
-            shop_id = shops[0].get("shop_id")
+    if not user or not shop:
+        raise HTTPException(status_code=401, detail="Authentication required to create subscription order")
 
-    if not shop_id:
-        raise HTTPException(status_code=400, detail="No registered shop found for subscription renewal")
-
+    shop_id = shop["shop_id"]
     plan_id = payload.get("plan_id")
-    plan_name = payload.get("plan_name", "Subscription Plan")
-    amount = float(payload.get("amount", 0.0))
+    if not plan_id:
+        raise HTTPException(status_code=400, detail="plan_id is required")
 
-    duration_days = int(payload.get("duration_days", 0))
-    if duration_days <= 0 and plan_id:
-        plans = db.get_plans()
-        for p in plans:
-            if p.get("plan_id") == plan_id:
-                duration_days = int(p.get("duration_days", 30))
-                break
+    # Authoritative Server-Side Plan Lookup
+    plan = db.get_plan(plan_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail=f"Subscription plan '{plan_id}' not found")
 
-    if duration_days <= 0:
-        duration_days = 30
-        if "Free" in plan_name or "Trial" in plan_name or "7" in plan_name or amount == 0:
-            duration_days = 7
-        elif "2 Month" in plan_name or "60" in plan_name:
-            duration_days = 60
-        elif "3 Month" in plan_name or "90" in plan_name:
-            duration_days = 90
-        elif "1 Year" in plan_name or "365" in plan_name or "12 Month" in plan_name:
-            duration_days = 365
+    plan_name = plan["name"]
+    amount = float(plan["price"])
+    duration_days = int(plan["duration_days"])
+
+    # Trial Plan Handling
+    if amount == 0.0 or "trial" in plan_name.lower() or "free" in plan_name.lower():
+        if not db.is_trial_eligible(shop_id):
+            raise HTTPException(status_code=400, detail="Free trial has already been claimed for this shop account.")
+        
+        trial_result = db.claim_trial(shop_id, duration_days=duration_days)
+        return {
+            "success": True,
+            "is_trial": True,
+            "message": "7-Day Free Trial activated successfully!",
+            "expires_at": trial_result.get("plan_expires_at")
+        }
 
     order_id = f"ord_live_{uuid.uuid4().hex[:12]}"
     idempotency_key = f"order_req_{int(time.time() * 1000)}_{uuid.uuid4().hex[:6]}"
     base_url = str(request.base_url).rstrip("/")
-    return_url = f"{base_url}/payment-success?order_id={order_id}"
+    return_url = f"{base_url}/payment-success?order_id={order_id}&plan_id={plan_id}"
 
-    customer_email = (user.get("email") if user else None) or (shop.get("email") if shop else None) or "customer@qwikprint.in"
-    customer_name = (user.get("full_name") if user else None) or (shop.get("name") if shop else None) or "Shop Owner"
-    customer_phone = (user.get("phone") if user else None) or (shop.get("phone") if shop else None) or "9876543210"
+    customer_email = user.get("email") or shop.get("email") or "customer@qwikprint.in"
+    customer_name = user.get("full_name") or shop.get("name") or "Shop Owner"
+    customer_phone = user.get("phone") or shop.get("phone") or "9876543210"
 
-    # 1. Initiate Payflux Order Call to Server-Side Payflux API
+    # Gateway API Call
     if PAYFLUX_SECRET_KEY and "sk_test_your" not in PAYFLUX_SECRET_KEY:
         try:
             payflux_headers = {
@@ -199,7 +168,6 @@ async def create_payflux_order(request: Request, payload: dict = Body(...)):
         except Exception as e:
             print(f"[Payflux Gateway Error] Server API call failed: {e}.")
 
-    # Hosted Payflux Redirect Order Response
     checkout_token = f"pfchk_{order_id}_{uuid.uuid4().hex[:12]}"
     checkout_url = f"{PAYFLUX_BASE_URL}/payflux/checkout?order_id={order_id}&token={checkout_token}"
     return {
@@ -218,56 +186,88 @@ async def create_payflux_order(request: Request, payload: dict = Body(...)):
 @router.get("/payment-success", response_class=HTMLResponse)
 async def payment_success_page(request: Request):
     user, shop = get_current_user_and_shop(request)
-    params = request.query_params
-    order_id = params.get("orderId") or params.get("order_id") or "PAY-SUCCESS"
+    if not user or not shop:
+        return RedirectResponse(url="/login", status_code=302)
 
-    if shop:
-        result = db.update_shop_subscription(shop["shop_id"], 30, "Payflux Subscribed Plan")
-        db.create_subscription_record({
-            "shop_id": shop["shop_id"],
-            "plan_id": "payflux-plan",
-            "plan_name": "Payflux Subscribed Plan",
-            "amount": 0.0,
-            "payment_gateway": "payflux_sdk",
-            "transaction_id": order_id,
-            "status": "success",
-            "expires_at": result.get("plan_expires_at")
-        })
+    order_id = request.query_params.get("orderId") or request.query_params.get("order_id") or ""
+    plan_id = request.query_params.get("plan_id") or ""
+    
+    # Check if order was already processed to enforce GET idempotency
+    if order_id:
+        existing_subs = db.get_subscriptions()
+        already_processed = any(sub.get("transaction_id") == order_id and sub.get("status") == "success" for sub in existing_subs)
+        if not already_processed and plan_id:
+            plan = db.get_plan(plan_id)
+            if plan:
+                duration_days = int(plan["duration_days"])
+                plan_name = plan["name"]
+                amount = float(plan["price"])
+                res = db.update_shop_subscription(shop["shop_id"], duration_days, plan_name)
+                db.create_subscription_record({
+                    "shop_id": shop["shop_id"],
+                    "plan_id": plan_id,
+                    "plan_name": plan_name,
+                    "amount": amount,
+                    "payment_gateway": "payflux_checkout",
+                    "transaction_id": order_id,
+                    "status": "success",
+                    "expires_at": res.get("plan_expires_at")
+                })
 
-    return templates.TemplateResponse(
+    sub_state = db.get_subscription_state(shop["shop_id"])
+    resp = templates.TemplateResponse(
         request=request,
         name="subscription.html",
         context={
             "shop": shop,
-            "is_valid": True,
-            "reason": "Active",
-            "plans": db.get_plans()
+            "user": user,
+            "is_valid": sub_state["is_valid"],
+            "reason": sub_state["reason"],
+            "sub_state": sub_state,
+            "plans": db.get_plans(),
+            "payment_success_msg": "Payment successful! Your subscription is now active."
         }
     )
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
+    return resp
 
 @router.post("/api/payments/confirm-order")
 async def confirm_payflux_order(request: Request, payload: dict = Body(...)):
     user, shop = get_current_user_and_shop(request)
-    shop_id = shop.get("shop_id") if shop else payload.get("shop_id")
-    
-    if not shop_id:
-        shops = db.get_all_shops()
-        if shops:
-            shop_id = shops[0].get("shop_id")
+    if not user or not shop:
+        raise HTTPException(status_code=401, detail="Authentication required to confirm payment")
 
-    if not shop_id:
-        raise HTTPException(status_code=400, detail="No registered shop found for payment confirmation")
+    shop_id = shop["shop_id"]
+    order_id = payload.get("order_id") or payload.get("orderId")
+    plan_id = payload.get("plan_id")
 
-    plan_name = payload.get("plan_name", "Subscription Plan")
-    duration_days = int(payload.get("duration_days", 30))
-    amount = float(payload.get("amount", 0.0))
-    order_id = payload.get("order_id") or payload.get("orderId") or f"PAY-{uuid.uuid4().hex[:10].upper()}"
+    if not order_id or not plan_id:
+        raise HTTPException(status_code=400, detail="order_id and plan_id are required for confirmation")
+
+    # 1. Database-level Idempotency Check
+    existing_subs = db.get_subscriptions()
+    for sub in existing_subs:
+        if sub.get("transaction_id") == order_id and sub.get("status") == "success":
+            return {
+                "success": True,
+                "message": "Payment already confirmed and activated.",
+                "expires_at": sub.get("expires_at")
+            }
+
+    # 2. Authoritative Plan Lookup
+    plan = db.get_plan(plan_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail=f"Plan '{plan_id}' not found")
+
+    plan_name = plan["name"]
+    duration_days = int(plan["duration_days"])
+    amount = float(plan["price"])
     payment_method = payload.get("payment_method", "payflux_gateway")
 
     result = db.update_shop_subscription(shop_id, duration_days, plan_name)
     db.create_subscription_record({
         "shop_id": shop_id,
-        "plan_id": payload.get("plan_id", "custom"),
+        "plan_id": plan_id,
         "plan_name": plan_name,
         "amount": amount,
         "payment_gateway": payment_method,

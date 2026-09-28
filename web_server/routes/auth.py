@@ -169,7 +169,7 @@ async def google_auth(
         shop_id = shop["shop_id"] if shop else "SHOP_ADMIN_001"
         session_token = create_session_data(user["user_id"], shop_id)
 
-        target_url = "/admin" if (user.get("role") == "super_admin" or is_admin_email) else "/subscription?new_signup=true"
+        target_url = "/admin" if (user.get("role") == "super_admin" or is_admin_email) else "/dashboard"
         redirect_resp = RedirectResponse(url=target_url, status_code=303)
         redirect_resp.delete_cookie(key="qwikprint_pending_google", path="/")
         redirect_resp.set_cookie(key="qwikprint_session", value=session_token, httponly=True, max_age=86400 * 365, path="/", samesite="lax")
@@ -296,8 +296,6 @@ async def onboarding_submit(
     shop_id = shop["shop_id"] if shop else "SHOP_ADMIN_001"
     if user.get("role") == "super_admin" or is_admin_email:
         target_url = "/admin"
-    elif is_new_user:
-        target_url = "/subscription?new_signup=true"
     else:
         target_url = "/dashboard"
 

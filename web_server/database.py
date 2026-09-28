@@ -176,6 +176,7 @@ class SupabaseDatabase:
             ALTER TABLE shops ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(50) DEFAULT 'active';
             ALTER TABLE shops ADD COLUMN IF NOT EXISTS plan_name VARCHAR(255) DEFAULT 'Trial Plan';
             ALTER TABLE shops ADD COLUMN IF NOT EXISTS plan_expires_at VARCHAR(100);
+            ALTER TABLE shops ADD COLUMN IF NOT EXISTS trial_claimed_at VARCHAR(100);
             ALTER TABLE shops ADD COLUMN IF NOT EXISTS is_suspended INT DEFAULT 0;
             ALTER TABLE users ADD COLUMN IF NOT EXISTS registration_ip VARCHAR(100);
             ALTER TABLE users ADD COLUMN IF NOT EXISTS device_fingerprint VARCHAR(255);
@@ -197,7 +198,7 @@ class SupabaseDatabase:
             shop_id TEXT PRIMARY KEY, owner_id TEXT, api_key TEXT UNIQUE, name TEXT NOT NULL, owner_name TEXT,
             email TEXT, phone TEXT, address TEXT, bw_rate REAL DEFAULT 2.0, color_rate REAL DEFAULT 10.0,
             duplex_discount REAL DEFAULT 0.5, created_at TEXT, subscription_status TEXT DEFAULT 'active',
-            plan_name TEXT DEFAULT 'Trial Plan', plan_expires_at TEXT, is_suspended INTEGER DEFAULT 0
+            plan_name TEXT DEFAULT 'Trial Plan', plan_expires_at TEXT, trial_claimed_at TEXT, is_suspended INTEGER DEFAULT 0
         );
         CREATE TABLE IF NOT EXISTS devices (
             device_id TEXT PRIMARY KEY, shop_id TEXT NOT NULL, device_name TEXT NOT NULL,
@@ -230,6 +231,7 @@ class SupabaseDatabase:
             ("shops", ("subscription_status", "TEXT DEFAULT 'active'")),
             ("shops", ("plan_name", "TEXT DEFAULT 'Trial Plan'")),
             ("shops", ("plan_expires_at", "TEXT")),
+            ("shops", ("trial_claimed_at", "TEXT")),
             ("shops", ("is_suspended", "INTEGER DEFAULT 0")),
             ("shops", ("registration_ip", "TEXT")),
             ("shops", ("device_fingerprint", "TEXT")),
@@ -1057,6 +1059,148 @@ class SupabaseDatabase:
             pass
 
         return True, "Active", exp_str
+
+    def get_plan(self, plan_id: str):
+        plans = self.get_plans()
+        for p in plans:
+            if p.get("plan_id") == plan_id:
+                return p
+        return None
+
+    def get_subscription_state(self, shop_id: str) -> dict:
+        if not shop_id:
+            return {
+                "status": "none", "is_valid": False, "plan_name": "None",
+                "plan_expires_at": "", "is_trial": False, "trial_claimed": False,
+                "days_remaining": 0, "reason": "No shop specified"
+            }
+
+        shop = self.get_shop(shop_id)
+        if not shop:
+            return {
+                "status": "none", "is_valid": False, "plan_name": "None",
+                "plan_expires_at": "", "is_trial": False, "trial_claimed": False,
+                "days_remaining": 0, "reason": "Shop not found"
+            }
+
+        if shop.get("is_suspended"):
+            return {
+                "status": "suspended", "is_valid": False,
+                "plan_name": shop.get("plan_name", "Suspended"),
+                "plan_expires_at": shop.get("plan_expires_at", ""),
+                "is_trial": "trial" in (shop.get("plan_name", "").lower()),
+                "trial_claimed": bool(shop.get("trial_claimed_at")),
+                "days_remaining": 0, "reason": "Shop account suspended by Super Admin"
+            }
+
+        exp_str = shop.get("plan_expires_at", "")
+        plan_name = shop.get("plan_name", "7-Day Free Trial")
+        trial_claimed_at = shop.get("trial_claimed_at", "")
+        is_trial_plan = "trial" in plan_name.lower() or "free" in plan_name.lower()
+
+        if not exp_str:
+            return {
+                "status": "none", "is_valid": False, "plan_name": plan_name,
+                "plan_expires_at": "", "is_trial": is_trial_plan,
+                "trial_claimed": bool(trial_claimed_at), "days_remaining": 0,
+                "reason": "No active plan expiration set"
+            }
+
+        try:
+            exp_dt = datetime.datetime.fromisoformat(exp_str)
+            if exp_dt.tzinfo is None:
+                exp_dt = exp_dt.replace(tzinfo=datetime.timezone.utc)
+            now_dt = datetime.datetime.now(datetime.timezone.utc)
+            days_left = max(0, (exp_dt - now_dt).days)
+
+            if exp_dt < now_dt:
+                return {
+                    "status": "expired", "is_valid": False, "plan_name": plan_name,
+                    "plan_expires_at": exp_str, "is_trial": is_trial_plan,
+                    "trial_claimed": True, "days_remaining": 0,
+                    "reason": "Subscription plan expired"
+                }
+
+            return {
+                "status": "active", "is_valid": True, "plan_name": plan_name,
+                "plan_expires_at": exp_str, "is_trial": is_trial_plan,
+                "trial_claimed": True, "days_remaining": days_left,
+                "reason": "Active"
+            }
+        except Exception as e:
+            return {
+                "status": "error", "is_valid": False, "plan_name": plan_name,
+                "plan_expires_at": exp_str, "is_trial": is_trial_plan,
+                "trial_claimed": bool(trial_claimed_at), "days_remaining": 0,
+                "reason": f"Invalid date: {e}"
+            }
+
+    def is_trial_eligible(self, shop_id: str) -> bool:
+        if not shop_id:
+            return False
+        shop = self.get_shop(shop_id)
+        if not shop:
+            return False
+
+        # If trial_claimed_at is set, trial is strictly consumed
+        if shop.get("trial_claimed_at"):
+            return False
+
+        # If shop has any subscription record in subscriptions table
+        subs = self.get_subscriptions()
+        for sub in subs:
+            if sub.get("shop_id") == shop_id and sub.get("status") == "success":
+                return False
+
+        return True
+
+    def claim_trial(self, shop_id: str, duration_days: int = 7) -> dict:
+        if not self.is_trial_eligible(shop_id):
+            return {"success": False, "error": "Free trial has already been claimed for this shop"}
+
+        now_dt = datetime.datetime.now(datetime.timezone.utc)
+        now_str = now_dt.isoformat()
+        exp_dt = now_dt + datetime.timedelta(days=duration_days)
+        exp_str = exp_dt.isoformat()
+
+        # Update shop with trial
+        try:
+            s_conn = self.get_sqlite_conn()
+            s_cursor = s_conn.cursor()
+            s_cursor.execute(
+                "UPDATE shops SET plan_name = '7-Day Free Trial', subscription_status = 'active', plan_expires_at = ?, trial_claimed_at = ? WHERE shop_id = ?;",
+                (exp_str, now_str, shop_id)
+            )
+            s_conn.commit()
+            s_conn.close()
+        except Exception as e:
+            print(f"[Database Error] SQLite claim_trial failed: {e}")
+
+        conn, is_pg = self.get_connection()
+        if is_pg:
+            try:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "UPDATE shops SET plan_name = '7-Day Free Trial', subscription_status = 'active', plan_expires_at = %s, trial_claimed_at = %s WHERE shop_id = %s;",
+                    (exp_str, now_str, shop_id)
+                )
+                conn.commit()
+                conn.close()
+            except Exception as e:
+                print(f"[Database Warning] PostgreSQL claim_trial failed: {e}")
+
+        self.create_subscription_record({
+            "shop_id": shop_id,
+            "plan_id": "plan-free",
+            "plan_name": "7-Day Free Trial",
+            "amount": 0.0,
+            "payment_gateway": "trial_claimed",
+            "transaction_id": f"trial-{uuid.uuid4().hex[:8]}",
+            "status": "success",
+            "expires_at": exp_str
+        })
+
+        return {"success": True, "plan_name": "7-Day Free Trial", "plan_expires_at": exp_str}
 
     def get_shop_by_api_key(self, api_key: str):
         conn, is_pg = self.get_connection()

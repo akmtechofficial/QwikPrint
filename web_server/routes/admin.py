@@ -11,29 +11,42 @@ templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), ".
 
 SUPERADMIN_EMAIL = os.getenv("SUPERADMIN_EMAIL", "akashkapri12109@gmail.com").lower().strip()
 
-def is_super_admin(request: Request):
+def require_super_admin(request: Request):
+    """
+    Enforces strict Super Admin authorization.
+    Returns authenticated user if role is 'super_admin' or email matches SUPERADMIN_EMAIL.
+    Raises HTTPException 401 if unauthenticated, 403 if unauthorized.
+    """
     user, shop = get_current_user_and_shop(request)
     if not user:
-        return False, None
+        raise HTTPException(status_code=401, detail="Authentication required")
+    
     user_email = (user.get("email") or "").lower().strip()
-    if user_email == SUPERADMIN_EMAIL or user_email == "akashkapri12109@gmail.com" or user.get("role") == "super_admin":
-        return True, user
-    return False, user
+    is_admin = (user.get("role") == "super_admin") or (user_email == SUPERADMIN_EMAIL)
+    
+    if not is_admin:
+        raise HTTPException(status_code=403, detail="Super Admin authorization required")
+    
+    return user
 
 @router.get("/admin", response_class=HTMLResponse)
 async def admin_page(request: Request):
-    is_admin, user = is_super_admin(request)
+    user, shop = get_current_user_and_shop(request)
+    if not user:
+        return RedirectResponse(url="/login?next=/admin", status_code=302)
+
+    user_email = (user.get("email") or "").lower().strip()
+    is_admin = (user.get("role") == "super_admin") or (user_email == SUPERADMIN_EMAIL)
+
     if not is_admin:
-        # Default allow first logged in user if superadmin environment variable matches or for admin portal access
-        if not user:
-            return RedirectResponse(url="/login?next=/admin", status_code=302)
+        raise HTTPException(status_code=403, detail="Access denied: Super Admin authorization required.")
 
     stats = db.get_admin_dashboard_stats()
     shops = db.get_all_shops()
     plans = db.get_plans()
     subscriptions = db.get_subscriptions()
 
-    return templates.TemplateResponse(
+    resp = templates.TemplateResponse(
         request=request,
         name="admin.html",
         context={
@@ -43,17 +56,22 @@ async def admin_page(request: Request):
             "subscriptions": subscriptions
         }
     )
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
+    return resp
 
 @router.get("/api/admin/stats")
 async def get_stats(request: Request):
+    require_super_admin(request)
     return {"success": True, "stats": db.get_admin_dashboard_stats()}
 
 @router.get("/api/admin/shops")
 async def get_shops(request: Request):
+    require_super_admin(request)
     return {"success": True, "shops": db.get_all_shops()}
 
 @router.post("/api/admin/shops/{shop_id}/subscription")
-async def grant_subscription(shop_id: str, payload: dict = Body(...)):
+async def grant_subscription(shop_id: str, request: Request, payload: dict = Body(...)):
+    require_super_admin(request)
     duration_days = int(payload.get("duration_days", 30))
     plan_name = payload.get("plan_name", f"{duration_days} Days Admin Extension")
     
@@ -71,17 +89,20 @@ async def grant_subscription(shop_id: str, payload: dict = Body(...)):
     return {"success": True, "data": result}
 
 @router.post("/api/admin/shops/{shop_id}/suspend")
-async def suspend_shop(shop_id: str, payload: dict = Body(...)):
+async def suspend_shop(shop_id: str, request: Request, payload: dict = Body(...)):
+    require_super_admin(request)
     suspend = bool(payload.get("suspend", True))
     db.toggle_shop_suspension(shop_id, suspend)
     return {"success": True, "suspended": suspend}
 
 @router.get("/api/admin/plans")
-async def list_plans():
+async def list_plans(request: Request):
+    require_super_admin(request)
     return {"success": True, "plans": db.get_plans()}
 
 @router.post("/api/admin/plans")
-async def create_or_update_plan(payload: dict = Body(...)):
+async def create_or_update_plan(request: Request, payload: dict = Body(...)):
+    require_super_admin(request)
     if not payload.get("name") or not payload.get("duration_days") or payload.get("price") is None:
         raise HTTPException(status_code=400, detail="Missing required fields: name, duration_days, price")
     db.save_plan(payload)
@@ -89,7 +110,8 @@ async def create_or_update_plan(payload: dict = Body(...)):
 
 @router.put("/api/admin/plans/{plan_id}")
 @router.post("/api/admin/plans/{plan_id}")
-async def update_existing_plan(plan_id: str, payload: dict = Body(...)):
+async def update_existing_plan(plan_id: str, request: Request, payload: dict = Body(...)):
+    require_super_admin(request)
     payload["plan_id"] = plan_id
     if not payload.get("name") or not payload.get("duration_days") or payload.get("price") is None:
         raise HTTPException(status_code=400, detail="Missing required fields: name, duration_days, price")
@@ -97,7 +119,8 @@ async def update_existing_plan(plan_id: str, payload: dict = Body(...)):
     return {"success": True, "message": "Plan updated successfully"}
 
 @router.delete("/api/admin/plans/{plan_id}")
-async def delete_plan(plan_id: str):
+async def delete_plan(plan_id: str, request: Request):
+    require_super_admin(request)
     plans = db.get_plans()
     target_plan = next((p for p in plans if p.get("plan_id") == plan_id), None)
     if target_plan:
@@ -109,12 +132,13 @@ async def delete_plan(plan_id: str):
     return {"success": True, "message": "Plan deleted"}
 
 @router.delete("/api/admin/shops/{shop_id}")
-async def delete_shop(shop_id: str):
+async def delete_shop(shop_id: str, request: Request):
+    require_super_admin(request)
     db.delete_shop_completely(shop_id)
     return {"success": True, "message": "Shop and all related data completely deleted from database"}
 
 @router.post("/api/admin/shops/{shop_id}/reset-key")
-async def reset_shop_key(shop_id: str):
+async def reset_shop_key(shop_id: str, request: Request):
+    require_super_admin(request)
     new_key = db.regenerate_shop_api_key(shop_id)
     return {"success": True, "new_api_key": new_key, "message": "API key regenerated & paired device reset successfully"}
-

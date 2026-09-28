@@ -1,7 +1,7 @@
+import os
 from fastapi import APIRouter, Request, Header, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 from web_server.database import db
-import os
 
 router = APIRouter()
 
@@ -10,7 +10,7 @@ def validate_agent_auth(x_device_id: str = Header(None), x_device_token: str = H
         raise HTTPException(status_code=401, detail="Authentication headers X-Device-Id and X-Device-Token are required")
     
     device = db.get_device(x_device_id)
-    if not device or device["secret_token"] != x_device_token:
+    if not device or device.get("secret_token") != x_device_token:
         raise HTTPException(status_code=401, detail="Unauthorized device credentials")
     
     if device.get("status", "active").lower() in ["disabled", "revoked"]:
@@ -72,34 +72,33 @@ async def verify_api_key(request: Request, payload: dict):
     }
 
 @router.get("/api/agent/paper-rates")
-async def get_agent_paper_rates(shop_id: str, x_device_id: str = Header(None), x_device_token: str = Header(None)):
-    validate_agent_auth(x_device_id, x_device_token)
-    rates = db.get_shop_paper_rates(shop_id)
+async def get_agent_paper_rates(shop_id: str = None, x_device_id: str = Header(None), x_device_token: str = Header(None)):
+    device = validate_agent_auth(x_device_id, x_device_token)
+    authenticated_shop_id = device["shop_id"]
+    rates = db.get_shop_paper_rates(authenticated_shop_id)
     return {"success": True, "paperRates": rates}
 
 @router.post("/api/agent/paper-rates")
 async def update_agent_paper_rates(payload: dict, x_device_id: str = Header(None), x_device_token: str = Header(None)):
-    validate_agent_auth(x_device_id, x_device_token)
-    shop_id = payload.get("shopId")
+    device = validate_agent_auth(x_device_id, x_device_token)
+    authenticated_shop_id = device["shop_id"]
     paper_rates = payload.get("paperRates", [])
-    if not shop_id:
-        raise HTTPException(status_code=400, detail="shopId is required")
     if len(paper_rates) > 5:
         return JSONResponse({"success": False, "error": "Maximum 5 paper sizes allowed"}, status_code=400)
     
-    updated = db.update_shop_paper_rates(shop_id, paper_rates)
+    updated = db.update_shop_paper_rates(authenticated_shop_id, paper_rates)
     return {"success": True, "message": "Paper sizes & rates updated successfully!", "paperRates": updated}
 
 @router.post("/api/agent/pricing")
 async def update_agent_pricing(payload: dict, x_device_id: str = Header(None), x_device_token: str = Header(None)):
-    validate_agent_auth(x_device_id, x_device_token)
-    shop_id = payload.get("shopId")
+    device = validate_agent_auth(x_device_id, x_device_token)
+    authenticated_shop_id = device["shop_id"]
     bw_rate = payload.get("bwRate")
     color_rate = payload.get("colorRate")
     duplex_discount = payload.get("duplexDiscount")
 
-    if not shop_id or bw_rate is None or color_rate is None or duplex_discount is None:
-        raise HTTPException(status_code=400, detail="shopId, bwRate, colorRate, and duplexDiscount are required")
+    if bw_rate is None or color_rate is None or duplex_discount is None:
+        raise HTTPException(status_code=400, detail="bwRate, colorRate, and duplexDiscount are required")
 
     try:
         bw_rate = float(bw_rate)
@@ -108,11 +107,11 @@ async def update_agent_pricing(payload: dict, x_device_id: str = Header(None), x
     except (ValueError, TypeError):
         return JSONResponse({"success": False, "error": "Invalid pricing numbers"}, status_code=400)
 
-    db.update_shop_pricing(shop_id, bw_rate, color_rate, duplex_discount)
+    db.update_shop_pricing(authenticated_shop_id, bw_rate, color_rate, duplex_discount)
     return {"success": True, "message": "Shop pricing rates updated & synced successfully!"}
 
 @router.post("/api/agent/heartbeat")
-async def heartbeat(payload: dict, x_device_id: str = Header(None), x_device_token: str = Header(None)):
+async def heartbeat(payload: dict = None, x_device_id: str = Header(None), x_device_token: str = Header(None)):
     device = validate_agent_auth(x_device_id, x_device_token)
     db.update_device_last_seen(device["device_id"])
     return {"success": True, "status": "online"}
@@ -161,26 +160,37 @@ async def claim_job(payload: dict, x_device_id: str = Header(None), x_device_tok
     if not job_id:
         raise HTTPException(status_code=400, detail="jobId required")
 
-    success, job = db.claim_job(job_id, device["device_id"])
+    job = db.get_job(job_id)
+    if not job or job.get("shop_id") != device["shop_id"]:
+        raise HTTPException(status_code=403, detail="Job does not belong to your device shop")
+
+    success, claimed_job = db.claim_job(job_id, device["device_id"])
     if not success:
         return JSONResponse({"error": "Job already claimed or not queued"}, status_code=409)
 
-    return {"success": True, "job": job}
+    return {"success": True, "job": claimed_job}
 
 @router.get("/api/agent/download-url")
 @router.post("/api/agent/download-url")
 async def get_download_url(request: Request, jobId: str = None, payload: dict = None, x_device_id: str = Header(None), x_device_token: str = Header(None)):
-    validate_agent_auth(x_device_id, x_device_token)
+    device = validate_agent_auth(x_device_id, x_device_token)
     j_id = jobId or (payload.get("jobId") if payload else None)
     if not j_id:
         raise HTTPException(status_code=400, detail="jobId required")
     
+    job = db.get_job(j_id)
+    if not job or job.get("shop_id") != device["shop_id"]:
+        raise HTTPException(status_code=403, detail="Job does not belong to your device shop")
+
     base_url = str(request.base_url).rstrip("/")
     file_download_url = f"{base_url}/api/agent/download-file/{j_id}"
     return {"success": True, "downloadUrl": file_download_url}
 
 @router.get("/api/agent/download-file/{job_id}")
-async def download_file(job_id: str):
+async def download_file(job_id: str, x_device_id: str = Header(None), x_device_token: str = Header(None)):
+    if x_device_id and x_device_token:
+        device = validate_agent_auth(x_device_id, x_device_token)
+    
     job = db.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job record not found")
@@ -204,7 +214,7 @@ async def download_file(job_id: str):
 
 @router.post("/api/agent/update-status")
 async def update_status(payload: dict, x_device_id: str = Header(None), x_device_token: str = Header(None)):
-    validate_agent_auth(x_device_id, x_device_token)
+    device = validate_agent_auth(x_device_id, x_device_token)
     job_id = payload.get("jobId")
     status = payload.get("status")
     error = payload.get("error")
@@ -212,11 +222,14 @@ async def update_status(payload: dict, x_device_id: str = Header(None), x_device
     if not job_id or not status:
         raise HTTPException(status_code=400, detail="jobId and status required")
 
+    job = db.get_job(job_id)
+    if not job or job.get("shop_id") != device["shop_id"]:
+        raise HTTPException(status_code=403, detail="Job does not belong to your device shop")
+
     db.update_job_status(job_id, status, error)
 
     # File lifecycle: Auto-delete print file from disk immediately post successful printing or cancellation
     if status.upper() in ["PRINTED", "CANCELLED", "EXPIRED", "REJECTED"]:
-        job = db.get_job(job_id)
         if job and job.get("file_path"):
             fp = job["file_path"]
             if not os.path.exists(fp):
@@ -232,28 +245,42 @@ async def update_status(payload: dict, x_device_id: str = Header(None), x_device
 
 @router.post("/api/jobs/{job_id}/confirm-cash")
 async def confirm_cash(request: Request, job_id: str, x_device_id: str = Header(None), x_device_token: str = Header(None)):
-    # Authenticate via Device token OR session cookie
+    job = db.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
     if x_device_id and x_device_token:
-        validate_agent_auth(x_device_id, x_device_token)
+        device = validate_agent_auth(x_device_id, x_device_token)
+        if job["shop_id"] != device["shop_id"]:
+            raise HTTPException(status_code=403, detail="Job does not belong to your shop")
     else:
         from web_server.auth import get_current_user_and_shop
         user, shop = get_current_user_and_shop(request)
         if not user or not shop:
             raise HTTPException(status_code=401, detail="Unauthorized shopkeeper session")
-            
+        if job["shop_id"] != shop["shop_id"]:
+            raise HTTPException(status_code=403, detail="Job does not belong to your shop")
+
     db.confirm_cash_payment(job_id)
     return {"success": True, "message": "Cash payment confirmed!"}
 
 @router.post("/api/jobs/{job_id}/reject-cash")
 async def reject_cash(request: Request, job_id: str, x_device_id: str = Header(None), x_device_token: str = Header(None)):
-    # Authenticate via Device token OR session cookie
+    job = db.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
     if x_device_id and x_device_token:
-        validate_agent_auth(x_device_id, x_device_token)
+        device = validate_agent_auth(x_device_id, x_device_token)
+        if job["shop_id"] != device["shop_id"]:
+            raise HTTPException(status_code=403, detail="Job does not belong to your shop")
     else:
         from web_server.auth import get_current_user_and_shop
         user, shop = get_current_user_and_shop(request)
         if not user or not shop:
             raise HTTPException(status_code=401, detail="Unauthorized shopkeeper session")
-            
+        if job["shop_id"] != shop["shop_id"]:
+            raise HTTPException(status_code=403, detail="Job does not belong to your shop")
+
     db.reject_cash_payment(job_id)
     return {"success": True, "message": "Cash payment rejected"}

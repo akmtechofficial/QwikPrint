@@ -67,42 +67,54 @@ async def shop_dashboard_overview(request: Request):
     user, shop, context = get_dashboard_context(request, "overview")
     if not user or not shop:
         return RedirectResponse(url="/login", status_code=302)
-    return templates.TemplateResponse(request=request, name="dashboard_overview.html", context=context)
+    resp = templates.TemplateResponse(request=request, name="dashboard_overview.html", context=context)
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
+    return resp
 
 @router.get("/dashboard/queue", response_class=HTMLResponse)
 async def shop_dashboard_queue(request: Request):
     user, shop, context = get_dashboard_context(request, "queue")
     if not user or not shop:
         return RedirectResponse(url="/login", status_code=302)
-    return templates.TemplateResponse(request=request, name="dashboard_queue.html", context=context)
+    resp = templates.TemplateResponse(request=request, name="dashboard_queue.html", context=context)
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
+    return resp
 
 @router.get("/dashboard/profile", response_class=HTMLResponse)
 async def shop_dashboard_profile(request: Request):
     user, shop, context = get_dashboard_context(request, "profile")
     if not user or not shop:
         return RedirectResponse(url="/login", status_code=302)
-    return templates.TemplateResponse(request=request, name="dashboard_profile.html", context=context)
+    resp = templates.TemplateResponse(request=request, name="dashboard_profile.html", context=context)
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
+    return resp
 
 @router.get("/dashboard/rates", response_class=HTMLResponse)
 async def shop_dashboard_rates(request: Request):
     user, shop, context = get_dashboard_context(request, "rates")
     if not user or not shop:
         return RedirectResponse(url="/login", status_code=302)
-    return templates.TemplateResponse(request=request, name="dashboard_rates.html", context=context)
+    resp = templates.TemplateResponse(request=request, name="dashboard_rates.html", context=context)
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
+    return resp
 
 @router.get("/dashboard/spooler", response_class=HTMLResponse)
 async def shop_dashboard_spooler(request: Request):
     user, shop, context = get_dashboard_context(request, "spooler")
     if not user or not shop:
         return RedirectResponse(url="/login", status_code=302)
-    return templates.TemplateResponse(request=request, name="dashboard_spooler.html", context=context)
+    resp = templates.TemplateResponse(request=request, name="dashboard_spooler.html", context=context)
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
+    return resp
 
 @router.get("/dashboard/qr-poster", response_class=HTMLResponse)
 async def shop_dashboard_qr(request: Request):
     user, shop, context = get_dashboard_context(request, "qr_poster")
     if not user or not shop:
         return RedirectResponse(url="/login", status_code=302)
-    return templates.TemplateResponse(request=request, name="dashboard_qr.html", context=context)
+    resp = templates.TemplateResponse(request=request, name="dashboard_qr.html", context=context)
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
+    return resp
 
 @router.get("/api/shop/qr-poster/download-pdf")
 async def download_shop_poster_pdf(request: Request):
@@ -120,7 +132,7 @@ async def download_shop_poster_pdf(request: Request):
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        headers={"Content-Disposition": f"attachment; filename={filename}", "Cache-Control": "no-store, no-cache, must-revalidate, private"}
     )
 
 @router.get("/dashboard/billing", response_class=HTMLResponse)
@@ -128,7 +140,9 @@ async def shop_dashboard_billing(request: Request):
     user, shop, context = get_dashboard_context(request, "billing")
     if not user or not shop:
         return RedirectResponse(url="/login", status_code=302)
-    return templates.TemplateResponse(request=request, name="dashboard_billing.html", context=context)
+    resp = templates.TemplateResponse(request=request, name="dashboard_billing.html", context=context)
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
+    return resp
 
 @router.post("/api/shop/details")
 async def update_shop_details(

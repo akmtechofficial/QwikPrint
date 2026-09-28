@@ -217,6 +217,80 @@
     }
     .page-thumb-lbl.selected { color: var(--qp-primary); }
 
+    /* Clean Light Theme Component Compatibility Aliases */
+    .glass-card {
+        background-color: var(--qp-bg-surface);
+        border: 1px solid var(--qp-border);
+        border-radius: var(--qp-radius-lg);
+        padding: var(--qp-space-6);
+        box-shadow: var(--qp-shadow-md);
+        margin-bottom: 24px;
+    }
+    .form-group {
+        margin-bottom: 18px;
+    }
+    .form-label {
+        font-size: 13.5px;
+        font-weight: 600;
+        color: var(--qp-text-primary);
+        margin-bottom: 6px;
+        display: block;
+    }
+    .form-input {
+        height: 42px;
+        width: 100%;
+        border-radius: var(--qp-radius-md);
+        border: 1px solid var(--qp-border-strong);
+        background: var(--qp-bg-surface);
+        padding: 0 14px;
+        font-size: 14px;
+        color: var(--qp-text-primary);
+        outline: none;
+        transition: border-color 0.15s ease;
+    }
+    .form-input:focus {
+        border-color: var(--qp-primary);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+    .btn-primary {
+        height: 44px;
+        padding: 0 20px;
+        border-radius: var(--qp-radius-md);
+        background-color: var(--qp-primary);
+        color: #FFFFFF;
+        font-weight: 700;
+        border: 1px solid var(--qp-primary);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font-size: 14px;
+        transition: background-color 0.15s ease;
+    }
+    .btn-primary:hover {
+        background-color: var(--qp-primary-hover);
+    }
+    .btn-secondary {
+        height: 38px;
+        padding: 0 14px;
+        border-radius: var(--qp-radius-md);
+        background-color: var(--qp-bg-subtle);
+        color: var(--qp-text-primary);
+        border: 1px solid var(--qp-border);
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        font-size: 13px;
+        transition: background-color 0.15s ease;
+    }
+    .btn-secondary:hover {
+        background-color: var(--qp-bg-muted);
+    }
+
     /* Modal */
     .modal-backdrop {
         position: fixed;
@@ -295,10 +369,10 @@
 </div>
 
 <!-- 2. Print Configuration & Live Sheet Layout Preview -->
-<div class="glass-card" id="config-card" style="display: none;">
+<div class="qp-card" id="config-card" style="display: none; margin-bottom: 24px;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
-        <h3 style="font-size: 18px;">2. Visual Sheet Layout & Print Options</h3>
-        <button id="add-more-btn" class="btn-secondary" style="padding: 8px 16px; font-size: 13px;">➕ Add More Documents / Images</button>
+        <h3 style="font-size: 18px; color: var(--qp-text-primary);">2. Visual Sheet Layout & Print Options</h3>
+        <button id="add-more-btn" class="qp-btn qp-btn-sm qp-btn-secondary" style="font-size: 13px;">➕ Add More Documents / Images</button>
         <input type="file" id="add-more-input" accept=".pdf,.png,.jpg,.jpeg" multiple style="display: none;">
     </div>
     
@@ -307,10 +381,10 @@
         <!-- Left Column: Visual Selectors & File List -->
         <div>
             <!-- Active Files Summary List -->
-            <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid var(--card-border); padding: 14px; border-radius: 12px; margin-bottom: 16px;">
+            <div style="background: var(--qp-bg-subtle); border: 1px solid var(--qp-border); padding: 14px; border-radius: var(--qp-radius-md); margin-bottom: 16px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <p style="font-weight: 700; font-size: 14px; color: #ffffff;">📄 Uploaded Files (<span id="file-count-lbl">0</span>)</p>
-                    <span id="total-pages-lbl" style="font-size: 12px; color: var(--primary-light);">Total Pages: 0</span>
+                    <p style="font-weight: 700; font-size: 14px; color: var(--qp-text-primary);">📄 Uploaded Files (<span id="file-count-lbl">0</span>)</p>
+                    <span id="total-pages-lbl" style="font-size: 12.5px; font-weight: 700; color: var(--qp-primary);">Total Pages: 0</span>
                 </div>
                 <div id="file-list-container">
                     <!-- File items injected here -->
@@ -364,10 +438,10 @@
             </div>
 
             <!-- Dynamic Grid Slot Customizer (Shown when 2-in-1 or 4-in-1 is active) -->
-            <div id="grid-slot-customizer" style="display: none; background: rgba(15, 23, 42, 0.9); border: 1px solid var(--primary-light); border-radius: 12px; padding: 14px; margin-bottom: 16px;">
+            <div id="grid-slot-customizer" style="display: none; background: var(--qp-primary-light); border: 1px solid var(--qp-primary-border); border-radius: var(--qp-radius-md); padding: 14px; margin-bottom: 16px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <p style="font-weight: 700; font-size: 13px; color: var(--cyan-accent);">🧩 Grid Slot Positioning (Assign Photo to Position)</p>
-                    <button type="button" onclick="swapGridSlots()" class="btn-secondary" style="padding: 4px 10px; font-size: 11px;">🔄 Swap Slots</button>
+                    <p style="font-weight: 700; font-size: 13px; color: var(--qp-primary);">🧩 Grid Slot Positioning (Assign Photo to Position)</p>
+                    <button type="button" onclick="swapGridSlots()" class="qp-btn qp-btn-sm qp-btn-secondary" style="padding: 2px 8px; font-size: 11px;">🔄 Swap Slots</button>
                 </div>
                 <div id="grid-slot-inputs" style="display: flex; flex-direction: column; gap: 8px;">
                     <!-- Injected JS select inputs per slot -->
@@ -410,12 +484,12 @@
 
         <!-- Right Column: Live Sheet Preview Canvas with Click-to-Enlarge & Crop -->
         <div style="display: flex; flex-direction: column; align-items: center;">
-            <p style="font-weight: 700; font-size: 14px; color: var(--text-muted); margin-bottom: 8px;">🖼️ Live Sheet Print Preview</p>
+            <p style="font-weight: 700; font-size: 14px; color: var(--qp-text-muted); margin-bottom: 8px;">🖼️ Live Sheet Print Preview</p>
             <div class="preview-canvas-container" id="preview-container" title="Click to enlarge & crop document area">
                 <div class="preview-overlay-hint">🔍 Click to Enlarge / Crop</div>
-                <canvas id="preview-canvas" width="280" height="380" style="background: #ffffff; border-radius: 4px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); transition: all 0.3s ease;"></canvas>
+                <canvas id="preview-canvas" width="280" height="380" style="background: #ffffff; border-radius: 4px; box-shadow: var(--qp-shadow-md); transition: all 0.3s ease;"></canvas>
             </div>
-            <p id="sheet-spec-lbl" style="font-size: 12px; color: var(--primary-light); margin-top: 8px; text-align: center;">Paper: A4 Portrait | Mode: B&amp;W | Grid: 1-in-1</p>
+            <p id="sheet-spec-lbl" style="font-size: 12px; font-weight: 600; color: var(--qp-primary); margin-top: 8px; text-align: center;">Paper: A4 Portrait | Mode: B&amp;W | Grid: 1-in-1</p>
 
             <!-- PDF Page Thumbnail Strip (shown for multi-page PDFs) -->
             <div id="page-strip-section" class="page-strip-section" style="display:none; width:100%; box-sizing:border-box;">
@@ -427,24 +501,24 @@
                     </div>
                 </div>
                 <div id="page-thumbs-row" class="page-thumbs-row"></div>
-                <p id="page-sel-summary" style="font-size: 11px; color: #64748b; margin-top: 8px; text-align: center;"></p>
+                <p id="page-sel-summary" style="font-size: 11px; color: var(--qp-text-muted); margin-top: 8px; text-align: center;"></p>
             </div>
         </div>
 
     </div>
 
     <!-- Total Price Banner -->
-    <div style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(6, 182, 212, 0.15) 100%); border: 1px solid var(--primary-light); padding: 18px; border-radius: 16px; margin: 24px 0; text-align: center;">
-        <p style="font-size: 13px; color: var(--text-muted); font-weight: 600;">Calculated Total Price</p>
-        <p id="total-price" style="font-size: 36px; font-weight: 800; color: #ffffff; margin-top: 2px;">₹0.00</p>
+    <div style="background: var(--qp-primary-light); border: 2px solid var(--qp-primary-border); padding: 20px; border-radius: var(--qp-radius-lg); margin: 24px 0; text-align: center;">
+        <p style="font-size: 13px; color: var(--qp-text-muted); font-weight: 600;">Calculated Total Price</p>
+        <p id="total-price" style="font-size: 38px; font-weight: 800; color: var(--qp-primary); margin-top: 2px;">₹0.00</p>
     </div>
 
     <!-- Direct Action Payment Buttons (Cash or Online) -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
-        <button id="pay-cash-btn" onclick="submitOrder('cash')" class="btn-primary" style="padding: 16px; font-size: 16px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none;">
+        <button id="pay-cash-btn" onclick="submitOrder('cash')" class="qp-btn qp-btn-primary" style="height: 50px; font-size: 15.5px; font-weight: 700; background: #16A34A; border-color: #16A34A; color: #FFFFFF; box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);">
             💵 Pay Cash at Counter
         </button>
-        <button id="pay-online-btn" onclick="submitOrder('online')" class="btn-primary" style="padding: 16px; font-size: 16px; background: linear-gradient(135deg, #6366f1 0%, #06b6d4 100%); border: none;">
+        <button id="pay-online-btn" onclick="submitOrder('online')" class="qp-btn qp-btn-primary" style="height: 50px; font-size: 15.5px; font-weight: 700; background: #2563EB; border-color: #2563EB; color: #FFFFFF; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);">
             💳 Pay Online (UPI / QR / Card)
         </button>
     </div>
@@ -507,33 +581,34 @@
         .ticket-header {
             text-align: center;
             padding: 20px 0 12px;
-            border-bottom: 1px solid rgba(255,255,255,0.08);
+            border-bottom: 1px solid var(--qp-border, #e2e8f0);
             margin-bottom: 20px;
         }
         .ticket-header h2 {
             font-size: 20px;
             font-weight: 800;
-            color: #ffffff;
+            color: var(--qp-text-primary, #0f172a);
             margin-bottom: 4px;
         }
         .ticket-header p {
             font-size: 13px;
-            color: #64748b;
+            color: var(--qp-text-secondary, #64748b);
         }
         .status-icon-box {
             width: 72px; height: 72px;
             border-radius: 50%;
-            background: rgba(99, 102, 241, 0.15);
-            border: 2px solid rgba(99, 102, 241, 0.4);
+            background: var(--qp-primary-light, #e0e7ff);
+            border: 2px solid rgba(79, 70, 229, 0.3);
             display: flex;
             align-items: center;
             justify-content: center;
             margin: 0 auto 16px;
         }
-        .status-icon-box svg { width: 34px; height: 34px; }
+        .status-icon-box svg { width: 34px; height: 34px; stroke: var(--qp-primary, #4f46e5); }
         .status-title-box {
-            background: rgba(15, 23, 42, 0.8);
-            border: 1px solid rgba(99, 102, 241, 0.3);
+            background: var(--qp-card-bg, #ffffff);
+            border: 1px solid var(--qp-border, #e2e8f0);
+            box-shadow: var(--qp-shadow-md, 0 4px 6px -1px rgba(0,0,0,0.05));
             border-radius: 14px;
             padding: 22px 20px;
             text-align: center;
@@ -542,16 +617,17 @@
         .status-title-box h3 {
             font-size: 20px;
             font-weight: 800;
-            color: #ffffff;
+            color: var(--qp-text-primary, #0f172a);
             margin-bottom: 8px;
         }
         .status-title-box p {
             font-size: 14px;
-            color: #94a3b8;
+            color: var(--qp-text-secondary, #64748b);
         }
         .tracking-card {
-            background: rgba(30, 41, 59, 0.6);
-            border: 1px solid rgba(51, 65, 85, 0.7);
+            background: var(--qp-card-bg, #ffffff);
+            border: 1px solid var(--qp-border, #e2e8f0);
+            box-shadow: var(--qp-shadow-sm, 0 1px 2px rgba(0,0,0,0.05));
             border-radius: 14px;
             padding: 18px 20px;
             margin-bottom: 16px;
@@ -559,7 +635,7 @@
         .tracking-card h4 {
             font-size: 11px;
             letter-spacing: 1.5px;
-            color: #475569;
+            color: var(--qp-text-muted, #94a3b8);
             text-transform: uppercase;
             font-weight: 700;
             margin-bottom: 16px;
@@ -580,36 +656,37 @@
             font-size: 13px;
             font-weight: 700;
             flex-shrink: 0;
-            background: #1e293b;
-            border: 2px solid #334155;
-            color: #475569;
+            background: var(--qp-bg-alt, #f8fafc);
+            border: 2px solid var(--qp-border, #e2e8f0);
+            color: var(--qp-text-secondary, #64748b);
         }
         .step-circle.active {
-            background: rgba(99, 102, 241, 0.2);
-            border-color: #6366f1;
-            color: #818cf8;
+            background: var(--qp-primary-light, #e0e7ff);
+            border-color: var(--qp-primary, #4f46e5);
+            color: var(--qp-primary, #4f46e5);
         }
         .step-circle.done {
-            background: rgba(34, 197, 94, 0.15);
+            background: #dcfce7;
             border-color: #22c55e;
-            color: #22c55e;
+            color: #15803d;
         }
         .step-text { flex: 1; padding-top: 2px; }
         .step-text strong {
             display: block;
             font-size: 14px;
             font-weight: 700;
-            color: #ffffff;
+            color: var(--qp-text-primary, #0f172a);
             margin-bottom: 2px;
         }
-        .step-text strong.muted { color: #475569; }
+        .step-text strong.muted { color: var(--qp-text-muted, #94a3b8); }
         .step-text span {
             font-size: 12px;
-            color: #64748b;
+            color: var(--qp-text-secondary, #64748b);
         }
         .details-card {
-            background: rgba(30, 41, 59, 0.6);
-            border: 1px solid rgba(51, 65, 85, 0.7);
+            background: var(--qp-card-bg, #ffffff);
+            border: 1px solid var(--qp-border, #e2e8f0);
+            box-shadow: var(--qp-shadow-sm, 0 1px 2px rgba(0,0,0,0.05));
             border-radius: 14px;
             padding: 18px 20px;
             margin-bottom: 16px;
@@ -617,7 +694,7 @@
         .details-card h4 {
             font-size: 13px;
             font-weight: 700;
-            color: #ffffff;
+            color: var(--qp-text-primary, #0f172a);
             margin-bottom: 14px;
         }
         .detail-row {
@@ -627,28 +704,28 @@
             margin-bottom: 8px;
             font-size: 13px;
         }
-        .detail-row span:first-child { color: #64748b; }
-        .detail-row span:last-child { color: #ffffff; font-weight: 600; }
+        .detail-row span:first-child { color: var(--qp-text-secondary, #64748b); }
+        .detail-row span:last-child { color: var(--qp-text-primary, #0f172a); font-weight: 600; }
         .total-row {
-            border-top: 1px solid rgba(255,255,255,0.08);
+            border-top: 1px solid var(--qp-border, #e2e8f0);
             margin-top: 10px;
             padding-top: 10px;
         }
-        .total-row span:first-child { color: #ffffff; font-weight: 700; }
-        .total-row span:last-child { color: #38bdf8; font-size: 18px; font-weight: 800; }
+        .total-row span:first-child { color: var(--qp-text-primary, #0f172a); font-weight: 700; }
+        .total-row span:last-child { color: var(--qp-primary, #4f46e5); font-size: 18px; font-weight: 800; }
         .cancel-btn {
             width: 100%;
             padding: 14px;
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.35);
+            background: #fef2f2;
+            border: 1px solid #fecaca;
             border-radius: 12px;
-            color: #f87171;
+            color: #dc2626;
             font-size: 14px;
             font-weight: 700;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: all 0.2s ease;
         }
-        .cancel-btn:hover { background: rgba(239, 68, 68, 0.2); }
+        .cancel-btn:hover { background: #fee2e2; }
     </style>
 
     <div class="ticket-header">

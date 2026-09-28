@@ -527,8 +527,8 @@
         <button id="pay-cash-btn" onclick="submitOrder('cash')" class="qp-btn qp-btn-primary" style="height: 50px; font-size: 15.5px; font-weight: 700; background: #16A34A; border-color: #16A34A; color: #FFFFFF; box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);">
             💵 Pay Cash at Counter
         </button>
-        <button id="pay-online-btn" onclick="submitOrder('online')" class="qp-btn qp-btn-primary" style="height: 50px; font-size: 15.5px; font-weight: 700; background: #2563EB; border-color: #2563EB; color: #FFFFFF; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);">
-            💳 Pay Online (UPI / QR / Card)
+        <button id="pay-online-btn" disabled title="Online payment coming soon! Please pay cash at shop counter." class="qp-btn" style="height: 50px; font-size: 15px; font-weight: 700; background: #94a3b8; border-color: #cbd5e1; color: #FFFFFF; cursor: not-allowed; opacity: 0.7; box-shadow: none;">
+            💳 Pay Online (Coming Soon)
         </button>
     </div>
 </div>
@@ -1480,6 +1480,10 @@
     let isSubmitting = false;
 
     function submitOrder(paymentMethod) {
+        if (paymentMethod === 'online') {
+            alert("💳 Online Payment feature is coming soon! Please click 'Pay Cash at Counter'.");
+            return;
+        }
         if (isSubmitting || !uploadedFiles.length) return;
         isSubmitting = true;
 

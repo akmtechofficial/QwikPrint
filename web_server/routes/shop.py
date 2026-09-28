@@ -1,6 +1,6 @@
 import os
 from fastapi import APIRouter, Request, Form, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from web_server.database import db
 from web_server.auth import get_current_user_and_shop
@@ -133,6 +133,30 @@ async def download_shop_poster_pdf(request: Request):
         content=pdf_bytes,
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename={filename}", "Cache-Control": "no-store, no-cache, must-revalidate, private"}
+    )
+
+@router.get("/download/agent")
+@router.get("/api/download/agent")
+async def download_desktop_agent():
+    exe_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "static", "downloads", "QwikPrint_Desktop_Spooler_v2.4.exe"))
+    if not os.path.exists(exe_path):
+        # Fallback search root dist
+        fallback = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "dist", "PrintAgent.exe"))
+        if os.path.exists(fallback):
+            exe_path = fallback
+        else:
+            raise HTTPException(status_code=404, detail="Desktop agent installer file not found")
+
+    with open(exe_path, "rb") as f:
+        content = f.read()
+
+    return Response(
+        content=content,
+        media_type="application/octet-stream",
+        headers={
+            "Content-Disposition": "attachment; filename=QwikPrint_Desktop_Spooler_v2.4.exe",
+            "Cache-Control": "public, max-age=3600"
+        }
     )
 
 @router.get("/dashboard/billing", response_class=HTMLResponse)

@@ -51,11 +51,18 @@
         .qp-nav-link:hover {
             color: var(--qp-primary);
         }
+        @media (max-width: 768px) {
+            .qp-announcement { display: none; }
+            .qp-header-inner { padding: 12px 16px; }
+            .qp-public-header nav { display: none !important; }
+            .qp-header-inner div { gap: 6px !important; }
+        }
     </style>
     {% block extra_head %}{% endblock %}
 </head>
 <body>
 
+    {% block header %}
     <!-- Technical Announcement Strip -->
     <div class="qp-announcement">
         <div style="display: flex; align-items: center; gap: 8px;">
@@ -84,6 +91,9 @@
             </nav>
 
             <div style="display: flex; align-items: center; gap: 12px;">
+                <button type="button" onclick="openHelpModal()" class="qp-btn qp-btn-sm qp-btn-secondary" style="font-size: 12.5px;">
+                    <span>❓ Setup Guide</span>
+                </button>
                 {% if shop or user %}
                 <a href="/dashboard" class="qp-btn qp-btn-primary">
                     <svg class="qp-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
@@ -100,12 +110,14 @@
             </div>
         </div>
     </header>
+    {% endblock %}
 
     <!-- Main Content Slot -->
     <main style="min-height: calc(100vh - 200px);">
         {% block content %}{% endblock %}
     </main>
 
+    {% block footer %}
     <!-- Technical Public Footer -->
     <footer style="background-color: var(--qp-bg-surface); border-top: 1px solid var(--qp-border); padding: 40px 32px; color: var(--qp-text-muted);">
         <div style="max-width: 1280px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
@@ -123,6 +135,100 @@
             </div>
         </div>
     </footer>
+    {% endblock %}
 
+    <!-- Global QwikPrint Setup & Workflow Guide Modal -->
+    <div id="qp-help-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px); z-index: 99999; justify-content: center; align-items: center; padding: 20px;">
+        <div style="background: #FFFFFF; border: 1px solid var(--qp-border); border-radius: var(--qp-radius-lg); max-width: 760px; width: 100%; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: var(--qp-shadow-lg);">
+            <div style="padding: 18px 24px; border-bottom: 1px solid var(--qp-border); display: flex; justify-content: space-between; align-items: center; background: var(--qp-bg-subtle);">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span class="qp-badge qp-badge-blue" style="font-weight: 700;">Complete Setup Guide</span>
+                    <h3 style="font-size: 18px; color: var(--qp-text-primary); margin: 0;">How QwikPrint Works (Process Tree)</h3>
+                </div>
+                <button onclick="closeHelpModal()" style="background: none; border: none; font-size: 24px; color: var(--qp-text-muted); cursor: pointer; padding: 0 4px;">✕</button>
+            </div>
+
+            <div style="padding: 24px; overflow-y: auto; flex: 1;">
+                <p style="font-size: 14px; color: var(--qp-text-secondary); margin-bottom: 20px;">
+                    QwikPrint connects your Xerox counter directly with customers' smartphones using QR codes and an automated Windows desktop print spooler app.
+                </p>
+
+                <!-- Process Tree Steps Flowchart -->
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    
+                    <div style="display: flex; gap: 16px; align-items: flex-start; background: #F8FAFC; border: 1px solid var(--qp-border); padding: 16px; border-radius: var(--qp-radius-md);">
+                        <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--qp-primary); color: #FFFFFF; font-weight: 800; font-size: 15px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">1</div>
+                        <div style="flex: 1;">
+                            <h4 style="font-size: 15px; font-weight: 700; color: var(--qp-text-primary); margin-bottom: 4px;">1. Create Shopkeeper Account</h4>
+                            <p style="font-size: 13.5px; color: var(--qp-text-secondary);">
+                                Sign up instantly using Google. Your shop receives a unique Shop ID, 7-Day Free Trial, and API License Key.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 16px; align-items: flex-start; background: #F8FAFC; border: 1px solid var(--qp-border); padding: 16px; border-radius: var(--qp-radius-md);">
+                        <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--qp-primary); color: #FFFFFF; font-weight: 800; font-size: 15px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">2</div>
+                        <div style="flex: 1;">
+                            <h4 style="font-size: 15px; font-weight: 700; color: var(--qp-text-primary); margin-bottom: 4px;">2. Download Windows Spooler App & Connect Printer</h4>
+                            <p style="font-size: 13.5px; color: var(--qp-text-secondary); margin-bottom: 8px;">
+                                Download the Windows desktop print agent on your counter PC. Paste your API License Key and select your connected USB/Network printer.
+                            </p>
+                            <a href="/download/agent" download class="qp-btn qp-btn-sm qp-btn-primary" style="font-size: 12px; gap: 6px; display: inline-flex;">
+                                <svg class="qp-icon" viewBox="0 0 24 24" style="width: 14px; height: 14px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                <span>Download Spooler App (.exe)</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 16px; align-items: flex-start; background: #F8FAFC; border: 1px solid var(--qp-border); padding: 16px; border-radius: var(--qp-radius-md);">
+                        <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--qp-primary); color: #FFFFFF; font-weight: 800; font-size: 15px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">3</div>
+                        <div style="flex: 1;">
+                            <h4 style="font-size: 15px; font-weight: 700; color: var(--qp-text-primary); margin-bottom: 4px;">3. Print Counter QR Standee</h4>
+                            <p style="font-size: 13.5px; color: var(--qp-text-secondary);">
+                                Print your official QwikPrint Counter Poster PDF and place it on your counter so customers can scan and upload files.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 16px; align-items: flex-start; background: #F8FAFC; border: 1px solid var(--qp-border); padding: 16px; border-radius: var(--qp-radius-md);">
+                        <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--qp-primary); color: #FFFFFF; font-weight: 800; font-size: 15px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">4</div>
+                        <div style="flex: 1;">
+                            <h4 style="font-size: 15px; font-weight: 700; color: var(--qp-text-primary); margin-bottom: 4px;">4. Customer Scans & Uploads</h4>
+                            <p style="font-size: 13.5px; color: var(--qp-text-secondary);">
+                                Customer scans QR code on smartphone. They pick document/photos, paper size, color mode, 2-in-1 Aadhaar layout, and see exact total price.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 16px; align-items: flex-start; background: #F8FAFC; border: 1px solid var(--qp-border); padding: 16px; border-radius: var(--qp-radius-md);">
+                        <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--qp-success); color: #FFFFFF; font-weight: 800; font-size: 15px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">5</div>
+                        <div style="flex: 1;">
+                            <h4 style="font-size: 15px; font-weight: 700; color: var(--qp-text-primary); margin-bottom: 4px;">5. Instant Counter Printing</h4>
+                            <p style="font-size: 13.5px; color: var(--qp-text-secondary);">
+                                Job appears on Live Print Queue. Customer pays Cash or Online, and connected Windows Printer automatically prints pages!
+                            </p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <div style="padding: 14px 24px; border-top: 1px solid var(--qp-border); background: var(--qp-bg-subtle); display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 12.5px; color: var(--qp-text-muted);">Direct Support: +91 91226 91369</span>
+                <button onclick="closeHelpModal()" class="qp-btn qp-btn-sm qp-btn-primary">Got it!</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function openHelpModal() {
+        const modal = document.getElementById('qp-help-modal');
+        if (modal) modal.style.display = 'flex';
+    }
+    function closeHelpModal() {
+        const modal = document.getElementById('qp-help-modal');
+        if (modal) modal.style.display = 'none';
+    }
+    </script>
 </body>
 </html>

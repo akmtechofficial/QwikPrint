@@ -2,6 +2,27 @@
 
 {% block title %}{{ shop.name }} - Instant Online Print Order{% endblock %}
 
+{% block header %}
+<header style="background-color: var(--qp-bg-surface); border-bottom: 1px solid var(--qp-border); padding: 14px 24px; position: sticky; top: 0; z-index: 1000; box-shadow: var(--qp-shadow-sm);">
+    <div style="max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="qp-brand-icon" style="width: 36px; height: 36px; font-size: 15px; background: var(--qp-primary); color: #FFFFFF; border-radius: var(--qp-radius-md); display: flex; align-items: center; justify-content: center; font-weight: 800;">QP</div>
+            <div>
+                <h1 style="font-size: 20px; font-weight: 800; color: var(--qp-text-primary); margin: 0; line-height: 1.1;">{{ shop.name }}</h1>
+                <span style="font-size: 11.5px; color: var(--qp-text-muted); font-weight: 500;">Instant QR Document Print Portal</span>
+            </div>
+        </div>
+        
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span class="qp-badge qp-badge-success" style="font-size: 12px; padding: 4px 12px;">● Shop Online</span>
+            <button type="button" onclick="openHelpModal()" class="qp-btn qp-btn-sm qp-btn-secondary" style="font-size: 12.5px;">
+                <span>❓ How It Works</span>
+            </button>
+        </div>
+    </div>
+</header>
+{% endblock %}
+
 {% block content %}
 <!-- PDF.js CDN for client-side rendering of PDF previews -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -1717,5 +1738,15 @@
     }
 
 </script>
+{% endblock %}
+
+{% block footer %}
+<footer style="background-color: var(--qp-bg-surface); border-top: 1px solid var(--qp-border); padding: 24px 16px; text-align: center;">
+    <div style="max-width: 1200px; margin: 0 auto; font-size: 14px; font-weight: 600; color: var(--qp-text-primary); display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap;">
+        <span>Made in Godda with</span>
+        <span style="color: #DC2626; font-size: 16px;">❤️</span>
+        <span>By Akm Tech</span>
+    </div>
+</footer>
 {% endblock %}
 

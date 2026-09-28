@@ -295,38 +295,47 @@
     .modal-backdrop {
         position: fixed;
         top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(15, 23, 42, 0.7);
+        background: rgba(15, 23, 42, 0.75);
         backdrop-filter: blur(4px);
         z-index: 9999;
         display: flex;
         justify-content: center;
         align-items: center;
-        padding: 20px;
+        padding: 16px;
+        box-sizing: border-box;
     }
     .modal-card {
-        background: #FFFFFF;
-        border: 1px solid var(--qp-border);
-        border-radius: var(--qp-radius-lg);
+        background: var(--qp-bg-surface, #FFFFFF);
+        border: 1px solid var(--qp-border, #e2e8f0);
+        border-radius: var(--qp-radius-lg, 16px);
         max-width: 900px;
         width: 100%;
         max-height: 90vh;
         display: flex;
         flex-direction: column;
         overflow: hidden;
-        box-shadow: var(--qp-shadow-lg);
+        box-shadow: var(--qp-shadow-lg, 0 20px 25px -5px rgba(0, 0, 0, 0.1));
+    }
+    .modal-body-container {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+        flex-direction: row;
+    }
+    @media (max-width: 768px) {
+        .modal-backdrop { padding: 8px; }
+        .modal-card { max-height: 95vh; }
+        .modal-body-container {
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        .modal-sidebar {
+            width: 100% !important;
+            border-left: none !important;
+            border-top: 1px solid var(--qp-border, #e2e8f0) !important;
+        }
     }
 </style>
-
-<!-- Top Header Card -->
-<div class="qp-card" style="padding: 20px 24px; margin-bottom: 24px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-        <div>
-            <h2 style="font-size: 22px; margin-bottom: 2px; color: var(--qp-text-primary);">{{ shop.name }}</h2>
-            <p style="color: var(--qp-text-muted); font-size: 13.5px;">Customer Print Upload Portal • Fast, Instant & Encrypted Spooling</p>
-        </div>
-        <span class="qp-badge qp-badge-success">Shop Online & Ready</span>
-    </div>
-</div>
 
 {% if is_locked %}
 <div class="qp-card" style="border: 2px solid var(--qp-danger); background-color: var(--qp-danger-light); text-align: center; margin-bottom: 30px;">
@@ -527,31 +536,31 @@
 <!-- Enlarge & Crop Modal -->
 <div id="crop-modal" class="modal-backdrop" style="display: none;">
     <div class="modal-card">
-        <div style="padding: 16px 24px; border-bottom: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center;">
-            <h3 style="font-size: 18px; color: #ffffff;">🔍 Sheet Enlarge & Image Crop Studio</h3>
-            <button onclick="closeCropModal()" style="background: none; border: none; color: var(--text-muted); font-size: 24px; cursor: pointer;">✕</button>
+        <div style="padding: 16px 20px; background: var(--qp-bg-surface); border-bottom: 1px solid var(--qp-border); display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="font-size: 17px; font-weight: 700; color: var(--qp-text-primary); margin: 0;">🔍 Sheet Enlarge & Image Crop Studio</h3>
+            <button onclick="closeCropModal()" style="background: var(--qp-bg-subtle); border: 1px solid var(--qp-border); color: var(--qp-text-secondary); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer; transition: all 0.15s ease;">✕</button>
         </div>
         
-        <div style="display: flex; flex: 1; overflow: hidden; flex-wrap: wrap;">
+        <div class="modal-body-container">
             <!-- Modal Canvas Container -->
-            <div style="flex: 1; padding: 20px; background: #0f172a; display: flex; justify-content: center; align-items: center; position: relative; min-height: 350px; overflow: auto;">
+            <div style="flex: 1; padding: 20px; background: var(--qp-bg-page, #f8fafc); display: flex; justify-content: center; align-items: center; position: relative; min-height: 280px; overflow: auto;">
                 <div id="modal-canvas-wrapper" style="position: relative; max-width: 100%; max-height: 100%;">
-                    <canvas id="modal-canvas" style="background: #ffffff; border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); display: block;"></canvas>
+                    <canvas id="modal-canvas" style="background: #ffffff; border-radius: 6px; box-shadow: var(--qp-shadow-md); display: block; max-width: 100%; height: auto;"></canvas>
                     <div id="crop-box" class="crop-box" style="display: none;"></div>
                 </div>
             </div>
             
             <!-- Controls Sidebar -->
-            <div style="width: 280px; padding: 20px; border-left: 1px solid var(--card-border); background: #1e293b; display: flex; flex-direction: column; gap: 16px;">
+            <div class="modal-sidebar" style="width: 290px; padding: 20px; border-left: 1px solid var(--qp-border); background: var(--qp-bg-surface); display: flex; flex-direction: column; gap: 16px; box-sizing: border-box;">
                 <div>
-                    <label class="form-label">📂 Select File to Crop:</label>
+                    <label class="form-label" style="color: var(--qp-text-primary);">📂 Select File to Crop:</label>
                     <select id="modal-file-select" class="form-input" onchange="loadModalFile(this.value)">
                         <!-- Injected JS options -->
                     </select>
                 </div>
 
                 <div>
-                    <label class="form-label">✂️ Preset Crop Aspect Ratio:</label>
+                    <label class="form-label" style="color: var(--qp-text-primary);">✂️ Preset Crop Aspect Ratio:</label>
                     <select id="crop-preset-select" class="form-input" onchange="applyCropPreset(this.value)">
                         <option value="full">Full Page (Reset Crop)</option>
                         <option value="id_card">🪪 ID Card / Aadhaar (85:55)</option>
@@ -561,13 +570,13 @@
                 </div>
 
                 <div>
-                    <label class="form-label">🔍 Zoom Level:</label>
-                    <input type="range" id="crop-zoom" min="100" max="300" value="100" class="form-input" style="padding: 0;" oninput="updateModalCanvas()">
+                    <label class="form-label" style="color: var(--qp-text-primary);">🔍 Zoom Level:</label>
+                    <input type="range" id="crop-zoom" min="100" max="300" value="100" class="form-input" style="padding: 0; accent-color: var(--qp-primary);" oninput="updateModalCanvas()">
                 </div>
 
-                <div style="margin-top: auto; display: flex; flex-direction: column; gap: 10px;">
-                    <button onclick="resetCurrentCrop()" class="btn-secondary" style="font-size: 13px;">🔄 Reset Crop</button>
-                    <button onclick="applyAndSaveCrop()" class="btn-primary" style="padding: 12px; font-size: 14px;">✅ Apply Crop & Close</button>
+                <div style="margin-top: auto; display: flex; flex-direction: column; gap: 10px; padding-top: 12px;">
+                    <button onclick="resetCurrentCrop()" class="btn-secondary" style="font-size: 13px; width: 100%;">🔄 Reset Crop</button>
+                    <button onclick="applyAndSaveCrop()" class="btn-primary" style="padding: 12px; font-size: 14px; width: 100%;">✅ Apply Crop & Close</button>
                 </div>
             </div>
         </div>
@@ -867,7 +876,7 @@
             div.style.cssText = "display: flex; align-items: center; justify-content: space-between; gap: 8px;";
 
             const lbl = document.createElement('span');
-            lbl.style.cssText = "font-size: 12px; font-weight: 600; color: #ffffff;";
+            lbl.style.cssText = "font-size: 12px; font-weight: 600; color: var(--qp-text-primary, #0f172a);";
             lbl.innerText = labels[i] + ":";
 
             const select = document.createElement('select');
@@ -928,7 +937,7 @@
     });
 
     async function processSelectedFiles(files) {
-        dropZone.innerHTML = "<p style='font-size: 16px; font-weight: 600;'>⏳ Uploading & Rendering Preview...</p>";
+        dropZone.innerHTML = "<p style='font-size: 16px; font-weight: 600; color: var(--qp-text-primary);'>⏳ Uploading & Rendering Preview...</p>";
         
         for (const file of files) {
             const formData = new FormData();
@@ -1013,14 +1022,14 @@
             const div = document.createElement('div');
             div.className = 'file-badge-item';
             div.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span>${file.is_pdf ? '📄' : '🖼️'}</span>
-                    <div>
-                        <p style="font-weight: 600; font-size: 13px; color: #ffffff;">${file.filename}</p>
-                        <p style="font-size: 11px; color: var(--text-muted);">${file.is_pdf ? file.page_count + ' Pages' : 'Image document'}</p>
+                <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
+                    <span style="font-size: 18px; flex-shrink: 0;">${file.is_pdf ? '📄' : '🖼️'}</span>
+                    <div style="min-width: 0; flex: 1;">
+                        <p style="font-weight: 600; font-size: 13px; color: var(--qp-text-primary, #0f172a); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${file.filename}">${file.filename}</p>
+                        <p style="font-size: 11px; color: var(--qp-text-muted, #64748b); margin: 2px 0 0 0;">${file.is_pdf ? file.page_count + ' Pages' : 'Image document'}</p>
                     </div>
                 </div>
-                <button onclick="removeFile(${index})" style="background: none; border: none; color: #ef4444; font-size: 16px; cursor: pointer;">🗑️</button>
+                <button onclick="removeFile(${index})" style="background: none; border: none; color: #ef4444; font-size: 16px; cursor: pointer; padding: 4px; flex-shrink: 0;" title="Remove File">🗑️</button>
             `;
             container.appendChild(div);
         });
@@ -1038,9 +1047,11 @@
             uploadCard.style.display = 'block';
             document.getElementById('page-strip-section').style.display = 'none';
             dropZone.innerHTML = `
-                <p style="font-size: 54px; margin-bottom: 12px;">📑</p>
-                <p style="font-size: 18px; font-weight: 700; color: #ffffff;">Tap to Choose Files or Drag &amp; Drop Here</p>
-                <p style="font-size: 13px; color: var(--text-muted); margin-top: 6px;">PDF, PNG, JPG — Max <b style="color:#f87171;">25 MB</b> per file</p>
+                <div style="width: 56px; height: 56px; border-radius: 50%; background: var(--qp-primary-light); color: var(--qp-primary); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+                    <svg class="qp-icon" viewBox="0 0 24 24" style="width: 28px; height: 28px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                </div>
+                <p style="font-size: 16px; font-weight: 700; color: var(--qp-text-primary);">Tap to Choose Files or Drag &amp; Drop Here</p>
+                <p style="font-size: 13px; color: var(--qp-text-muted); margin-top: 4px;">PDF, PNG, JPG — Max <b>25 MB</b> per file</p>
                 <input type="file" id="file-input" accept=".pdf,.png,.jpg,.jpeg" multiple style="display: none;">
             `;
             document.getElementById('file-input').addEventListener('change', (e) => {

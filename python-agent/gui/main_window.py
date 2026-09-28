@@ -365,8 +365,8 @@ class MainWindow(QMainWindow):
         """Generates QR Code Image for Customer Upload URL."""
         try:
             import qrcode
-            shop_id = config_mgr.get("shop_id", "SHOP_AKM_001")
-            url = f"{config_mgr.get('server_url', 'http://localhost:8000')}/s/{shop_id}"
+            server_url = config_mgr.get('server_url', 'https://qwikprint.onrender.com').rstrip('/')
+            url = f"{server_url}/s/{shop_id}"
             
             qr = qrcode.QRCode(version=1, box_size=6, border=2)
             qr.add_data(url)

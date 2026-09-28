@@ -28,6 +28,28 @@ async def home_page(request: Request):
         "plans": plans
     })
 
+def get_canonical_base_url(request: Request) -> str:
+    """
+    Returns a stable, canonical base URL for the shop QR code and portal link.
+    Prefers explicit PUBLIC_URL/APP_URL/CANONICAL_URL env vars or production forwarded headers
+    over transient local request host headers.
+    """
+    for env_var in ("PUBLIC_URL", "APP_URL", "CANONICAL_URL"):
+        val = os.getenv(env_var)
+        if val and val.strip() and "localhost" not in val and "127.0.0.1" not in val:
+            return val.strip().rstrip("/")
+    
+    forwarded_host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+    forwarded_proto = request.headers.get("x-forwarded-proto") or request.url.scheme
+    if forwarded_host and "localhost" not in forwarded_host and "127.0.0.1" not in forwarded_host:
+        return f"{forwarded_proto}://{forwarded_host}".rstrip("/")
+
+    server_url = os.getenv("SERVER_URL")
+    if server_url and server_url.strip() and "localhost" not in server_url and "127.0.0.1" not in server_url:
+        return server_url.strip().rstrip("/")
+
+    return str(request.base_url).rstrip("/")
+
 def get_dashboard_context(request: Request, active_tab: str):
     user, shop = get_current_user_and_shop(request)
     if not user or not shop:
@@ -40,7 +62,7 @@ def get_dashboard_context(request: Request, active_tab: str):
     total_jobs = len(jobs)
     total_pages = sum(j["page_count"] * j["copies"] for j in jobs)
 
-    base_url = str(request.base_url).rstrip("/")
+    base_url = get_canonical_base_url(request)
     customer_url = f"{base_url}/s/{shop['shop_id']}"
     qr_base64 = generate_shop_qr_base64(customer_url)
 
@@ -122,7 +144,7 @@ async def download_shop_poster_pdf(request: Request):
     if not user or not shop:
         return RedirectResponse(url="/login", status_code=302)
 
-    base_url = str(request.base_url).rstrip("/")
+    base_url = get_canonical_base_url(request)
     customer_url = f"{base_url}/s/{shop['shop_id']}"
 
     from web_server.pdf_poster_generator import create_shop_poster_pdf

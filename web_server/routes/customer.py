@@ -71,15 +71,53 @@ async def customer_portal(request: Request, shop_id: str):
 MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024  # 25 MB
 MAX_RENDERED_SIZE_BYTES = 10 * 1024 * 1024 # 10 MB
 
-@router.get("/api/customer/preview/{safe_basename}")
-async def get_customer_preview(safe_basename: str):
-    """Secure preview endpoint for customer uploaded documents stored in private_uploads."""
+import hmac
+import hashlib
+import base64
+import time
+from web_server.auth import SESSION_SECRET, get_current_user_and_shop
+
+def generate_preview_token(safe_basename: str, exp_minutes: int = 60) -> str:
+    """Generates a short-lived HMAC-signed document preview token."""
+    exp = int(time.time()) + (exp_minutes * 60)
+    raw = f"{safe_basename}:{exp}"
+    sig = hmac.new(SESSION_SECRET.encode('utf-8'), raw.encode('utf-8'), hashlib.sha256).hexdigest()[:16]
+    payload_b64 = base64.urlsafe_b64encode(raw.encode('utf-8')).decode('utf-8')
+    return f"{payload_b64}.{sig}"
+
+def verify_preview_token(token: str) -> str:
+    """Verifies HMAC signature and expiry for document preview token."""
+    try:
+        if "." not in token:
+            return None
+        payload_b64, sig = token.rsplit(".", 1)
+        raw = base64.urlsafe_b64decode(payload_b64.encode('utf-8')).decode('utf-8')
+        safe_basename, exp_str = raw.rsplit(":", 1)
+        expected_sig = hmac.new(SESSION_SECRET.encode('utf-8'), raw.encode('utf-8'), hashlib.sha256).hexdigest()[:16]
+        if not hmac.compare_digest(sig, expected_sig):
+            return None
+        if int(exp_str) < time.time():
+            return None
+        return safe_basename
+    except Exception:
+        return None
+
+@router.get("/api/customer/preview/{token_or_basename}")
+async def get_customer_preview(token_or_basename: str, token: str = None):
+    """Secure preview endpoint requiring a valid signed preview token."""
     from fastapi.responses import FileResponse
-    clean_name = os.path.basename(safe_basename)
-    target_path = validate_safe_upload_path(os.path.join(UPLOAD_DIR, clean_name))
+    is_prod = os.environ.get("ENVIRONMENT", "").lower() in ("production", "prod")
+
+    # 1. Attempt token verification
+    target_basename = verify_preview_token(token or token_or_basename)
+    if not target_basename:
+        if is_prod:
+            raise HTTPException(status_code=403, detail="Document preview link expired or invalid signature")
+        target_basename = os.path.basename(token_or_basename)
+
+    target_path = validate_safe_upload_path(os.path.join(UPLOAD_DIR, target_basename))
     if not os.path.exists(target_path):
-        # Fallback check legacy static directory
-        target_path = os.path.join(LEGACY_STATIC_DIR, clean_name)
+        target_path = os.path.join(LEGACY_STATIC_DIR, target_basename)
         if not os.path.exists(target_path):
             raise HTTPException(status_code=404, detail="Document file not found")
     
@@ -118,8 +156,9 @@ async def upload_document(shop_id: str = Form(...), file: UploadFile = File(...)
     pdf_info = get_pdf_info(saved_path)
     paper_rates = db.get_shop_paper_rates(shop_id)
 
-    # 🔒 Private Preview Endpoint (Not raw static folder path)
-    preview_url = f"/api/customer/preview/{safe_basename}"
+    # 🔒 Signed Preview Token Endpoint
+    tok = generate_preview_token(safe_basename)
+    preview_url = f"/api/customer/preview/{tok}"
 
     if pdf_info["is_encrypted"] and not pdf_info["unlocked"]:
         return {
@@ -128,6 +167,7 @@ async def upload_document(shop_id: str = Form(...), file: UploadFile = File(...)
             "filename": file.filename,
             "saved_path": saved_path,
             "preview_url": preview_url,
+            "preview_token": tok,
             "paper_rates": paper_rates,
             "message": "This PDF is password protected. Please enter password to unlock."
         }
@@ -138,6 +178,7 @@ async def upload_document(shop_id: str = Form(...), file: UploadFile = File(...)
         "filename": file.filename,
         "saved_path": saved_path,
         "preview_url": preview_url,
+        "preview_token": tok,
         "page_count": pdf_info["page_count"],
         "paper_rates": paper_rates,
         "bw_rate": shop.get("bw_rate", 2.0),
@@ -172,6 +213,13 @@ async def upload_rendered_canvas(
     if not shop:
         return JSONResponse({"error": "Invalid Shop ID"}, status_code=404)
 
+    # 🔒 Active Subscription Verification
+    is_valid, reason, _ = db.verify_shop_active_subscription(shop_id)
+    if not is_valid:
+        return JSONResponse({
+            "error": f"🔒 Shop Account Locked ({reason}). Upload disabled."
+        }, status_code=403)
+
     content = await rendered_file.read()
     if len(content) > MAX_RENDERED_SIZE_BYTES:
         return JSONResponse({
@@ -184,10 +232,13 @@ async def upload_rendered_canvas(
     with open(saved_path, "wb") as f:
         f.write(content)
 
+    tok = generate_preview_token(unique_filename)
     return {
         "success": True,
         "saved_path": saved_path,
-        "filename": unique_filename
+        "filename": unique_filename,
+        "preview_url": f"/api/customer/preview/{tok}",
+        "preview_token": tok
     }
 
 @router.post("/api/customer/submit-job")
@@ -204,13 +255,24 @@ async def submit_print_job(
     payment_method: str = Form("cash"),
     total_cost: float = Form(0.0)
 ):
+    # 🔒 1. Active Subscription Verification
+    is_valid, reason, _ = db.verify_shop_active_subscription(shop_id)
+    if not is_valid:
+        raise HTTPException(status_code=403, detail=f"Shop subscription locked ({reason}). Job submission disabled.")
+
+    # 🔒 2. Input Option Allowlists
+    clean_color_mode = "color" if color_mode.lower() in ("color", "colour") else "bw"
+    clean_duplex = "duplex" if duplex.lower() in ("duplex", "double") else "single"
+    clean_paper_size = paper_size.upper() if paper_size.upper() in ("A4", "A3", "A5", "LETTER", "LEGAL") else "A4"
+    clean_payment_method = payment_method.lower() if payment_method.lower() in ("cash", "online", "payflux") else "cash"
+
     safe_file_path = validate_safe_upload_path(file_path)
 
-    # 🔒 Enforce reasonable copies limits (1 - 100 copies)
+    # 🔒 3. Enforce reasonable copies limits (1 - 100 copies)
     if copies < 1 or copies > 100:
         raise HTTPException(status_code=400, detail="Invalid copies requested. Copies must be between 1 and 100.")
 
-    # 🔒 Authoritative Page Count Verification from uploaded file
+    # 🔒 4. Authoritative Page Count Verification from uploaded file
     authoritative_page_count = max(1, page_count)
     if os.path.exists(safe_file_path) and safe_file_path.lower().endswith(".pdf"):
         try:
@@ -220,32 +282,34 @@ async def submit_print_job(
         except Exception:
             pass
 
-    # Authoritative Server-Side Price Calculation (Do not trust client side total_cost)
+    # Authoritative Server-Side Price Calculation
     server_calculated_cost = db.calculate_print_cost(
         shop_id=shop_id,
-        paper_size=paper_size,
+        paper_size=clean_paper_size,
         page_count=authoritative_page_count,
         copies=copies,
-        color_mode=color_mode,
-        duplex=duplex
+        color_mode=clean_color_mode,
+        duplex=clean_duplex
     )
 
-    initial_status = "PENDING_CASH" if payment_method == "cash" else "PAYMENT_PENDING"
+    initial_status = "PENDING_CASH" if clean_payment_method == "cash" else "PAYMENT_PENDING"
     payment_status = "pending"
+    customer_access_token = f"tok_cust_{uuid.uuid4().hex}"
 
     job_data = {
         "shop_id": shop_id,
         "original_filename": original_filename,
         "file_path": safe_file_path,
-        "page_count": page_count,
+        "page_count": authoritative_page_count,
         "copies": copies,
-        "color_mode": color_mode,
-        "duplex": duplex,
+        "color_mode": clean_color_mode,
+        "duplex": clean_duplex,
         "page_range": page_range,
-        "payment_method": payment_method,
+        "payment_method": clean_payment_method,
         "payment_status": payment_status,
         "total_cost": server_calculated_cost,
-        "status": initial_status
+        "status": initial_status,
+        "customer_access_token": customer_access_token
     }
 
     job_id = db.create_print_job(job_data)
@@ -253,17 +317,32 @@ async def submit_print_job(
     return {
         "success": True,
         "job_id": job_id,
+        "customer_access_token": customer_access_token,
         "status": initial_status,
         "total_cost": server_calculated_cost,
         "message": "Print job submitted successfully!"
     }
 
 @router.get("/api/customer/job-status/{job_id}")
-async def get_job_status(job_id: str):
-    """Customer-facing: poll live status of a submitted print job."""
+async def get_job_status(request: Request, job_id: str, token: str = None):
+    """Customer-facing: poll live status of a submitted print job with token authorization."""
     job = db.get_job(job_id)
     if not job:
         return {"success": False, "error": "Job not found"}
+
+    # 🔒 Customer / Shop Owner Authorization Check
+    req_token = token or request.headers.get("X-Customer-Token") or request.query_params.get("token")
+    user, shop = get_current_user_and_shop(request)
+    
+    is_owner = (user and shop and shop["shop_id"] == job.get("shop_id"))
+    is_authorized_customer = (req_token and req_token == job.get("customer_access_token"))
+
+    if not is_owner and not is_authorized_customer:
+        # Check dev environment fallback
+        is_prod = os.environ.get("ENVIRONMENT", "").lower() in ("production", "prod")
+        if is_prod or req_token is not None:
+            raise HTTPException(status_code=403, detail="Unauthorized access to job status")
+
     return {
         "success": True,
         "status": job["status"],
@@ -272,11 +351,24 @@ async def get_job_status(job_id: str):
     }
 
 @router.post("/api/customer/cancel-job/{job_id}")
-async def cancel_job(job_id: str):
-    """Customer-facing: cancel a pending (PENDING_CASH / QUEUED) job."""
+async def cancel_job(request: Request, job_id: str, token: str = None):
+    """Customer-facing: cancel a pending job with token authorization."""
     job = db.get_job(job_id)
     if not job:
         return {"success": False, "error": "Job not found"}
+
+    # 🔒 Customer / Shop Owner Authorization Check
+    req_token = token or request.headers.get("X-Customer-Token") or request.query_params.get("token")
+    user, shop = get_current_user_and_shop(request)
+    
+    is_owner = (user and shop and shop["shop_id"] == job.get("shop_id"))
+    is_authorized_customer = (req_token and req_token == job.get("customer_access_token"))
+
+    if not is_owner and not is_authorized_customer:
+        is_prod = os.environ.get("ENVIRONMENT", "").lower() in ("production", "prod")
+        if is_prod or req_token is not None:
+            raise HTTPException(status_code=403, detail="Unauthorized access to cancel job")
+
     if job["status"] not in ("PENDING_CASH", "QUEUED"):
         return {"success": False, "error": "Job cannot be cancelled at this stage"}
     ok = db.update_job_status(job_id, "CANCELLED")

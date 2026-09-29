@@ -120,6 +120,16 @@ async def create_payflux_order(request: Request, payload: dict = Body(...)):
     base_url = str(request.base_url).rstrip("/")
     return_url = f"{base_url}/payment-success?order_id={order_id}&plan_id={plan_id}"
 
+    # Save DB payment order record
+    db.create_payment_order({
+        "order_id": order_id,
+        "shop_id": shop_id,
+        "plan_id": plan_id,
+        "amount": amount,
+        "currency": "INR",
+        "status": "PENDING"
+    })
+
     customer_email = user.get("email") or shop.get("email") or "customer@qwikprint.in"
     customer_name = user.get("full_name") or shop.get("name") or "Shop Owner"
     customer_phone = user.get("phone") or shop.get("phone") or "9876543210"
@@ -185,7 +195,10 @@ async def create_payflux_order(request: Request, payload: dict = Body(...)):
 
 def verify_payflux_gateway_order(order_id: str) -> dict:
     """Verifies transaction status directly with PayFlux Payment Gateway server."""
+    is_prod = os.getenv("ENVIRONMENT", "").lower() in ("production", "prod")
     if not PAYFLUX_SECRET_KEY or "sk_test_your" in PAYFLUX_SECRET_KEY:
+        if is_prod:
+            raise HTTPException(status_code=500, detail="Payment gateway secret key is unconfigured in production mode.")
         # In dev mode without configured secret key, return fallback response
         return {"status": "PAID", "amount": None}
     
@@ -258,7 +271,15 @@ async def confirm_payflux_order(request: Request, payload: dict = Body(...)):
                 "expires_at": sub.get("expires_at")
             }
 
-    # 2. Authoritative Plan Lookup
+    # 2. DB Order Ownership & Plan Verification
+    db_order = db.get_payment_order(order_id)
+    if db_order:
+        if db_order["shop_id"] != shop_id:
+            raise HTTPException(status_code=403, detail="Payment order does not belong to your shop account")
+        if db_order["plan_id"] != plan_id:
+            raise HTTPException(status_code=400, detail="Payment order plan mismatch")
+
+    # 3. Authoritative Plan Lookup
     plan = db.get_plan(plan_id)
     if not plan:
         raise HTTPException(status_code=404, detail=f"Plan '{plan_id}' not found")
@@ -267,17 +288,17 @@ async def confirm_payflux_order(request: Request, payload: dict = Body(...)):
     duration_days = int(plan["duration_days"])
     expected_amount = float(plan["price"])
 
-    # 3. Gateway Server-Side Status & Amount Verification
+    # 4. Gateway Server-Side Status & Exact Amount Verification
     gateway_info = verify_payflux_gateway_order(order_id)
     gw_status = gateway_info.get("status")
     gw_amount = gateway_info.get("amount")
 
-    # Enforce strict gateway status check if key is configured
+    # Enforce strict gateway status & exact amount check if key is configured
     if PAYFLUX_SECRET_KEY and "sk_test_your" not in PAYFLUX_SECRET_KEY:
         if gw_status not in ("PAID", "SUCCESS", "COMPLETED"):
             raise HTTPException(status_code=400, detail=f"Payment verification failed: Gateway order status is '{gw_status}'")
-        if gw_amount is not None and gw_amount < expected_amount:
-            raise HTTPException(status_code=400, detail=f"Payment amount mismatch: expected ₹{expected_amount}, received ₹{gw_amount}")
+        if gw_amount is not None and abs(gw_amount - expected_amount) > 0.01:
+            raise HTTPException(status_code=400, detail=f"Payment amount mismatch: expected ₹{expected_amount:.2f}, received ₹{gw_amount:.2f}")
 
     payment_method = payload.get("payment_method", "payflux_gateway")
     result = db.update_shop_subscription(shop_id, duration_days, plan_name)
@@ -291,6 +312,7 @@ async def confirm_payflux_order(request: Request, payload: dict = Body(...)):
         "status": "success",
         "expires_at": result.get("plan_expires_at")
     })
+    db.update_payment_order_status(order_id, "PAID")
 
     return {
         "success": True,
@@ -300,39 +322,58 @@ async def confirm_payflux_order(request: Request, payload: dict = Body(...)):
 
 @router.post("/api/payments/webhook")
 async def payflux_webhook(request: Request, payload: dict = Body(...)):
-    """Server-to-Server Webhook callback from PayFlux Gateway."""
+    """Server-to-Server Webhook callback from PayFlux Gateway with Signature Verification."""
+    # 🔒 1. Webhook Signature & Authorization Verification
+    auth_header = request.headers.get("Authorization", "")
+    sig_header = request.headers.get("X-PayFlux-Signature", "")
+    is_prod = os.getenv("ENVIRONMENT", "").lower() in ("production", "prod")
+
+    if PAYFLUX_SECRET_KEY and "sk_test_your" not in PAYFLUX_SECRET_KEY:
+        expected_auth = f"Bearer {PAYFLUX_SECRET_KEY}"
+        if auth_header != expected_auth and sig_header != PAYFLUX_SECRET_KEY:
+            raise HTTPException(status_code=401, detail="Unauthorized webhook: Invalid signature")
+    elif is_prod:
+        raise HTTPException(status_code=401, detail="Webhook rejected: Unconfigured payment secret key in production")
+
+    # 🔒 2. Payload Validation & Order Matching
     order_id = payload.get("order_id") or payload.get("orderId") or payload.get("id")
     event_type = payload.get("event") or payload.get("type", "")
     status = payload.get("status", "").upper()
-    plan_id = payload.get("plan_id")
-    shop_id = payload.get("shop_id")
 
     if not order_id:
-        raise HTTPException(status_code=400, detail="Missing order_id")
+        raise HTTPException(status_code=400, detail="Missing order_id in webhook payload")
+
+    # DB Order Verification
+    db_order = db.get_payment_order(order_id)
+    if not db_order:
+        raise HTTPException(status_code=404, detail=f"Order '{order_id}' not found in database")
+
+    shop_id = db_order["shop_id"]
+    plan_id = db_order["plan_id"]
+    expected_amount = db_order["amount"]
 
     if status in ("PAID", "SUCCESS", "COMPLETED") or "paid" in event_type.lower():
         existing_subs = db.get_subscriptions()
         already_processed = any(sub.get("transaction_id") == order_id and sub.get("status") == "success" for sub in existing_subs)
         if already_processed:
-            return {"success": True, "message": "Already processed"}
+            return {"success": True, "message": "Order already processed"}
 
-        if shop_id and plan_id:
-            plan = db.get_plan(plan_id)
-            if plan:
-                duration_days = int(plan["duration_days"])
-                plan_name = plan["name"]
-                amount = float(plan["price"])
-                res = db.update_shop_subscription(shop_id, duration_days, plan_name)
-                db.create_subscription_record({
-                    "shop_id": shop_id,
-                    "plan_id": plan_id,
-                    "plan_name": plan_name,
-                    "amount": amount,
-                    "payment_gateway": "payflux_webhook",
-                    "transaction_id": order_id,
-                    "status": "success",
-                    "expires_at": res.get("plan_expires_at")
-                })
-                return {"success": True, "message": "Subscription activated via webhook"}
+        plan = db.get_plan(plan_id)
+        if plan:
+            duration_days = int(plan["duration_days"])
+            plan_name = plan["name"]
+            res = db.update_shop_subscription(shop_id, duration_days, plan_name)
+            db.create_subscription_record({
+                "shop_id": shop_id,
+                "plan_id": plan_id,
+                "plan_name": plan_name,
+                "amount": expected_amount,
+                "payment_gateway": "payflux_webhook",
+                "transaction_id": order_id,
+                "status": "success",
+                "expires_at": res.get("plan_expires_at")
+            })
+            db.update_payment_order_status(order_id, "PAID")
+            return {"success": True, "message": "Subscription activated via verified webhook"}
 
-    return {"success": True, "message": "Webhook received"}
+    return {"success": True, "message": "Webhook processed"}

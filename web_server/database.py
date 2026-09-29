@@ -160,6 +160,16 @@ class SupabaseDatabase:
                 expires_at VARCHAR(100),
                 created_at VARCHAR(100)
             );
+            CREATE TABLE IF NOT EXISTS payment_orders (
+                order_id VARCHAR(100) PRIMARY KEY,
+                shop_id VARCHAR(100) NOT NULL,
+                plan_id VARCHAR(100) NOT NULL,
+                amount FLOAT NOT NULL,
+                currency VARCHAR(10) DEFAULT 'INR',
+                status VARCHAR(50) DEFAULT 'PENDING',
+                created_at VARCHAR(100),
+                updated_at VARCHAR(100)
+            );
             """)
             conn.commit()
 
@@ -182,6 +192,7 @@ class SupabaseDatabase:
             ALTER TABLE users ADD COLUMN IF NOT EXISTS device_fingerprint VARCHAR(255);
             ALTER TABLE shops ADD COLUMN IF NOT EXISTS registration_ip VARCHAR(100);
             ALTER TABLE shops ADD COLUMN IF NOT EXISTS device_fingerprint VARCHAR(255);
+            ALTER TABLE print_jobs ADD COLUMN IF NOT EXISTS customer_access_token VARCHAR(255);
             """)
             conn.commit()
             conn.close()
@@ -209,7 +220,7 @@ class SupabaseDatabase:
             file_path TEXT NOT NULL, page_count INTEGER DEFAULT 1, copies INTEGER DEFAULT 1, color_mode TEXT DEFAULT 'bw',
             duplex TEXT DEFAULT 'single', page_range TEXT DEFAULT 'all', payment_method TEXT DEFAULT 'cash',
             payment_status TEXT DEFAULT 'pending', total_cost REAL DEFAULT 0.0, status TEXT DEFAULT 'PAYMENT_PENDING',
-            error TEXT, created_at TEXT, updated_at TEXT
+            customer_access_token TEXT, error TEXT, created_at TEXT, updated_at TEXT
         );
         CREATE TABLE IF NOT EXISTS plans (
             plan_id TEXT PRIMARY KEY, name TEXT NOT NULL, duration_days INTEGER NOT NULL,
@@ -219,6 +230,11 @@ class SupabaseDatabase:
             subscription_id TEXT PRIMARY KEY, shop_id TEXT NOT NULL, plan_id TEXT, plan_name TEXT,
             amount REAL DEFAULT 0.0, payment_gateway TEXT DEFAULT 'payflux', transaction_id TEXT,
             status TEXT DEFAULT 'success', starts_at TEXT, expires_at TEXT, created_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS payment_orders (
+            order_id TEXT PRIMARY KEY, shop_id TEXT NOT NULL, plan_id TEXT NOT NULL,
+            amount REAL NOT NULL, currency TEXT DEFAULT 'INR', status TEXT DEFAULT 'PENDING',
+            created_at TEXT, updated_at TEXT
         );
         """)
         s_conn.commit()
@@ -237,7 +253,8 @@ class SupabaseDatabase:
             ("shops", ("device_fingerprint", "TEXT")),
             ("users", ("registration_ip", "TEXT")),
             ("users", ("device_fingerprint", "TEXT")),
-            ("plans", ("badge", "TEXT"))
+            ("plans", ("badge", "TEXT")),
+            ("print_jobs", ("customer_access_token", "TEXT"))
         ]:
             try:
                 s_cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {col_def[0]} {col_def[1]};")
@@ -265,18 +282,26 @@ class SupabaseDatabase:
         finally:
             s_conn.close()
 
-        # Seed Super Admin User (admin@qwikprint.in / @Qwikprint)
+        # Seed Super Admin User
         try:
             import hashlib, binascii
+            is_prod = os.getenv("ENVIRONMENT", "").lower() in ("production", "prod")
             admin_email = os.getenv("SUPERADMIN_EMAIL", "akashkapri12109@gmail.com").lower().strip()
-            admin_pwd = os.getenv("SUPERADMIN_PASSWORD", "@Qwikprint")
+            admin_pwd = os.getenv("SUPERADMIN_PASSWORD")
 
-            def _hash_pass(pwd):
-                salt = b"qwikprint_secure_salt_2026"
-                pwd_hash = hashlib.pbkdf2_hmac('sha256', pwd.encode('utf-8'), salt, 100000)
-                return binascii.hexlify(pwd_hash).decode('ascii')
+            if is_prod and not admin_pwd:
+                print("[Database Warning] SUPERADMIN_PASSWORD environment variable not set in production! Super admin account seeding skipped.")
+            else:
+                if not admin_pwd:
+                    admin_pwd = "@Qwikprint"
 
-            admin_hash = _hash_pass(admin_pwd)
+                def _hash_pass(pwd):
+                    # Use unique salt per admin account
+                    salt = hashlib.sha256(admin_email.encode('utf-8')).digest()[:16]
+                    pwd_hash = hashlib.pbkdf2_hmac('sha256', pwd.encode('utf-8'), salt, 100000)
+                    return binascii.hexlify(salt).decode('ascii') + "$" + binascii.hexlify(pwd_hash).decode('ascii')
+
+                admin_hash = _hash_pass(admin_pwd)
             now = datetime.datetime.now(datetime.timezone.utc).isoformat()
             
             # Save admin to SQLite
@@ -582,6 +607,73 @@ class SupabaseDatabase:
                 conn.close()
             except Exception as e:
                 print(f"[Database Warning] PostgreSQL create_subscription_record failed: {e}")
+
+    def create_payment_order(self, order_data: dict):
+        """Saves authoritative payment order record linked to shop_id, plan_id, and amount."""
+        order_id = order_data["order_id"]
+        shop_id = order_data["shop_id"]
+        plan_id = order_data["plan_id"]
+        amount = float(order_data["amount"])
+        currency = order_data.get("currency", "INR")
+        status = order_data.get("status", "PENDING")
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+        try:
+            s_conn = self.get_sqlite_conn()
+            s_cursor = s_conn.cursor()
+            s_cursor.execute("""
+            INSERT INTO payment_orders (order_id, shop_id, plan_id, amount, currency, status, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+            """, (order_id, shop_id, plan_id, amount, currency, status, now, now))
+            s_conn.commit()
+            s_conn.close()
+        except Exception as e:
+            print(f"[Database Error] SQLite create_payment_order failed: {e}")
+
+        conn, is_pg = self.get_connection()
+        if is_pg:
+            try:
+                cursor = conn.cursor()
+                cursor.execute("""
+                INSERT INTO payment_orders (order_id, shop_id, plan_id, amount, currency, status, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
+                """, (order_id, shop_id, plan_id, amount, currency, status, now, now))
+                conn.commit()
+                conn.close()
+            except Exception as e:
+                print(f"[Database Warning] PostgreSQL create_payment_order failed: {e}")
+
+    def get_payment_order(self, order_id: str) -> dict:
+        """Looks up payment order record by order_id."""
+        if not order_id:
+            return None
+        try:
+            s_conn = self.get_sqlite_conn()
+            s_cursor = s_conn.cursor()
+            s_cursor.execute("SELECT order_id, shop_id, plan_id, amount, currency, status, created_at, updated_at FROM payment_orders WHERE order_id = ?;", (order_id,))
+            row = s_cursor.fetchone()
+            s_conn.close()
+            if row:
+                return {
+                    "order_id": row[0], "shop_id": row[1], "plan_id": row[2],
+                    "amount": float(row[3]), "currency": row[4], "status": row[5],
+                    "created_at": row[6], "updated_at": row[7]
+                }
+        except Exception as e:
+            print(f"[Database Warning] SQLite get_payment_order failed: {e}")
+        return None
+
+    def update_payment_order_status(self, order_id: str, status: str):
+        """Updates payment order status."""
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        try:
+            s_conn = self.get_sqlite_conn()
+            s_cursor = s_conn.cursor()
+            s_cursor.execute("UPDATE payment_orders SET status = ?, updated_at = ? WHERE order_id = ?;", (status, now, order_id))
+            s_conn.commit()
+            s_conn.close()
+        except Exception as e:
+            print(f"[Database Warning] SQLite update_payment_order_status failed: {e}")
 
     def get_admin_dashboard_stats(self):
         shops = self.get_all_shops()
@@ -908,14 +1000,15 @@ class SupabaseDatabase:
             INSERT INTO print_jobs (
                 job_id, shop_id, device_id, original_filename, file_path,
                 page_count, copies, color_mode, duplex, page_range,
-                payment_method, payment_status, total_cost, status, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                payment_method, payment_status, total_cost, status, customer_access_token, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
             """, (
                 job_id, job_data["shop_id"], job_data.get("device_id", ""), job_data["original_filename"],
                 job_data["file_path"], job_data.get("page_count", 1), job_data.get("copies", 1),
                 job_data.get("color_mode", "bw"), job_data.get("duplex", "single"), job_data.get("page_range", "all"),
                 job_data.get("payment_method", "cash"), job_data.get("payment_status", "pending"),
-                job_data.get("total_cost", 0.0), job_data.get("status", "PAYMENT_PENDING"), now, now
+                job_data.get("total_cost", 0.0), job_data.get("status", "PAYMENT_PENDING"),
+                job_data.get("customer_access_token", ""), now, now
             ))
             s_conn.commit()
             s_conn.close()
@@ -931,14 +1024,15 @@ class SupabaseDatabase:
                 INSERT INTO print_jobs (
                     job_id, shop_id, device_id, original_filename, file_path,
                     page_count, copies, color_mode, duplex, page_range,
-                    payment_method, payment_status, total_cost, status, created_at, updated_at
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+                    payment_method, payment_status, total_cost, status, customer_access_token, created_at, updated_at
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
                 """, (
                     job_id, job_data["shop_id"], job_data.get("device_id", ""), job_data["original_filename"],
                     job_data["file_path"], job_data.get("page_count", 1), job_data.get("copies", 1),
                     job_data.get("color_mode", "bw"), job_data.get("duplex", "single"), job_data.get("page_range", "all"),
                     job_data.get("payment_method", "cash"), job_data.get("payment_status", "pending"),
-                    job_data.get("total_cost", 0.0), job_data.get("status", "PAYMENT_PENDING"), now, now
+                    job_data.get("total_cost", 0.0), job_data.get("status", "PAYMENT_PENDING"),
+                    job_data.get("customer_access_token", ""), now, now
                 ))
                 conn.commit()
                 conn.close()

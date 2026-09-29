@@ -86,8 +86,9 @@ async def auto_purge_expired_files_task():
             try:
                 active_basenames = db.get_active_file_paths()
             except Exception as db_err:
-                print(f"[Auto Purge Warning] Could not fetch active jobs: {db_err}")
-                active_basenames = set()
+                print(f"[Auto Purge Warning] Could not fetch active jobs from DB: {db_err}. Skipping purge cycle to protect active files.")
+                await asyncio.sleep(60)
+                continue
 
             target_dirs = [private_uploads_dir, uploads_dir]
             for target_dir in target_dirs:

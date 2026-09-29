@@ -236,7 +236,16 @@ async def update_status(payload: dict, x_device_id: str = Header(None), x_device
     if not job or job.get("shop_id") != device["shop_id"]:
         raise HTTPException(status_code=403, detail="Job does not belong to your device shop")
 
-    db.update_job_status(job_id, status, error)
+    # 🔒 Enforce Device Claim Binding (Prevent cross-device interference)
+    if job.get("device_id") and job.get("device_id") != device["device_id"]:
+        raise HTTPException(status_code=403, detail="Job has been claimed by another device")
+
+    # 🔒 Status Allowlist Validation
+    allowed_statuses = ["QUEUED", "CLAIMED", "DOWNLOADING", "PRINTING", "PRINTED", "DOWNLOAD_FAILED", "PRINT_FAILED", "CANCELLED", "EXPIRED", "REJECTED"]
+    if status.upper() not in allowed_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid job status: '{status}'")
+
+    db.update_job_status(job_id, status.upper(), error)
 
     # File lifecycle: Auto-delete print file from disk immediately post successful printing or cancellation
     if status.upper() in ["PRINTED", "CANCELLED", "EXPIRED", "REJECTED"]:

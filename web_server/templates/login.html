@@ -44,6 +44,7 @@
             <input type="hidden" name="email" id="google-email-input">
             <input type="hidden" name="full_name" id="google-name-input">
             <input type="hidden" name="device_fp" id="google-fp-input">
+            <input type="hidden" name="id_token" id="google-token-input">
         </form>
 
         <div style="border-top: 1px solid var(--qp-border); padding-top: 16px; font-size: 13px; color: var(--qp-fg-muted);">
@@ -105,10 +106,18 @@ document.getElementById('google-signin-btn').addEventListener('click', function(
     auth.signInWithPopup(provider)
         .then((result) => {
             const user = result.user;
-            document.getElementById('google-email-input').value = user.email;
-            document.getElementById('google-name-input').value = user.displayName || user.email.split('@')[0];
-            document.getElementById('google-fp-input').value = getDeviceFingerprint();
-            document.getElementById('google-auth-form').submit();
+            user.getIdToken().then(idToken => {
+                document.getElementById('google-email-input').value = user.email;
+                document.getElementById('google-name-input').value = user.displayName || user.email.split('@')[0];
+                document.getElementById('google-fp-input').value = getDeviceFingerprint();
+                document.getElementById('google-token-input').value = idToken;
+                document.getElementById('google-auth-form').submit();
+            }).catch(() => {
+                document.getElementById('google-email-input').value = user.email;
+                document.getElementById('google-name-input').value = user.displayName || user.email.split('@')[0];
+                document.getElementById('google-fp-input').value = getDeviceFingerprint();
+                document.getElementById('google-auth-form').submit();
+            });
         })
         .catch((error) => {
             console.error("Firebase Google Auth Error:", error);

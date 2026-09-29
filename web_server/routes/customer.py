@@ -8,21 +8,24 @@ from web_server.page_counter import get_page_count, get_pdf_info
 
 router = APIRouter()
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "..", "templates"))
-UPLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "static", "uploads"))
+UPLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "private_uploads"))
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# Also ensure legacy static uploads directory exists if referenced anywhere
+LEGACY_STATIC_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "static", "uploads"))
+os.makedirs(LEGACY_STATIC_DIR, exist_ok=True)
 
 def validate_safe_upload_path(file_path: str) -> str:
     """
-    Validates that a client-provided file path resolves strictly inside UPLOAD_DIR.
+    Validates that a client-provided file path resolves strictly inside UPLOAD_DIR or LEGACY_STATIC_DIR.
     Prevents path traversal vulnerabilities.
     """
     if not file_path:
         raise HTTPException(status_code=400, detail="Invalid file path")
     
     clean_path = str(file_path).strip()
-    if ".." in clean_path or "/" in clean_path or "\\" in clean_path:
-        if not clean_path.startswith(UPLOAD_DIR):
-            raise HTTPException(status_code=400, detail="Path traversal forbidden: File path outside upload directory")
+    if ".." in clean_path:
+        raise HTTPException(status_code=400, detail="Path traversal forbidden: Directory traversal sequences disallowed")
 
     if not os.path.isabs(clean_path):
         resolved_path = os.path.abspath(os.path.join(UPLOAD_DIR, os.path.basename(clean_path)))
@@ -30,11 +33,19 @@ def validate_safe_upload_path(file_path: str) -> str:
         resolved_path = os.path.abspath(clean_path)
 
     try:
-        common = os.path.commonpath([resolved_path, UPLOAD_DIR])
-        if common != UPLOAD_DIR:
-            raise HTTPException(status_code=400, detail="Path traversal forbidden: File path outside upload directory")
+        common_private = os.path.commonpath([resolved_path, UPLOAD_DIR])
+        is_in_private = (common_private == UPLOAD_DIR)
     except Exception:
-        raise HTTPException(status_code=400, detail="Invalid path structure")
+        is_in_private = False
+
+    try:
+        common_legacy = os.path.commonpath([resolved_path, LEGACY_STATIC_DIR])
+        is_in_legacy = (common_legacy == LEGACY_STATIC_DIR)
+    except Exception:
+        is_in_legacy = False
+
+    if not is_in_private and not is_in_legacy:
+        raise HTTPException(status_code=400, detail="Path traversal forbidden: File path outside authorized upload directory")
 
     return resolved_path
 
@@ -58,6 +69,21 @@ async def customer_portal(request: Request, shop_id: str):
     )
 
 MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024  # 25 MB
+MAX_RENDERED_SIZE_BYTES = 10 * 1024 * 1024 # 10 MB
+
+@router.get("/api/customer/preview/{safe_basename}")
+async def get_customer_preview(safe_basename: str):
+    """Secure preview endpoint for customer uploaded documents stored in private_uploads."""
+    from fastapi.responses import FileResponse
+    clean_name = os.path.basename(safe_basename)
+    target_path = validate_safe_upload_path(os.path.join(UPLOAD_DIR, clean_name))
+    if not os.path.exists(target_path):
+        # Fallback check legacy static directory
+        target_path = os.path.join(LEGACY_STATIC_DIR, clean_name)
+        if not os.path.exists(target_path):
+            raise HTTPException(status_code=404, detail="Document file not found")
+    
+    return FileResponse(target_path)
 
 @router.post("/api/customer/upload")
 async def upload_document(shop_id: str = Form(...), file: UploadFile = File(...)):
@@ -92,7 +118,8 @@ async def upload_document(shop_id: str = Form(...), file: UploadFile = File(...)
     pdf_info = get_pdf_info(saved_path)
     paper_rates = db.get_shop_paper_rates(shop_id)
 
-    preview_url = f"/static/uploads/{safe_basename}"
+    # 🔒 Private Preview Endpoint (Not raw static folder path)
+    preview_url = f"/api/customer/preview/{safe_basename}"
 
     if pdf_info["is_encrypted"] and not pdf_info["unlocked"]:
         return {
@@ -145,11 +172,16 @@ async def upload_rendered_canvas(
     if not shop:
         return JSONResponse({"error": "Invalid Shop ID"}, status_code=404)
 
+    content = await rendered_file.read()
+    if len(content) > MAX_RENDERED_SIZE_BYTES:
+        return JSONResponse({
+            "error": f"Rendered image too large ({len(content) // (1024*1024)} MB). Maximum allowed size is 10 MB."
+        }, status_code=413)
+
     unique_filename = f"rendered_{uuid.uuid4().hex[:10]}.png"
     saved_path = os.path.join(UPLOAD_DIR, unique_filename)
 
     with open(saved_path, "wb") as f:
-        content = await rendered_file.read()
         f.write(content)
 
     return {
@@ -174,18 +206,29 @@ async def submit_print_job(
 ):
     safe_file_path = validate_safe_upload_path(file_path)
 
+    # 🔒 Enforce reasonable copies limits (1 - 100 copies)
+    if copies < 1 or copies > 100:
+        raise HTTPException(status_code=400, detail="Invalid copies requested. Copies must be between 1 and 100.")
+
+    # 🔒 Authoritative Page Count Verification from uploaded file
+    authoritative_page_count = max(1, page_count)
+    if os.path.exists(safe_file_path) and safe_file_path.lower().endswith(".pdf"):
+        try:
+            pdf_info = get_pdf_info(safe_file_path)
+            if pdf_info.get("page_count", 0) > 0:
+                authoritative_page_count = pdf_info["page_count"]
+        except Exception:
+            pass
+
     # Authoritative Server-Side Price Calculation (Do not trust client side total_cost)
     server_calculated_cost = db.calculate_print_cost(
         shop_id=shop_id,
         paper_size=paper_size,
-        page_count=page_count,
+        page_count=authoritative_page_count,
         copies=copies,
         color_mode=color_mode,
         duplex=duplex
     )
-
-    if server_calculated_cost <= 0.0 and total_cost > 0.0:
-        server_calculated_cost = total_cost
 
     initial_status = "PENDING_CASH" if payment_method == "cash" else "PAYMENT_PENDING"
     payment_status = "pending"

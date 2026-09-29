@@ -188,19 +188,29 @@ async def get_download_url(request: Request, jobId: str = None, payload: dict = 
 
 @router.get("/api/agent/download-file/{job_id}")
 async def download_file(job_id: str, x_device_id: str = Header(None), x_device_token: str = Header(None)):
-    if x_device_id and x_device_token:
-        device = validate_agent_auth(x_device_id, x_device_token)
+    # 🔒 Mandatory Device Authentication
+    device = validate_agent_auth(x_device_id, x_device_token)
     
     job = db.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job record not found")
+
+    # 🔒 Mandatory Shop Ownership Authorization
+    if job.get("shop_id") != device.get("shop_id"):
+        raise HTTPException(status_code=403, detail="Unauthorized: Job does not belong to your print shop")
     
     file_path = job.get("file_path", "")
     if not file_path or not os.path.exists(file_path):
         filename = os.path.basename(file_path)
-        alt_path = os.path.join(os.path.dirname(__file__), "..", "static", "uploads", filename)
-        if os.path.exists(alt_path):
-            file_path = alt_path
+        # Check private_uploads directory
+        alt_private = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "private_uploads", filename))
+        if os.path.exists(alt_private):
+            file_path = alt_private
+        else:
+            # Fallback to legacy static uploads directory
+            alt_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "static", "uploads", filename))
+            if os.path.exists(alt_path):
+                file_path = alt_path
 
     if not file_path or not os.path.exists(file_path):
         print(f"[Download 404] File for job {job_id} not found at {file_path}")

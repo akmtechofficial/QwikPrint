@@ -55,7 +55,7 @@ class PrintEngine:
     #  File Download
     # ──────────────────────────────────────────────────────────
 
-    def download_file(self, download_url: str, job_id: str, original_filename: str) -> str:
+    def download_file(self, download_url: str, job_id: str, original_filename: str, device_id: str = None, device_token: str = None) -> str:
         """Downloads a document file to a local temp path and returns the path."""
         ext = os.path.splitext(original_filename)[1] or ".pdf"
         local_filename = f"job_{job_id[-8:]}_{int(time.time())}{ext}"
@@ -69,7 +69,12 @@ class PrintEngine:
                 return local_path
             raise RuntimeError(f"Invalid download URL or file path: {download_url}")
 
-        res = requests.get(download_url, timeout=30, stream=True)
+        headers = {}
+        if device_id and device_token:
+            headers["X-Device-Id"] = device_id
+            headers["X-Device-Token"] = device_token
+
+        res = requests.get(download_url, headers=headers, timeout=30, stream=True)
         if res.status_code == 200:
             with open(local_path, "wb") as f:
                 for chunk in res.iter_content(chunk_size=8192):

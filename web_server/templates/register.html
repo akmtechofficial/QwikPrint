@@ -44,6 +44,7 @@
             <input type="hidden" name="email" id="google-reg-email-input">
             <input type="hidden" name="full_name" id="google-reg-name-input">
             <input type="hidden" name="device_fp" id="google-reg-fp-input">
+            <input type="hidden" name="id_token" id="google-reg-token-input">
         </form>
 
         <div style="border-top: 1px solid var(--qp-border); padding-top: 16px; font-size: 13px; color: var(--qp-fg-muted);">
@@ -108,10 +109,18 @@ document.getElementById('google-register-btn').addEventListener('click', functio
             const user = result.user;
             const fullName = user.displayName || user.email.split('@')[0];
 
-            document.getElementById('google-reg-email-input').value = user.email;
-            document.getElementById('google-reg-name-input').value = fullName;
-            document.getElementById('google-reg-fp-input').value = getDeviceFingerprint();
-            document.getElementById('google-reg-form').submit();
+            user.getIdToken().then(idToken => {
+                document.getElementById('google-reg-email-input').value = user.email;
+                document.getElementById('google-reg-name-input').value = fullName;
+                document.getElementById('google-reg-fp-input').value = getDeviceFingerprint();
+                document.getElementById('google-reg-token-input').value = idToken;
+                document.getElementById('google-reg-form').submit();
+            }).catch(() => {
+                document.getElementById('google-reg-email-input').value = user.email;
+                document.getElementById('google-reg-name-input').value = fullName;
+                document.getElementById('google-reg-fp-input').value = getDeviceFingerprint();
+                document.getElementById('google-reg-form').submit();
+            });
         })
         .catch((error) => {
             console.error("Firebase Google Registration Error:", error);

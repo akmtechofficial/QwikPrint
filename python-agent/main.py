@@ -68,7 +68,11 @@ class PrintJobRunnable(QRunnable):
 
         # Step D: Download File
         try:
-            local_path = print_engine.download_file(download_url, job_id, filename)
+            local_path = print_engine.download_file(
+                download_url, job_id, filename,
+                device_id=api_client.device_id,
+                device_token=api_client.device_token
+            )
         except Exception as dl_err:
             api_client.update_status(job_id, "DOWNLOAD_FAILED", str(dl_err))
             self.worker.job_processed.emit(self.job, False, f"Download failed: {dl_err}")

@@ -897,7 +897,7 @@ class SupabaseDatabase:
         return round(float(total_cost), 2)
 
     def create_print_job(self, job_data: dict) -> str:
-        job_id = f"job-{uuid.uuid4().hex[:8]}"
+        job_id = f"job-{uuid.uuid4().hex}{uuid.uuid4().hex}"
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
         
         # Save to SQLite

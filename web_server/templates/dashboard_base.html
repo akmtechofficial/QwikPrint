@@ -183,21 +183,8 @@
     // ----------------------------------------------------
     // Session Cookie Auto-Restore & Lock Persistence
     // ----------------------------------------------------
-    (function syncSessionBackup() {
-        function getCookie(name) {
-            const v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
-            return v ? v[2] : null;
-        }
-        let sessCookie = getCookie('qwikprint_session');
-        if (sessCookie) {
-            localStorage.setItem('qp_session_token_backup', sessCookie);
-        } else {
-            let backupToken = localStorage.getItem('qp_session_token_backup');
-            if (backupToken) {
-                document.cookie = "qwikprint_session=" + backupToken + "; path=/; max-age=31536000; samesite=lax";
-                console.log("[QwikPrint Session] Restored persistent session cookie from localStorage backup.");
-            }
-        }
+    (function clearLegacySessionBackup() {
+        try { localStorage.removeItem('qp_session_token_backup'); } catch(e) {}
     })();
 
     // ----------------------------------------------------

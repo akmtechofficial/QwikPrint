@@ -23,7 +23,10 @@ if not SESSION_SECRET:
             break
 
 if not SESSION_SECRET:
-    SESSION_SECRET = "qwikprint_static_persistent_session_secret_key_2026"
+    # Fallback to secrets.token_hex if environment variable is not configured
+    import secrets
+    SESSION_SECRET = os.environ.get("SESSION_SECRET") or secrets.token_hex(32)
+    print("[AUTH WARNING] SESSION_SECRET environment variable not set! Using generated ephemeral secret.")
 
 def hash_password(password: str) -> str:
     """Hashes password using PBKDF2 HMAC SHA-256 with salt."""
@@ -42,8 +45,9 @@ def verify_password(password: str, stored_hash: str) -> bool:
         return False
 
 def create_session_data(user_id: str, shop_id: str, email: str = "") -> str:
-    """Creates an HMAC SHA-256 signed session token with 1-year persistence."""
-    exp = int(time.time()) + (86400 * 365) # 1 year persistence
+    """Creates an HMAC SHA-256 signed session token with configurable persistence (default 7 days)."""
+    session_days = int(os.environ.get("SESSION_EXPIRE_DAYS", 7))
+    exp = int(time.time()) + (86400 * session_days)
     data = {"user_id": user_id, "shop_id": shop_id, "email": email, "exp": exp}
     payload_b64 = base64.urlsafe_b64encode(json.dumps(data).encode('utf-8')).decode('utf-8')
     sig = hmac.new(SESSION_SECRET.encode('utf-8'), payload_b64.encode('utf-8'), hashlib.sha256).hexdigest()

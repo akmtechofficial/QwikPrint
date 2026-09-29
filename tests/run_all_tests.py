@@ -38,10 +38,10 @@ def run_tests():
         
         assert decoded.get("user_id") == user_id
         assert decoded.get("shop_id") == shop_id
-        assert decoded.get("exp") > int(datetime.datetime.now(datetime.timezone.utc).timestamp()) + 800000
-        log_test("AUTH 1: Session Token Creation & 1-Year Expiration", True)
+        assert decoded.get("exp") > int(datetime.datetime.now(datetime.timezone.utc).timestamp()) + 500000
+        log_test("AUTH 1: Session Token Creation & 7-Day Expiration", True)
     except Exception as e:
-        log_test("AUTH 1: Session Token Creation & 1-Year Expiration", False, str(e))
+        log_test("AUTH 1: Session Token Creation & 7-Day Expiration", False, str(e))
 
     # ----------------------------------------------------
     # TEST 2: DATABASE ATOMIC USER & SHOP CREATION
@@ -204,6 +204,43 @@ def run_tests():
         log_test("AUTH 3: Direct Dashboard Redirect for Non-Admin Users", True)
     except Exception as e:
         log_test("AUTH 3: Direct Dashboard Redirect for Non-Admin Users", False, str(e))
+
+    # ----------------------------------------------------
+    # TEST 10: UNAUTHENTICATED AGENT DOWNLOAD REJECTION
+    # ----------------------------------------------------
+    try:
+        from web_server.routes.agent_api import validate_agent_auth
+        unauth_blocked = False
+        try:
+            validate_agent_auth(None, None)
+        except HTTPException as h_err:
+            if h_err.status_code == 401:
+                unauth_blocked = True
+        assert unauth_blocked is True
+        log_test("SECURITY 2: Unauthenticated Agent Download Rejection", True)
+    except Exception as e:
+        log_test("SECURITY 2: Unauthenticated Agent Download Rejection", False, str(e))
+
+    # ----------------------------------------------------
+    # TEST 11: COPIES ABUSE LIMIT VALIDATION
+    # ----------------------------------------------------
+    try:
+        from web_server.routes.customer import submit_print_job
+        copies_blocked = False
+        try:
+            asyncio.run(submit_print_job(
+                shop_id=shop["shop_id"],
+                original_filename="doc.pdf",
+                file_path=os.path.join(os.path.dirname(__file__), "..", "private_uploads", "test.pdf"),
+                copies=9999
+            ))
+        except HTTPException as h_err:
+            if h_err.status_code == 400:
+                copies_blocked = True
+        assert copies_blocked is True
+        log_test("SECURITY 3: Job Copies Abuse Rejection (>100 copies)", True)
+    except Exception as e:
+        log_test("SECURITY 3: Job Copies Abuse Rejection (>100 copies)", False, str(e))
 
     # ----------------------------------------------------
     # FINAL SUMMARY

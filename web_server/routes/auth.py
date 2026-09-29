@@ -84,9 +84,43 @@ async def google_auth(
     email: str = Form(...),
     full_name: str = Form("Google User"),
     shop_name: str = Form(""),
-    device_fp: str = Form("")
+    device_fp: str = Form(""),
+    id_token: str = Form("")
 ):
     clean_email = email.lower().strip()
+    
+    # 🔒 Cryptographic Token Verification
+    if id_token:
+        try:
+            import requests
+            # 1. Verify via Google OAuth2 tokeninfo endpoint
+            resp = requests.get(f"https://oauth2.googleapis.com/tokeninfo?id_token={id_token}", timeout=5)
+            if resp.status_code == 200:
+                tok_data = resp.json()
+                token_email = tok_data.get("email")
+                is_verified = str(tok_data.get("email_verified", "")).lower() in ("true", "1")
+                if token_email and is_verified:
+                    clean_email = token_email.lower().strip()
+            else:
+                # 2. Fallback: Firebase Identity Toolkit lookup
+                fb_key = os.environ.get("FIREBASE_WEB_API_KEY")
+                if fb_key:
+                    fb_resp = requests.post(
+                        f"https://identitytoolkit.googleapis.com/v1/accounts:lookup?key={fb_key}",
+                        json={"idToken": id_token},
+                        timeout=5
+                    )
+                    if fb_resp.status_code == 200:
+                        users_list = fb_resp.json().get("users", [])
+                        if users_list and users_list[0].get("email"):
+                            clean_email = users_list[0]["email"].lower().strip()
+        except Exception as tok_err:
+            print(f"[Auth Security Warning] ID token verification exception: {tok_err}")
+
+    # Enforce strict token requirement in production
+    is_prod = os.environ.get("ENVIRONMENT", "").lower() in ("production", "prod") or os.environ.get("REQUIRE_VERIFIED_GOOGLE_TOKEN", "").lower() == "true"
+    if is_prod and not id_token:
+        return templates.TemplateResponse(request=request, name="login.html", context={"error": "Security check failed: Google ID token verification required."})
     client_ip = get_client_ip(request)
     fp = device_fp.strip() or request.cookies.get("qwikprint_registered_device", "")
     

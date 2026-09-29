@@ -183,6 +183,28 @@ async def create_payflux_order(request: Request, payload: dict = Body(...)):
         "duration_days": duration_days
     }
 
+def verify_payflux_gateway_order(order_id: str) -> dict:
+    """Verifies transaction status directly with PayFlux Payment Gateway server."""
+    if not PAYFLUX_SECRET_KEY or "sk_test_your" in PAYFLUX_SECRET_KEY:
+        # In dev mode without configured secret key, return fallback response
+        return {"status": "PAID", "amount": None}
+    
+    try:
+        headers = {
+            "Authorization": f"Bearer {PAYFLUX_SECRET_KEY}",
+            "Content-Type": "application/json"
+        }
+        resp = requests.get(f"{PAYFLUX_BASE_URL}/api/v1/orders/{order_id}", headers=headers, timeout=8)
+        if resp.status_code == 200:
+            res_json = resp.json()
+            data = res_json.get("data", {})
+            status = data.get("status", "").upper()
+            paid_amount = float(data.get("amount", 0)) if data.get("amount") else None
+            return {"status": status, "amount": paid_amount, "raw": data}
+    except Exception as e:
+        print(f"[PayFlux Gateway Verification Exception] {e}")
+    return {"status": "UNKNOWN", "amount": None}
+
 @router.get("/payment-success", response_class=HTMLResponse)
 async def payment_success_page(request: Request):
     user, shop = get_current_user_and_shop(request)
@@ -190,31 +212,13 @@ async def payment_success_page(request: Request):
         return RedirectResponse(url="/login", status_code=302)
 
     order_id = request.query_params.get("orderId") or request.query_params.get("order_id") or ""
-    plan_id = request.query_params.get("plan_id") or ""
     
-    # Check if order was already processed to enforce GET idempotency
-    if order_id:
-        existing_subs = db.get_subscriptions()
-        already_processed = any(sub.get("transaction_id") == order_id and sub.get("status") == "success" for sub in existing_subs)
-        if not already_processed and plan_id:
-            plan = db.get_plan(plan_id)
-            if plan:
-                duration_days = int(plan["duration_days"])
-                plan_name = plan["name"]
-                amount = float(plan["price"])
-                res = db.update_shop_subscription(shop["shop_id"], duration_days, plan_name)
-                db.create_subscription_record({
-                    "shop_id": shop["shop_id"],
-                    "plan_id": plan_id,
-                    "plan_name": plan_name,
-                    "amount": amount,
-                    "payment_gateway": "payflux_checkout",
-                    "transaction_id": order_id,
-                    "status": "success",
-                    "expires_at": res.get("plan_expires_at")
-                })
-
+    # 🔒 UI-ONLY Success Page (Golden Rule: Frontend redirect MUST NOT grant subscription authority)
     sub_state = db.get_subscription_state(shop["shop_id"])
+    msg = "Payment request received. Your subscription will activate once confirmed by the payment gateway."
+    if sub_state["is_valid"]:
+        msg = "Payment successful! Your subscription is currently active."
+
     resp = templates.TemplateResponse(
         request=request,
         name="subscription.html",
@@ -225,7 +229,7 @@ async def payment_success_page(request: Request):
             "reason": sub_state["reason"],
             "sub_state": sub_state,
             "plans": db.get_plans(),
-            "payment_success_msg": "Payment successful! Your subscription is now active."
+            "payment_success_msg": msg
         }
     )
     resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
@@ -261,15 +265,27 @@ async def confirm_payflux_order(request: Request, payload: dict = Body(...)):
 
     plan_name = plan["name"]
     duration_days = int(plan["duration_days"])
-    amount = float(plan["price"])
-    payment_method = payload.get("payment_method", "payflux_gateway")
+    expected_amount = float(plan["price"])
 
+    # 3. Gateway Server-Side Status & Amount Verification
+    gateway_info = verify_payflux_gateway_order(order_id)
+    gw_status = gateway_info.get("status")
+    gw_amount = gateway_info.get("amount")
+
+    # Enforce strict gateway status check if key is configured
+    if PAYFLUX_SECRET_KEY and "sk_test_your" not in PAYFLUX_SECRET_KEY:
+        if gw_status not in ("PAID", "SUCCESS", "COMPLETED"):
+            raise HTTPException(status_code=400, detail=f"Payment verification failed: Gateway order status is '{gw_status}'")
+        if gw_amount is not None and gw_amount < expected_amount:
+            raise HTTPException(status_code=400, detail=f"Payment amount mismatch: expected ₹{expected_amount}, received ₹{gw_amount}")
+
+    payment_method = payload.get("payment_method", "payflux_gateway")
     result = db.update_shop_subscription(shop_id, duration_days, plan_name)
     db.create_subscription_record({
         "shop_id": shop_id,
         "plan_id": plan_id,
         "plan_name": plan_name,
-        "amount": amount,
+        "amount": expected_amount,
         "payment_gateway": payment_method,
         "transaction_id": order_id,
         "status": "success",
@@ -281,3 +297,42 @@ async def confirm_payflux_order(request: Request, payload: dict = Body(...)):
         "message": f"Successfully subscribed to {plan_name} for {duration_days} days!",
         "expires_at": result.get("plan_expires_at")
     }
+
+@router.post("/api/payments/webhook")
+async def payflux_webhook(request: Request, payload: dict = Body(...)):
+    """Server-to-Server Webhook callback from PayFlux Gateway."""
+    order_id = payload.get("order_id") or payload.get("orderId") or payload.get("id")
+    event_type = payload.get("event") or payload.get("type", "")
+    status = payload.get("status", "").upper()
+    plan_id = payload.get("plan_id")
+    shop_id = payload.get("shop_id")
+
+    if not order_id:
+        raise HTTPException(status_code=400, detail="Missing order_id")
+
+    if status in ("PAID", "SUCCESS", "COMPLETED") or "paid" in event_type.lower():
+        existing_subs = db.get_subscriptions()
+        already_processed = any(sub.get("transaction_id") == order_id and sub.get("status") == "success" for sub in existing_subs)
+        if already_processed:
+            return {"success": True, "message": "Already processed"}
+
+        if shop_id and plan_id:
+            plan = db.get_plan(plan_id)
+            if plan:
+                duration_days = int(plan["duration_days"])
+                plan_name = plan["name"]
+                amount = float(plan["price"])
+                res = db.update_shop_subscription(shop_id, duration_days, plan_name)
+                db.create_subscription_record({
+                    "shop_id": shop_id,
+                    "plan_id": plan_id,
+                    "plan_name": plan_name,
+                    "amount": amount,
+                    "payment_gateway": "payflux_webhook",
+                    "transaction_id": order_id,
+                    "status": "success",
+                    "expires_at": res.get("plan_expires_at")
+                })
+                return {"success": True, "message": "Subscription activated via webhook"}
+
+    return {"success": True, "message": "Webhook received"}

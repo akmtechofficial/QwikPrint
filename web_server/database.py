@@ -38,21 +38,23 @@ class SupabaseDatabase:
 
     def get_connection(self):
         """
-        Retrieves a database connection. Tries PostgreSQL (Supabase) if configured and reachable.
-        Caches failure states to avoid 10-second query delays and falls back smoothly to SQLite.
+        Retrieves a database connection. Tries PostgreSQL (Supabase) if configured.
+        In Production mode, PostgreSQL is authoritative and fail-closed if unreachable.
+        In Development mode, falls back smoothly to SQLite.
         """
         now = time.time()
+        is_prod = os.getenv("ENVIRONMENT", "").lower() in ("production", "prod")
         
-        # Retry PostgreSQL every 120 seconds if previously failed
+        # Retry PostgreSQL every 120 seconds if previously failed (in dev)
         if HAS_POSTGRES and (self.db_url or self.password or self.host):
-            if not self.pg_failed or (now - self.last_pg_check > 120):
+            if not self.pg_failed or (now - self.last_pg_check > 120) or is_prod:
                 self.last_pg_check = now
                 try:
                     if self.db_url:
                         db_url = self.db_url
                         if "sslmode=" not in db_url:
                             db_url += ("&" if "?" in db_url else "?") + "sslmode=require"
-                        conn = psycopg2.connect(db_url, connect_timeout=3)
+                        conn = psycopg2.connect(db_url, connect_timeout=5)
                     else:
                         conn = psycopg2.connect(
                             host=self.host,
@@ -61,16 +63,22 @@ class SupabaseDatabase:
                             user=self.user,
                             password=self.password,
                             sslmode='require',
-                            connect_timeout=3
+                            connect_timeout=5
                         )
                     self.use_postgres = True
                     self.pg_failed = False
                     return conn, True
                 except Exception as e:
+                    if is_prod:
+                        print(f"[Database Critical] PostgreSQL primary DB unavailable in PRODUCTION mode: {e}")
+                        raise RuntimeError(f"Database Failure: Primary PostgreSQL database unreachable in production mode ({e}). Fail closed.")
                     if not self.pg_failed:
                         print(f"[Database Warning] Could not connect to PostgreSQL: {e}. Active mode: Local SQLite database.")
                     self.pg_failed = True
                     self.use_postgres = False
+
+        if is_prod and not self.allow_sqlite_dev:
+            raise RuntimeError("Database Failure: PostgreSQL DATABASE_URL required in production mode.")
 
         conn = sqlite3.connect(SQLITE_DB_PATH)
         conn.row_factory = sqlite3.Row

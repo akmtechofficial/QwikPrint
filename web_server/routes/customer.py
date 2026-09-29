@@ -17,7 +17,7 @@ os.makedirs(LEGACY_STATIC_DIR, exist_ok=True)
 
 def validate_safe_upload_path(file_path: str) -> str:
     """
-    Validates that a client-provided file path resolves strictly inside UPLOAD_DIR or LEGACY_STATIC_DIR.
+    Validates that a client-provided file path resolves strictly inside UPLOAD_DIR (private_uploads).
     Prevents path traversal vulnerabilities.
     """
     if not file_path:
@@ -38,14 +38,8 @@ def validate_safe_upload_path(file_path: str) -> str:
     except Exception:
         is_in_private = False
 
-    try:
-        common_legacy = os.path.commonpath([resolved_path, LEGACY_STATIC_DIR])
-        is_in_legacy = (common_legacy == LEGACY_STATIC_DIR)
-    except Exception:
-        is_in_legacy = False
-
-    if not is_in_private and not is_in_legacy:
-        raise HTTPException(status_code=400, detail="Path traversal forbidden: File path outside authorized upload directory")
+    if not is_in_private:
+        raise HTTPException(status_code=400, detail="Path traversal forbidden: File path outside authorized private upload directory")
 
     return resolved_path
 
@@ -75,6 +69,7 @@ import hmac
 import hashlib
 import base64
 import time
+import re
 from web_server.auth import SESSION_SECRET, get_current_user_and_shop
 
 def generate_preview_token(safe_basename: str, exp_minutes: int = 60) -> str:
@@ -102,24 +97,24 @@ def verify_preview_token(token: str) -> str:
     except Exception:
         return None
 
+# In-memory PDF unlock attempt tracking to prevent brute-forcing
+UNLOCK_ATTEMPTS_LOG = {}  # { safe_path: [timestamp1, timestamp2, ...] }
+UNLOCK_MAX_ATTEMPTS = 5
+UNLOCK_WINDOW_SECONDS = 60
+
 @router.get("/api/customer/preview/{token_or_basename}")
 async def get_customer_preview(token_or_basename: str, token: str = None):
     """Secure preview endpoint requiring a valid signed preview token."""
     from fastapi.responses import FileResponse
-    is_prod = os.environ.get("ENVIRONMENT", "").lower() in ("production", "prod")
-
-    # 1. Attempt token verification
+    
+    # 🔒 Strict Signed Token Verification
     target_basename = verify_preview_token(token or token_or_basename)
     if not target_basename:
-        if is_prod:
-            raise HTTPException(status_code=403, detail="Document preview link expired or invalid signature")
-        target_basename = os.path.basename(token_or_basename)
+        raise HTTPException(status_code=403, detail="Document preview link expired or invalid signature")
 
     target_path = validate_safe_upload_path(os.path.join(UPLOAD_DIR, target_basename))
     if not os.path.exists(target_path):
-        target_path = os.path.join(LEGACY_STATIC_DIR, target_basename)
-        if not os.path.exists(target_path):
-            raise HTTPException(status_code=404, detail="Document file not found")
+        raise HTTPException(status_code=404, detail="Document file not found")
     
     return FileResponse(target_path)
 
@@ -146,6 +141,14 @@ async def upload_document(shop_id: str = Form(...), file: UploadFile = File(...)
     raw_ext = os.path.splitext(file.filename)[1].lower() or ".pdf"
     allowed_exts = [".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png", ".txt"]
     ext = raw_ext if raw_ext in allowed_exts else ".pdf"
+
+    # 🔒 Magic Bytes & File Signature Validation
+    if ext == ".pdf" and not content.startswith(b"%PDF"):
+        return JSONResponse({"error": "File signature error: Content is not a valid PDF document."}, status_code=400)
+    elif ext in (".jpg", ".jpeg") and not (content.startswith(b"\xff\xd8\xff")):
+        return JSONResponse({"error": "File signature error: Content is not a valid JPEG image."}, status_code=400)
+    elif ext == ".png" and not content.startswith(b"\x89PNG\r\n\x1a\n"):
+        return JSONResponse({"error": "File signature error: Content is not a valid PNG image."}, status_code=400)
 
     safe_basename = f"upload_{uuid.uuid4().hex[:10]}{ext}"
     saved_path = os.path.join(UPLOAD_DIR, safe_basename)
@@ -191,6 +194,17 @@ async def unlock_pdf(saved_path: str = Form(...), password: str = Form(...)):
     safe_path = validate_safe_upload_path(saved_path)
     if not os.path.exists(safe_path):
         return JSONResponse({"error": "Uploaded file not found"}, status_code=404)
+
+    # 🔒 Rate Limiting PDF Password Unlock Attempts (5 attempts/min/document)
+    now = time.time()
+    attempts = UNLOCK_ATTEMPTS_LOG.get(safe_path, [])
+    attempts = [t for t in attempts if now - t < UNLOCK_WINDOW_SECONDS]
+    UNLOCK_ATTEMPTS_LOG[safe_path] = attempts
+
+    if len(attempts) >= UNLOCK_MAX_ATTEMPTS:
+        return JSONResponse({"error": "Too many failed password attempts. Document temporarily locked for 1 minute."}, status_code=429)
+
+    attempts.append(now)
 
     pdf_info = get_pdf_info(safe_path, password=password)
 
@@ -281,6 +295,26 @@ async def submit_print_job(
                 authoritative_page_count = pdf_info["page_count"]
         except Exception:
             pass
+
+    # 🔒 5. Page Range Validation
+    clean_page_range = (page_range or "all").strip()
+    if clean_page_range.lower() != "all":
+        if not re.match(r"^[\d\s,\-]+$", clean_page_range):
+            raise HTTPException(status_code=400, detail="Invalid page range format. Allowed: 'all' or comma-separated numbers/ranges like '1-5,7'.")
+        try:
+            for part in clean_page_range.split(","):
+                part = part.strip()
+                if not part:
+                    continue
+                if "-" in part:
+                    sp, ep = part.split("-", 1)
+                    if not sp.isdigit() or not ep.isdigit() or int(sp) < 1 or int(ep) > authoritative_page_count or int(sp) > int(ep):
+                        raise HTTPException(status_code=400, detail=f"Page range '{part}' is invalid or exceeds document page count ({authoritative_page_count}).")
+                elif part.isdigit():
+                    if int(part) < 1 or int(part) > authoritative_page_count:
+                        raise HTTPException(status_code=400, detail=f"Page number {part} exceeds document page count ({authoritative_page_count}).")
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid page range syntax.")
 
     # Authoritative Server-Side Price Calculation
     server_calculated_cost = db.calculate_print_cost(

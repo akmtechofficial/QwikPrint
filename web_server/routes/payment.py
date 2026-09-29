@@ -1,4 +1,5 @@
 import os
+import json
 import uuid
 import time
 import requests
@@ -321,23 +322,37 @@ async def confirm_payflux_order(request: Request, payload: dict = Body(...)):
     }
 
 @router.post("/api/payments/webhook")
-async def payflux_webhook(request: Request, payload: dict = Body(...)):
-    """Server-to-Server Webhook callback from PayFlux Gateway with Signature Verification."""
-    # 🔒 1. Webhook Signature & Authorization Verification
-    auth_header = request.headers.get("Authorization", "")
-    sig_header = request.headers.get("X-PayFlux-Signature", "")
+async def payflux_webhook(request: Request):
+    """Server-to-Server Webhook callback from PayFlux Gateway with HMAC Signature Verification."""
+    raw_body = await request.body()
+    try:
+        payload = json.loads(raw_body.decode('utf-8')) if raw_body else {}
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body in webhook payload")
+
+    # 🔒 1. Cryptographic HMAC Webhook Signature Verification
+    sig_header = (request.headers.get("X-PayFlux-Signature") or request.headers.get("X-Signature") or request.headers.get("Signature") or "").strip()
+    if sig_header.lower().startswith("sha256="):
+        sig_header = sig_header[7:].strip()
+
     is_prod = os.getenv("ENVIRONMENT", "").lower() in ("production", "prod")
 
-    if PAYFLUX_SECRET_KEY and "sk_test_your" not in PAYFLUX_SECRET_KEY:
-        expected_auth = f"Bearer {PAYFLUX_SECRET_KEY}"
-        if auth_header != expected_auth and sig_header != PAYFLUX_SECRET_KEY:
-            raise HTTPException(status_code=401, detail="Unauthorized webhook: Invalid signature")
+    secret_key = os.getenv("PAYFLUX_SECRET_KEY") or os.getenv("PAYFLUX_API_KEY") or PAYFLUX_SECRET_KEY
+
+    if secret_key and "sk_test_your" not in secret_key:
+        import hmac, hashlib
+        expected_sig = hmac.new(secret_key.encode('utf-8'), raw_body, hashlib.sha256).hexdigest()
+        
+        is_sig_valid = hmac.compare_digest(sig_header.lower(), expected_sig.lower()) if sig_header else False
+
+        if not is_sig_valid:
+            raise HTTPException(status_code=401, detail="Unauthorized webhook: Cryptographic HMAC signature verification failed")
     elif is_prod:
-        raise HTTPException(status_code=401, detail="Webhook rejected: Unconfigured payment secret key in production")
+        raise HTTPException(status_code=401, detail="Webhook rejected: Payment secret key unconfigured in production mode")
 
     # 🔒 2. Payload Validation & Order Matching
     order_id = payload.get("order_id") or payload.get("orderId") or payload.get("id")
-    event_type = payload.get("event") or payload.get("type", "")
+    event_type = payload.get("event") or payload.get("type") or ""
     status = payload.get("status", "").upper()
 
     if not order_id:
@@ -350,9 +365,22 @@ async def payflux_webhook(request: Request, payload: dict = Body(...)):
 
     shop_id = db_order["shop_id"]
     plan_id = db_order["plan_id"]
-    expected_amount = db_order["amount"]
+    expected_amount = float(db_order["amount"])
 
-    if status in ("PAID", "SUCCESS", "COMPLETED") or "paid" in event_type.lower():
+    # 🔒 3. Independent Server-to-Server Gateway Re-Verification
+    gateway_info = verify_payflux_gateway_order(order_id)
+    gw_status = gateway_info.get("status")
+    gw_amount = gateway_info.get("amount")
+
+    if PAYFLUX_SECRET_KEY and "sk_test_your" not in PAYFLUX_SECRET_KEY:
+        if gw_status not in ("PAID", "SUCCESS", "COMPLETED"):
+            raise HTTPException(status_code=400, detail=f"Webhook verification failed: Gateway order status is '{gw_status}'")
+        if gw_amount is not None and abs(gw_amount - expected_amount) > 0.01:
+            raise HTTPException(status_code=400, detail=f"Webhook amount mismatch: expected ₹{expected_amount:.2f}, received ₹{gw_amount:.2f}")
+
+    # Explicit event allowlist check
+    allowed_events = ("order.paid", "payment.success", "payment.completed", "")
+    if status in ("PAID", "SUCCESS", "COMPLETED") and event_type.lower() in allowed_events:
         existing_subs = db.get_subscriptions()
         already_processed = any(sub.get("transaction_id") == order_id and sub.get("status") == "success" for sub in existing_subs)
         if already_processed:
@@ -377,3 +405,4 @@ async def payflux_webhook(request: Request, payload: dict = Body(...)):
             return {"success": True, "message": "Subscription activated via verified webhook"}
 
     return {"success": True, "message": "Webhook processed"}
+

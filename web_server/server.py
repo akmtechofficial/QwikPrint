@@ -112,6 +112,24 @@ async def auto_purge_expired_files_task():
 
 @app.on_event("startup")
 async def startup_event():
+    # Production Mode Startup Requirements Check (P0 Security Guarantee)
+    if os.getenv("ENVIRONMENT", "").lower() in ("production", "prod"):
+        sec = os.getenv("SESSION_SECRET")
+        if not sec or len(sec) < 16 or sec in ("qwikprint_super_secret_session_key_2026", "secret"):
+            raise RuntimeError("P0 Startup Security Error: High-entropy SESSION_SECRET environment variable is required in production mode.")
+        
+        pf_key = os.getenv("PAYFLUX_SECRET_KEY") or os.getenv("PAYFLUX_API_KEY")
+        if not pf_key or "sk_test_your" in pf_key or pf_key == "sk_test_your_merchant_secret_key":
+            raise RuntimeError("P0 Startup Security Error: Valid PAYFLUX_SECRET_KEY environment variable is required in production mode.")
+
+        pwd = os.getenv("SUPERADMIN_PASSWORD")
+        if not pwd or pwd in ("@Qwikprint", "admin", "123456"):
+            raise RuntimeError("P0 Startup Security Error: Strong SUPERADMIN_PASSWORD environment variable is required in production mode.")
+
+        db_url = os.getenv("DATABASE_URL")
+        if not db_url:
+            raise RuntimeError("P0 Startup Security Error: DATABASE_URL environment variable is required in production mode.")
+
     # Start periodic file cleanup task in background
     asyncio.create_task(auto_purge_expired_files_task())
 

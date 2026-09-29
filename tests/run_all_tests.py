@@ -337,6 +337,74 @@ def run_tests():
         log_test("SECURITY 7: Cross-Device Claim Interference Protection", False, str(e))
 
     # ----------------------------------------------------
+    # TEST 16: WEBHOOK HMAC-SHA256 SIGNATURE REJECTION
+    # ----------------------------------------------------
+    try:
+        import hmac, hashlib
+        from starlette.datastructures import Headers
+        from web_server.routes import payment
+        orig_pk = os.environ.get("PAYFLUX_SECRET_KEY", "")
+        os.environ["PAYFLUX_SECRET_KEY"] = "sk_live_test_secret_key_for_unit_tests"
+        
+        class MockWebhookRequest:
+            headers = Headers({"X-PayFlux-Signature": "invalid_forged_signature_123"})
+            async def body(self):
+                import json
+                return json.dumps({"order_id": "ord_fake_123", "status": "PAID"}).encode("utf-8")
+        
+        mock_wh_req = MockWebhookRequest()
+        wh_blocked = False
+        try:
+            asyncio.run(payment.payflux_webhook(mock_wh_req))
+        except HTTPException as h_err:
+            if h_err.status_code == 401:
+                wh_blocked = True
+        finally:
+            if orig_pk:
+                os.environ["PAYFLUX_SECRET_KEY"] = orig_pk
+            else:
+                os.environ.pop("PAYFLUX_SECRET_KEY", None)
+        
+        # Test signature generation
+        raw_b = b'{"order_id": "ord_test_999", "status": "PAID"}'
+        valid_sig = hmac.new(b"sk_live_test_secret_key_for_unit_tests", raw_b, hashlib.sha256).hexdigest()
+        assert len(valid_sig) == 64
+        assert wh_blocked is True, "wh_blocked was False. Request was not rejected with 401."
+        log_test("SECURITY 8: Webhook Cryptographic HMAC Signature Rejection", True)
+    except Exception as e:
+        log_test("SECURITY 8: Webhook Cryptographic HMAC Signature Rejection", False, f"{type(e).__name__}: {e}")
+
+    # ----------------------------------------------------
+    # TEST 17: STRICT PAGE RANGE FORMAT & UPPER BOUND REJECTION
+    # ----------------------------------------------------
+    try:
+        from web_server.routes.customer import submit_print_job
+        invalid_range_blocked = False
+        try:
+            asyncio.run(submit_print_job(
+                shop_id=t_shop_id,
+                original_filename="doc.pdf",
+                file_path="test_sample.pdf",
+                paper_size="A4",
+                page_count=5,
+                copies=1,
+                color_mode="bw",
+                duplex="single",
+                page_range="1-999", # Exceeds 5 pages
+                payment_method="cash",
+                total_cost=0.0
+            ))
+        except HTTPException as h_err:
+            if h_err.status_code == 400 and "exceeds document page count" in str(h_err.detail):
+                invalid_range_blocked = True
+            else:
+                invalid_range_blocked = f"HTTPException({h_err.status_code}, {h_err.detail})"
+        assert invalid_range_blocked is True, f"Blocked status: {invalid_range_blocked}"
+        log_test("SECURITY 9: Strict Page Range Format & Upper Bound Rejection", True)
+    except Exception as e:
+        log_test("SECURITY 9: Strict Page Range Format & Upper Bound Rejection", False, f"{type(e).__name__}: {e}")
+
+    # ----------------------------------------------------
     # FINAL SUMMARY
     # ----------------------------------------------------
     print("\n==================================================")

@@ -138,6 +138,22 @@ class APIClient:
                 self.last_subscription_error = None
                 data = res.json()
                 return data.get("jobs", []), data.get("cashPendingJobs", [])
+            elif res.status_code == 401:
+                # Credentials out of sync (e.g. Shop ID / API Key updated) -> Auto-rekey with API key
+                api_key = config_mgr.get("api_key")
+                if api_key:
+                    ok, msg, info = self.verify_api_key(self.server_url, api_key)
+                    if ok and info.get("deviceId"):
+                        config_mgr.set("device_id", info["deviceId"])
+                        config_mgr.set("device_token", info["deviceToken"])
+                        config_mgr.set("shop_id", info["shopId"])
+                        # Retry fetch queue with fresh headers
+                        res_retry = self._request("GET", url, headers=self.headers, timeout=5)
+                        if res_retry.status_code == 200:
+                            self.last_subscription_error = None
+                            data_retry = res_retry.json()
+                            return data_retry.get("jobs", []), data_retry.get("cashPendingJobs", [])
+                return [], []
             elif res.status_code == 403:
                 try:
                     self.last_subscription_error = res.json().get("detail", "Subscription Locked")

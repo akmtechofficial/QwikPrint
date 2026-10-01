@@ -120,6 +120,7 @@ async def heartbeat(payload: dict = None, x_device_id: str = Header(None), x_dev
 @router.get("/api/agent/queue")
 async def fetch_queue(request: Request, x_device_id: str = Header(None), x_device_token: str = Header(None)):
     device = validate_agent_auth(x_device_id, x_device_token)
+    db.update_device_last_seen(device["device_id"])
     shop_id = device["shop_id"]
     
     queued, pending_cash = db.get_queued_and_pending_jobs(shop_id)

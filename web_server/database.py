@@ -1420,6 +1420,33 @@ class SupabaseDatabase:
 
         return True, "Active", exp_str
 
+    def update_device_last_seen(self, device_id: str):
+        """Updates last_seen_at timestamp for a device in BOTH PostgreSQL (Supabase) and local SQLite."""
+        if not device_id:
+            return
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        
+        # 1. Update PostgreSQL / Supabase
+        conn, is_pg = self.get_connection()
+        if is_pg:
+            try:
+                cursor = conn.cursor()
+                cursor.execute("UPDATE devices SET last_seen_at = %s, status = 'active' WHERE device_id = %s;", (now, device_id))
+                conn.commit()
+                conn.close()
+            except Exception as e:
+                print(f"[Database Warning] PostgreSQL update_device_last_seen failed: {e}")
+
+        # 2. Update SQLite
+        try:
+            s_conn = self.get_sqlite_conn()
+            s_cursor = s_conn.cursor()
+            s_cursor.execute("UPDATE devices SET last_seen_at = ?, status = 'active' WHERE device_id = ?;", (now, device_id))
+            s_conn.commit()
+            s_conn.close()
+        except Exception as e:
+            print(f"[Database Error] SQLite update_device_last_seen failed: {e}")
+
     def get_plan(self, plan_id: str):
         plans = self.get_plans()
         for p in plans:

@@ -44,6 +44,8 @@ def validate_safe_upload_path(file_path: str) -> str:
     return resolved_path
 
 @router.get("/s/{shop_id}", response_class=HTMLResponse)
+@router.get("//s/{shop_id}", response_class=HTMLResponse)
+@router.get("///s/{shop_id}", response_class=HTMLResponse)
 async def customer_portal(request: Request, shop_id: str):
     shop = db.get_shop(shop_id)
     if not shop:

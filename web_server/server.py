@@ -28,6 +28,19 @@ async def add_security_headers(request, call_next):
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
 
+# Double Slash URL Cleaner Middleware
+@app.middleware("http")
+async def clean_double_slash_middleware(request, call_next):
+    path = request.url.path
+    if "//" in path:
+        import re
+        clean_path = re.sub(r"/+", "/", path)
+        query = request.url.query
+        target = f"{clean_path}?{query}" if query else clean_path
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url=target, status_code=307)
+    return await call_next(request)
+
 # Simple In-Memory IP Rate Limiter
 IP_REQUEST_LOG = {}
 RATE_LIMIT_MAX_REQUESTS = 120  # per minute

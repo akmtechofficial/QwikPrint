@@ -32,22 +32,29 @@ def get_canonical_base_url(request: Request) -> str:
     """
     Returns a stable, canonical base URL for the shop QR code, portal links, and printable poster.
     Defaults to production domain 'https://qwikprint.onrender.com' unless explicitly running in local dev mode.
+    Guarantees no trailing slashes.
     """
+    base_url = ""
     for env_var in ("PUBLIC_URL", "APP_URL", "CANONICAL_URL", "SERVER_URL"):
         val = os.getenv(env_var)
         if val and val.strip() and "localhost" not in val and "127.0.0.1" not in val:
-            return val.strip().rstrip("/")
+            base_url = val.strip()
+            break
     
-    forwarded_host = request.headers.get("x-forwarded-host") or request.headers.get("host")
-    forwarded_proto = request.headers.get("x-forwarded-proto") or request.url.scheme
-    if forwarded_host and "localhost" not in forwarded_host and "127.0.0.1" not in forwarded_host:
-        return f"{forwarded_proto}://{forwarded_host}".rstrip("/")
+    if not base_url:
+        forwarded_host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+        forwarded_proto = request.headers.get("x-forwarded-proto") or request.url.scheme
+        if forwarded_host and "localhost" not in forwarded_host and "127.0.0.1" not in forwarded_host:
+            base_url = f"{forwarded_proto}://{forwarded_host}"
 
-    is_dev = os.getenv("ENVIRONMENT", "").lower() in ("development", "dev") or os.getenv("QWIKPRINT_ENV", "").lower() in ("development", "dev")
-    if is_dev:
-        return str(request.base_url).rstrip("/")
+    if not base_url:
+        is_dev = os.getenv("ENVIRONMENT", "").lower() in ("development", "dev") or os.getenv("QWIKPRINT_ENV", "").lower() in ("development", "dev")
+        if is_dev:
+            base_url = str(request.base_url)
+        else:
+            base_url = "https://qwikprint.onrender.com"
 
-    return "https://qwikprint.onrender.com"
+    return base_url.strip().rstrip("/")
 
 def get_dashboard_context(request: Request, active_tab: str):
     user, shop = get_current_user_and_shop(request)
@@ -61,8 +68,9 @@ def get_dashboard_context(request: Request, active_tab: str):
     total_jobs = len(jobs)
     total_pages = sum(j["page_count"] * j["copies"] for j in jobs)
 
-    base_url = get_canonical_base_url(request)
-    customer_url = f"{base_url}/s/{shop['shop_id']}"
+    base_url = get_canonical_base_url(request).rstrip("/")
+    clean_shop_id = str(shop['shop_id']).strip().lstrip("/")
+    customer_url = f"{base_url}/s/{clean_shop_id}"
     qr_base64 = generate_shop_qr_base64(customer_url)
 
     api_key = shop.get("api_key") or f"QWIK_KEY_{shop['shop_id']}_8F2A1C"
@@ -143,8 +151,9 @@ async def download_shop_poster_pdf(request: Request):
     if not user or not shop:
         return RedirectResponse(url="/login", status_code=302)
 
-    base_url = get_canonical_base_url(request)
-    customer_url = f"{base_url}/s/{shop['shop_id']}"
+    base_url = get_canonical_base_url(request).rstrip("/")
+    clean_shop_id = str(shop['shop_id']).strip().lstrip("/")
+    customer_url = f"{base_url}/s/{clean_shop_id}"
 
     from web_server.pdf_poster_generator import create_shop_poster_pdf
     pdf_bytes = create_shop_poster_pdf(shop, customer_url)

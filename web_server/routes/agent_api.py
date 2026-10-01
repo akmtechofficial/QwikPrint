@@ -136,11 +136,27 @@ async def fetch_queue(request: Request, x_device_id: str = Header(None), x_devic
     for q in queued:
         formatted_queued.append({
             "jobId": q["job_id"],
+            "id": q["job_id"],
             "shopId": q["shop_id"],
             "status": q["status"],
-            "file": {"originalName": q["original_filename"], "pageCount": q["page_count"]},
-            "printOptions": {"copies": q["copies"], "colorMode": q["color_mode"], "duplex": q["duplex"], "pageRange": q["page_range"], "paperSize": q.get("paper_size", "A4")},
-            "pricing": {"totalCost": q["total_cost"]},
+            "file": {
+                "originalName": q["original_filename"],
+                "name": q["original_filename"],
+                "pageCount": q["page_count"],
+                "pages": q["page_count"],
+                "sizeBytes": q.get("file_size", 0)
+            },
+            "printOptions": {
+                "copies": q["copies"],
+                "colorMode": q["color_mode"],
+                "duplex": q["duplex"],
+                "pageRange": q["page_range"],
+                "paperSize": q.get("paper_size", "A4")
+            },
+            "pricing": {
+                "totalCost": q["total_cost"],
+                "total": q["total_cost"]
+            },
             "createdAt": q["created_at"]
         })
 
@@ -148,16 +164,33 @@ async def fetch_queue(request: Request, x_device_id: str = Header(None), x_devic
     for c in pending_cash:
         formatted_cash.append({
             "jobId": c["job_id"],
+            "id": c["job_id"],
             "shopId": c["shop_id"],
             "status": c["status"],
-            "file": {"originalName": c["original_filename"], "pageCount": c["page_count"]},
-            "printOptions": {"copies": c["copies"], "colorMode": c["color_mode"], "duplex": c["duplex"], "pageRange": c["page_range"], "paperSize": c.get("paper_size", "A4")},
-            "pricing": {"totalCost": c["total_cost"]},
+            "file": {
+                "originalName": c["original_filename"],
+                "name": c["original_filename"],
+                "pageCount": c["page_count"],
+                "pages": c["page_count"],
+                "sizeBytes": c.get("file_size", 0)
+            },
+            "printOptions": {
+                "copies": c["copies"],
+                "colorMode": c["color_mode"],
+                "duplex": c["duplex"],
+                "pageRange": c["page_range"],
+                "paperSize": c.get("paper_size", "A4")
+            },
+            "pricing": {
+                "totalCost": c["total_cost"],
+                "total": c["total_cost"]
+            },
             "createdAt": c["created_at"]
         })
 
     return {
         "success": True,
+        "data": formatted_queued,
         "jobs": formatted_queued,
         "cashPendingJobs": formatted_cash
     }
@@ -165,7 +198,7 @@ async def fetch_queue(request: Request, x_device_id: str = Header(None), x_devic
 @router.post("/api/agent/claim-job")
 async def claim_job(payload: dict, x_device_id: str = Header(None), x_device_token: str = Header(None)):
     device = validate_agent_auth(x_device_id, x_device_token)
-    job_id = payload.get("jobId")
+    job_id = payload.get("jobId") or payload.get("id")
     if not job_id:
         raise HTTPException(status_code=400, detail="jobId required")
 
@@ -177,7 +210,7 @@ async def claim_job(payload: dict, x_device_id: str = Header(None), x_device_tok
     if not success:
         return JSONResponse({"error": "Job already claimed or not queued"}, status_code=409)
 
-    return {"success": True, "job": claimed_job}
+    return {"success": True, "job": claimed_job, "data": claimed_job}
 
 @router.get("/api/agent/download-url")
 @router.post("/api/agent/download-url")
@@ -191,7 +224,7 @@ async def get_download_url(
     device_token: str = None
 ):
     device = validate_agent_auth(x_device_id=x_device_id, x_device_token=x_device_token, device_id=device_id, device_token=device_token)
-    j_id = jobId or (payload.get("jobId") if payload else None)
+    j_id = jobId or (payload.get("jobId") if payload else None) or (payload.get("id") if payload else None)
     if not j_id:
         raise HTTPException(status_code=400, detail="jobId required")
     
@@ -205,11 +238,19 @@ async def get_download_url(
         filename = os.path.basename(file_path)
         r2_presigned_url = r2_storage.get_presigned_url(filename)
         if r2_presigned_url:
-            return {"success": True, "downloadUrl": r2_presigned_url}
+            return {
+                "success": True,
+                "data": {"downloadUrl": r2_presigned_url},
+                "downloadUrl": r2_presigned_url
+            }
 
     base_url = str(request.base_url).rstrip("/")
     file_download_url = f"{base_url}/api/agent/download-file/{j_id}?device_id={device['device_id']}&device_token={device['secret_token']}"
-    return {"success": True, "downloadUrl": file_download_url}
+    return {
+        "success": True,
+        "data": {"downloadUrl": file_download_url},
+        "downloadUrl": file_download_url
+    }
 
 @router.get("/api/agent/download-file/{job_id}")
 async def download_file(

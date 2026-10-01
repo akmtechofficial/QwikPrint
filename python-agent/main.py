@@ -275,7 +275,15 @@ def main():
         dlg.show()
         dlg.raise_()
         dlg.activateWindow()
-        dlg.exec()
+        if dlg.exec():
+            j_id = cash_job.get("jobId")
+            print(f"[Cash Approval] Cash approved for job #{j_id[-6:] if j_id else ''}. Triggering immediate print execution!")
+            if j_id and j_id not in worker.active_print_jobs:
+                worker.active_print_jobs.add(j_id)
+                cash_job["status"] = "QUEUED"
+                runnable = PrintJobRunnable(cash_job, worker)
+                worker.thread_pool.start(runnable)
+            worker.force_heartbeat()
 
     def handle_job_processed(job, success, msg):
         pages = job.get("file", {}).get("pageCount", 1) * job.get("printOptions", {}).get("copies", 1)

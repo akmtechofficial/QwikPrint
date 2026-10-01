@@ -2,6 +2,7 @@ import os
 from fastapi import APIRouter, Request, Header, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 from web_server.database import db
+from web_server.r2_storage import r2_storage
 
 router = APIRouter()
 
@@ -182,6 +183,14 @@ async def get_download_url(request: Request, jobId: str = None, payload: dict = 
     if not job or job.get("shop_id") != device["shop_id"]:
         raise HTTPException(status_code=403, detail="Job does not belong to your device shop")
 
+    # If Cloudflare R2 is enabled, generate a presigned download URL directly
+    if r2_storage.is_enabled:
+        file_path = job.get("file_path", "")
+        filename = os.path.basename(file_path)
+        r2_presigned_url = r2_storage.get_presigned_url(filename)
+        if r2_presigned_url:
+            return {"success": True, "downloadUrl": r2_presigned_url}
+
     base_url = str(request.base_url).rstrip("/")
     file_download_url = f"{base_url}/api/agent/download-file/{j_id}"
     return {"success": True, "downloadUrl": file_download_url}
@@ -211,6 +220,11 @@ async def download_file(job_id: str, x_device_id: str = Header(None), x_device_t
             alt_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "static", "uploads", filename))
             if os.path.exists(alt_path):
                 file_path = alt_path
+            elif r2_storage.is_enabled:
+                # On-demand restoration from Cloudflare R2 if local server disk was wiped (e.g. Render restart)
+                r2_target = alt_private
+                if r2_storage.download_file(filename, r2_target):
+                    file_path = r2_target
 
     if not file_path or not os.path.exists(file_path):
         print(f"[Download 404] File for job {job_id} not found at {file_path}")

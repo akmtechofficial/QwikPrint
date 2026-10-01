@@ -5,6 +5,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from web_server.database import db
 from web_server.page_counter import get_page_count, get_pdf_info
+from web_server.r2_storage import r2_storage
 
 router = APIRouter()
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "..", "templates"))
@@ -158,6 +159,10 @@ async def upload_document(shop_id: str = Form(...), file: UploadFile = File(...)
     with open(saved_path, "wb") as f:
         f.write(content)
 
+    # ☁️ Upload to Cloudflare R2 Storage
+    if r2_storage.is_enabled:
+        r2_storage.upload_file(saved_path, safe_basename)
+
     pdf_info = get_pdf_info(saved_path)
     paper_rates = db.get_shop_paper_rates(shop_id)
 
@@ -247,6 +252,10 @@ async def upload_rendered_canvas(
 
     with open(saved_path, "wb") as f:
         f.write(content)
+
+    # ☁️ Upload to Cloudflare R2 Storage
+    if r2_storage.is_enabled:
+        r2_storage.upload_file(saved_path, unique_filename)
 
     tok = generate_preview_token(unique_filename)
     return {

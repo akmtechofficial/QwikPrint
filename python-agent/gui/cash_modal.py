@@ -202,7 +202,7 @@ class CashApprovalDialog(QDialog):
 
     def open_download_view(self):
         from config_manager import config_mgr
-        server_url = config_mgr.get("server_url", "http://localhost:8000")
+        server_url = config_mgr.get("server_url", "https://qwikprint.onrender.com").rstrip("/")
         url = f"{server_url}/api/agent/download-file/{self.job_id}"
         QDesktopServices.openUrl(QUrl(url))
 

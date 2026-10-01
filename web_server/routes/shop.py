@@ -30,11 +30,10 @@ async def home_page(request: Request):
 
 def get_canonical_base_url(request: Request) -> str:
     """
-    Returns a stable, canonical base URL for the shop QR code and portal link.
-    Prefers explicit PUBLIC_URL/APP_URL/CANONICAL_URL env vars or production forwarded headers
-    over transient local request host headers.
+    Returns a stable, canonical base URL for the shop QR code, portal links, and printable poster.
+    Defaults to production domain 'https://qwikprint.onrender.com' unless explicitly running in local dev mode.
     """
-    for env_var in ("PUBLIC_URL", "APP_URL", "CANONICAL_URL"):
+    for env_var in ("PUBLIC_URL", "APP_URL", "CANONICAL_URL", "SERVER_URL"):
         val = os.getenv(env_var)
         if val and val.strip() and "localhost" not in val and "127.0.0.1" not in val:
             return val.strip().rstrip("/")
@@ -44,11 +43,11 @@ def get_canonical_base_url(request: Request) -> str:
     if forwarded_host and "localhost" not in forwarded_host and "127.0.0.1" not in forwarded_host:
         return f"{forwarded_proto}://{forwarded_host}".rstrip("/")
 
-    server_url = os.getenv("SERVER_URL")
-    if server_url and server_url.strip() and "localhost" not in server_url and "127.0.0.1" not in server_url:
-        return server_url.strip().rstrip("/")
+    is_dev = os.getenv("ENVIRONMENT", "").lower() in ("development", "dev") or os.getenv("QWIKPRINT_ENV", "").lower() in ("development", "dev")
+    if is_dev:
+        return str(request.base_url).rstrip("/")
 
-    return str(request.base_url).rstrip("/")
+    return "https://qwikprint.onrender.com"
 
 def get_dashboard_context(request: Request, active_tab: str):
     user, shop = get_current_user_and_shop(request)

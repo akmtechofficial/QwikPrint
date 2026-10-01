@@ -42,7 +42,7 @@ class SetupDialog(QDialog):
 
         # Server URL
         f_layout.addWidget(QLabel("Server Endpoint URL:"))
-        self.url_input = QLineEdit(config_mgr.get("server_url", "http://localhost:8000"))
+        self.url_input = QLineEdit(config_mgr.get("server_url", "https://qwikprint.onrender.com"))
         f_layout.addWidget(self.url_input)
 
         # 1-Click Secret API Key (Pasted from Dashboard)

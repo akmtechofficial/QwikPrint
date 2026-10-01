@@ -29,7 +29,7 @@ class APIClient:
 
     @property
     def server_url(self) -> str:
-        return config_mgr.get("server_url", "http://localhost:8000").rstrip("/")
+        return config_mgr.get("server_url", "https://qwikprint.onrender.com").rstrip("/")
 
     @property
     def headers(self) -> dict:

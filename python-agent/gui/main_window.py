@@ -478,7 +478,7 @@ class MainWindow(QMainWindow):
 
     def open_web_panel(self):
         import webbrowser
-        server_url = config_mgr.get("server_url", "http://localhost:8000").rstrip("/")
+        server_url = config_mgr.get("server_url", "https://qwikprint.onrender.com").rstrip("/")
         if api_client.last_subscription_error:
             webbrowser.open(f"{server_url}/subscription")
         else:

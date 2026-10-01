@@ -93,7 +93,7 @@ def notify_new_user_registration(user_info: dict, shop_info: dict, client_ip: st
                 </ul>
             </div>
             <div style="text-align: center; margin: 25px 0;">
-                <a href="http://localhost:8000/dashboard" style="background: linear-gradient(135deg, #0284c7, #2563eb); color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">
+                <a href="{os.getenv('PUBLIC_URL') or os.getenv('SERVER_URL') or 'https://qwikprint.onrender.com'}/dashboard" style="background: linear-gradient(135deg, #0284c7, #2563eb); color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">
                     Open Shopkeeper Dashboard 📊
                 </a>
             </div>

@@ -7,7 +7,7 @@ CONFIG_DIR = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "P
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
 
 DEFAULT_CONFIG = {
-    "server_url": "http://localhost:8000",
+    "server_url": "https://qwikprint.onrender.com",
     "api_key": "",
     "shop_id": "",
     "shop_name": "",
@@ -36,6 +36,15 @@ class ConfigManager:
                 data = json.load(f)
                 merged = DEFAULT_CONFIG.copy()
                 merged.update(data)
+                # Auto-migrate legacy localhost -> production domain
+                current_url = str(merged.get("server_url", "")).strip().rstrip("/")
+                if not current_url or current_url in ("http://localhost:8000", "http://127.0.0.1:8000", "http://localhost", "http://127.0.0.1"):
+                    merged["server_url"] = "https://qwikprint.onrender.com"
+                    try:
+                        with open(CONFIG_FILE, "w", encoding="utf-8") as sf:
+                            json.dump(merged, sf, indent=4)
+                    except Exception:
+                        pass
                 return merged
         except Exception as e:
             print(f"[Config Error] Failed to read config: {e}")

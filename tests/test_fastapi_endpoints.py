@@ -54,8 +54,16 @@ async def test_fastapi_endpoints_async():
     assert res_pay.status_code == 401
     print("[PASSED] ROUTE 5: Payment Creation Rejects Unauthenticated Requests")
 
+    # 6. Verify APIClient Has device_id and device_token Properties
+    from python_agent.api_client import api_client
+    assert hasattr(api_client, "device_id")
+    assert hasattr(api_client, "device_token")
+    assert isinstance(api_client.device_id, str)
+    assert isinstance(api_client.device_token, str)
+    print("[PASSED] ROUTE 6: APIClient has device_id and device_token Property Getters")
+
     print("\n==================================================")
-    print("ALL FASTAPI ROUTE TESTS PASSED (5/5)")
+    print("ALL FASTAPI ROUTE TESTS PASSED (6/6)")
     print("==================================================")
 
 if __name__ == "__main__":

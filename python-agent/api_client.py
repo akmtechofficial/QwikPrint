@@ -48,11 +48,19 @@ class APIClient:
         return self.clean_url(raw_url)
 
     @property
+    def device_id(self) -> str:
+        return config_mgr.get("device_id", "")
+
+    @property
+    def device_token(self) -> str:
+        return config_mgr.get("device_token", "")
+
+    @property
     def headers(self) -> dict:
         return {
             "Content-Type": "application/json",
-            "X-Device-Id": config_mgr.get("device_id", ""),
-            "X-Device-Token": config_mgr.get("device_token", "")
+            "X-Device-Id": self.device_id,
+            "X-Device-Token": self.device_token
         }
 
     def verify_api_key(self, server_url: str, api_key: str) -> tuple[bool, str, dict]:

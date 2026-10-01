@@ -98,6 +98,16 @@ class R2StorageManager:
             print(f"[Cloudflare R2 Error] Presigned URL generation failed: {e}")
             return ""
 
+    def object_exists(self, object_name: str) -> bool:
+        """Verifies if an object exists in Cloudflare R2 bucket."""
+        if not self.is_enabled or not self.s3_client:
+            return False
+        try:
+            self.s3_client.head_object(Bucket=self.bucket_name, Key=object_name)
+            return True
+        except Exception:
+            return False
+
     def download_file(self, object_name: str, destination_path: str) -> bool:
         """Downloads an object from Cloudflare R2 to a local destination file path."""
         if not self.is_enabled or not self.s3_client:
@@ -108,6 +118,18 @@ class R2StorageManager:
             return True
         except Exception as e:
             print(f"[Cloudflare R2 Error] Download object '{object_name}' failed: {e}")
+            return False
+
+    def delete_file(self, object_name: str) -> bool:
+        """Deletes an object from Cloudflare R2 bucket."""
+        if not self.is_enabled or not self.s3_client:
+            return False
+        try:
+            self.s3_client.delete_object(Bucket=self.bucket_name, Key=object_name)
+            print(f"[Cloudflare R2] Deleted object '{object_name}' from cloud storage")
+            return True
+        except Exception as e:
+            print(f"[Cloudflare R2 Error] Delete object '{object_name}' failed: {e}")
             return False
 
 r2_storage = R2StorageManager()

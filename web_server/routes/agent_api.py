@@ -139,7 +139,7 @@ async def fetch_queue(request: Request, x_device_id: str = Header(None), x_devic
             "shopId": q["shop_id"],
             "status": q["status"],
             "file": {"originalName": q["original_filename"], "pageCount": q["page_count"]},
-            "printOptions": {"copies": q["copies"], "colorMode": q["color_mode"], "duplex": q["duplex"], "pageRange": q["page_range"]},
+            "printOptions": {"copies": q["copies"], "colorMode": q["color_mode"], "duplex": q["duplex"], "pageRange": q["page_range"], "paperSize": q.get("paper_size", "A4")},
             "pricing": {"totalCost": q["total_cost"]},
             "createdAt": q["created_at"]
         })
@@ -151,7 +151,7 @@ async def fetch_queue(request: Request, x_device_id: str = Header(None), x_devic
             "shopId": c["shop_id"],
             "status": c["status"],
             "file": {"originalName": c["original_filename"], "pageCount": c["page_count"]},
-            "printOptions": {"copies": c["copies"], "colorMode": c["color_mode"], "duplex": c["duplex"], "pageRange": c["page_range"]},
+            "printOptions": {"copies": c["copies"], "colorMode": c["color_mode"], "duplex": c["duplex"], "pageRange": c["page_range"], "paperSize": c.get("paper_size", "A4")},
             "pricing": {"totalCost": c["total_cost"]},
             "createdAt": c["created_at"]
         })
@@ -300,20 +300,24 @@ async def update_status(payload: dict, x_device_id: str = Header(None), x_device
     if status.upper() not in allowed_statuses:
         raise HTTPException(status_code=400, detail=f"Invalid job status: '{status}'")
 
-    db.update_job_status(job_id, status.upper(), error)
+    db.update_job_status(job_id, status.upper(), error=error)
 
-    # File lifecycle: Auto-delete print file from disk immediately post successful printing or cancellation
+    # File lifecycle: Auto-delete print file from local disk & R2 cloud storage post successful printing or cancellation
     if status.upper() in ["PRINTED", "CANCELLED", "EXPIRED", "REJECTED"]:
         if job and job.get("file_path"):
             fp = job["file_path"]
+            filename = os.path.basename(fp)
             if not os.path.exists(fp):
-                fp = os.path.join(os.path.dirname(__file__), "..", "static", "uploads", os.path.basename(fp))
+                fp = os.path.join(os.path.dirname(__file__), "..", "static", "uploads", filename)
             if os.path.exists(fp):
                 try:
                     os.remove(fp)
-                    print(f"[File Lifecycle] Auto-deleted temporary file ({status}): {fp}")
+                    print(f"[File Lifecycle] Auto-deleted temporary local file ({status}): {fp}")
                 except Exception as clean_err:
-                    print(f"[File Lifecycle Warning] Could not remove file: {clean_err}")
+                    print(f"[File Lifecycle Warning] Could not remove local file: {clean_err}")
+
+            if r2_storage.is_enabled:
+                r2_storage.delete_file(filename)
 
     return {"success": True, "status": status}
 

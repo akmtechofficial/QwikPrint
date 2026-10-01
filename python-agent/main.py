@@ -210,15 +210,15 @@ def create_tray_icon() -> QIcon:
 # -------------------------------------------------------------
 def main():
     app = QApplication(sys.argv)
-    app.setApplicationName("PrintSoftAgent")
+    app.setApplicationName("QwikPrintAgent")
     app.setQuitOnLastWindowClosed(False)
 
     # Single Instance Lock
-    server_name = "PrintSoftAgentSingleInstanceLock"
+    server_name = "QwikPrintAgentSingleInstanceLock"
     socket = QLocalSocket()
     socket.connectToServer(server_name)
     if socket.waitForConnected(500):
-        QMessageBox.information(None, "Already Running", "PrintSoft Agent is already running in your System Tray.")
+        QMessageBox.information(None, "Already Running", "QwikPrint Agent is already running in your System Tray.")
         sys.exit(0)
 
     server = QLocalServer()
@@ -280,7 +280,7 @@ def main():
 
     # System Tray
     tray = QSystemTrayIcon(create_tray_icon(), app)
-    tray.setToolTip("PrintSoft Windows Agent - Active")
+    tray.setToolTip("QwikPrint Windows Agent - Active")
 
     menu = QMenu()
     open_action = QAction("Open Dashboard", app)
@@ -293,7 +293,7 @@ def main():
 
     menu.addSeparator()
 
-    quit_action = QAction("Exit PrintSoft Agent", app)
+    quit_action = QAction("Exit QwikPrint Agent", app)
     def on_quit():
         worker.stop()
         worker_thread.quit()

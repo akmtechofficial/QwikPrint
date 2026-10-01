@@ -13,7 +13,7 @@ class CashApprovalDialog(QDialog):
         self.job = job
         self.job_id = job.get("jobId", "UNKNOWN")
 
-        self.setWindowTitle("PrintSoft - Cash Payment Approval Required")
+        self.setWindowTitle("QwikPrint - Cash Payment Approval Required")
         self.setFixedWidth(540)
         self.setWindowFlags(
             Qt.WindowType.WindowStaysOnTopHint |

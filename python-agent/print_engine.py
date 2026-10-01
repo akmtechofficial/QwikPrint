@@ -20,7 +20,7 @@ PAPER_SIZES_PT = {
 
 class PrintEngine:
     def __init__(self):
-        self.temp_dir = os.path.join(tempfile.gettempdir(), "PrintSoftAgent")
+        self.temp_dir = os.path.join(tempfile.gettempdir(), "QwikPrintAgent")
         os.makedirs(self.temp_dir, exist_ok=True)
         self.sumatra_path = self._find_sumatra()
 

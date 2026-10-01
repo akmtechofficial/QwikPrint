@@ -472,7 +472,7 @@ class MainWindow(QMainWindow):
 
         try:
             import tempfile
-            test_path = os.path.join(tempfile.gettempdir(), "test_printsoft.txt")
+            test_path = os.path.join(tempfile.gettempdir(), "test_qwikprint.txt")
             with open(test_path, "w") as f:
                 f.write(f"=== QwikPrint Agent Test Page ===\nTime: {time.ctime()}\nPrinter: {printer}\n")
             success = print_engine.print_file(test_path, printer, {"copies": 1})

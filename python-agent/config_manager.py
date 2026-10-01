@@ -3,7 +3,7 @@ import json
 import winreg
 import sys
 
-CONFIG_DIR = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "PrintSoft")
+CONFIG_DIR = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "QwikPrint")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
 
 DEFAULT_CONFIG = {
@@ -75,7 +75,7 @@ class ConfigManager:
 
     def set_auto_start(self, enable: bool):
         """Sets Windows registry key for launch on startup."""
-        app_name = "PrintSoftAgent"
+        app_name = "QwikPrintAgent"
         exe_path = sys.executable if getattr(sys, 'frozen', False) else f'"{sys.executable}" "{os.path.abspath(sys.argv[0])}"'
         key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
         

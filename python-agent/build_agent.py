@@ -39,6 +39,7 @@ def build_exe():
 
     icon_path = os.path.join(current_dir, "gui", "app_icon.ico")
     logo_path = os.path.join(current_dir, "gui", "qwikprint_logo.png")
+    sumatra_bin = os.path.join(current_dir, "bin", "SumatraPDF.exe")
 
     pyinstaller_cmd = [
         sys.executable, "-m", "PyInstaller",
@@ -52,6 +53,7 @@ def build_exe():
         f"--icon={icon_path}",
         f"--version-file={version_file}",
         f"--add-data={logo_path};gui",
+        f"--add-data={sumatra_bin};bin",
         f"--paths={current_dir}",
         "--hidden-import=PyQt6",
         "--hidden-import=PyQt6.QtNetwork",

@@ -30,9 +30,20 @@ class PrintEngine:
 
     def _find_sumatra(self) -> str:
         """Finds SumatraPDF executable if available."""
+        # Check PyInstaller bundled path first
+        if hasattr(sys, "_MEIPASS"):
+            meipass_sumatra = os.path.join(getattr(sys, "_MEIPASS"), "bin", "SumatraPDF.exe")
+            if os.path.exists(meipass_sumatra):
+                return meipass_sumatra
+
         local_bin = os.path.join(os.path.dirname(__file__), "bin", "SumatraPDF.exe")
         if os.path.exists(local_bin):
             return local_bin
+
+        appdata_bin = os.path.join(os.path.expanduser("~"), ".qwikprint", "bin", "SumatraPDF.exe")
+        if os.path.exists(appdata_bin):
+            return appdata_bin
+
         system_paths = [
             r"C:\Program Files\SumatraPDF\SumatraPDF.exe",
             r"C:\Program Files (x86)\SumatraPDF\SumatraPDF.exe",
@@ -40,6 +51,33 @@ class PrintEngine:
         for path in system_paths:
             if os.path.exists(path):
                 return path
+        return ""
+
+    def _get_sumatra(self) -> str:
+        """Returns existing SumatraPDF path or attempts auto-download if missing."""
+        found = self._find_sumatra()
+        if found:
+            return found
+
+        try:
+            bin_dir = os.path.join(os.path.expanduser("~"), ".qwikprint", "bin")
+            os.makedirs(bin_dir, exist_ok=True)
+            target_exe = os.path.join(bin_dir, "SumatraPDF.exe")
+            if os.path.exists(target_exe) and os.path.getsize(target_exe) > 1000000:
+                return target_exe
+
+            print("[PrintEngine] Auto-downloading SumatraPDF portable printing engine...")
+            url = "https://www.sumatrapdfreader.org/dl/rel/3.5.2/SumatraPDF-3.5.2-64.exe"
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+            r = requests.get(url, headers=headers, timeout=30)
+            if r.status_code == 200 and len(r.content) > 1000000:
+                with open(target_exe, "wb") as f:
+                    f.write(r.content)
+                print(f"[PrintEngine] SumatraPDF downloaded successfully ({os.path.getsize(target_exe)} bytes)")
+                return target_exe
+        except Exception as dl_err:
+            print(f"[PrintEngine Warning] Could not auto-download SumatraPDF: {dl_err}")
+
         return ""
 
     def cleanup(self, *paths):
@@ -188,8 +226,9 @@ class PrintEngine:
                 raise RuntimeError(f"Cannot print image: {conv_err}")
 
         try:
-            # ── Method 1: SumatraPDF (silent, best quality) ──
-            if self.sumatra_path and file_path.lower().endswith(".pdf"):
+            # ── Method 1: SumatraPDF (silent, native vector quality, 100% reliable) ──
+            sumatra_exe = self._get_sumatra()
+            if sumatra_exe and file_path.lower().endswith(".pdf"):
                 settings_parts = [f"{copies}x"]
 
                 if color_mode == "bw":
@@ -206,7 +245,7 @@ class PrintEngine:
 
                 settings_str = ",".join(settings_parts)
                 cmd = [
-                    self.sumatra_path,
+                    sumatra_exe,
                     "-print-to", printer_name,
                     "-print-settings", settings_str,
                     "-silent",
@@ -225,33 +264,51 @@ class PrintEngine:
                     )
                     # Fall through to Win32 ShellExecute / win32print
 
-            # ── Method 2: Win32 printing path with verification ──
+            # ── Method 2: Win32 printing path with full 3-argument syntax ──
             if HAS_WIN32:
                 import win32api
                 import win32print
 
-                # Verify printer is accessible
+                # Verify printer is accessible and fetch driver & port names
+                p_name, d_name, p_port = printer_name, "", ""
                 try:
                     h_printer = win32print.OpenPrinter(printer_name)
+                    info = win32print.GetPrinter(h_printer, 2)
                     win32print.ClosePrinter(h_printer)
+                    p_name = info.get("pPrinterName", printer_name)
+                    d_name = info.get("pDriverName", "")
+                    p_port = info.get("pPortName", "")
                 except Exception as open_err:
-                    raise RuntimeError(f"Cannot open printer '{printer_name}': {open_err}")
+                    print(f"[PrintEngine Warning] OpenPrinter check error: {open_err}")
+
+                # Windows printto shell command parameters: "PrinterName" "DriverName" "PortName"
+                shell_params = f'"{p_name}" "{d_name}" "{p_port}"' if d_name and p_port else f'"{p_name}"'
 
                 try:
                     for _ in range(copies):
-                        res_code = win32api.ShellExecute(0, "printto", file_path, f'"{printer_name}"', ".", 0)
+                        res_code = win32api.ShellExecute(0, "printto", file_path, shell_params, ".", 0)
                         if isinstance(res_code, int) and res_code <= 32:
-                            raise RuntimeError(f"ShellExecute failed with OS error code {res_code}")
+                            raise RuntimeError(f"ShellExecute error code {res_code}")
                         time.sleep(1.5)
 
                     print(f"[PrintEngine Success] Document spooled to '{printer_name}' via Windows Shell")
                     self.cleanup(file_path, original_image_path)
                     return True
-                except Exception as e:
-                    raise RuntimeError(f"Windows print spooling failed for '{printer_name}': {e}")
+                except Exception as shell_err:
+                    print(f"[PrintEngine Warning] ShellExecute failed: {shell_err}, attempting PowerShell fallback...")
 
-            # ── No method available ──
-            raise RuntimeError("No valid print method available. Install SumatraPDF or pywin32.")
+            # ── Method 3: PowerShell Start-Process PrintTo Fallback ──
+            try:
+                ps_cmd = f'Start-Process -FilePath "{file_path}" -Verb PrintTo -ArgumentList \'"{printer_name}"\' -WindowStyle Hidden'
+                result = subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], capture_output=True, text=True, timeout=30)
+                if result.returncode == 0:
+                    print(f"[PrintEngine Success] Document spooled via PowerShell to '{printer_name}'")
+                    self.cleanup(file_path, original_image_path)
+                    return True
+            except Exception as ps_err:
+                print(f"[PrintEngine Warning] PowerShell fallback error: {ps_err}")
+
+            raise RuntimeError(f"Windows print spooling failed for '{printer_name}'. Please ensure printer is online and turned on.")
 
         except Exception as err:
             # Preserve local file on failure for diagnostics/retry

@@ -27,9 +27,25 @@ class APIClient:
                     pass
             raise e
 
+    @staticmethod
+    def clean_url(url: str) -> str:
+        """Normalizes URL, ensuring proper scheme (https:// for remote, http:// for localhost) and removing trailing slashes."""
+        if not url:
+            return "https://qwikprint.onrender.com"
+        url = url.strip().rstrip("/")
+        if not url.startswith("http://") and not url.startswith("https://"):
+            if "localhost" in url or "127.0.0.1" in url:
+                url = f"http://{url}"
+            else:
+                url = f"https://{url}"
+        if "onrender.com" in url and url.startswith("http://"):
+            url = url.replace("http://", "https://")
+        return url
+
     @property
     def server_url(self) -> str:
-        return config_mgr.get("server_url", "https://qwikprint.onrender.com").rstrip("/")
+        raw_url = config_mgr.get("server_url", "https://qwikprint.onrender.com")
+        return self.clean_url(raw_url)
 
     @property
     def headers(self) -> dict:
@@ -41,7 +57,8 @@ class APIClient:
 
     def verify_api_key(self, server_url: str, api_key: str) -> tuple[bool, str, dict]:
         """Verifies Shopkeeper API Key and auto-fetches 1 API = 1 PC credentials."""
-        url = f"{server_url.rstrip('/')}/api/agent/verify-key"
+        clean_server_url = self.clean_url(server_url)
+        url = f"{clean_server_url}/api/agent/verify-key"
         try:
             res = self._request("POST", url, json={"apiKey": api_key}, headers={"Content-Type": "application/json"}, timeout=10)
             data = res.json()

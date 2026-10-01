@@ -18,6 +18,7 @@ from gui.styles import LIGHT_THEME_QSS, DARK_THEME_QSS
 
 class MainWindow(QMainWindow):
     agent_toggle_requested = pyqtSignal(bool)
+    setup_completed = pyqtSignal()
 
     def __init__(self):
         super().__init__()
@@ -425,6 +426,7 @@ class MainWindow(QMainWindow):
             self.shop_title.setText(f"🖨️ {shop_id}")
             self.generate_qr_code()
             self.reload_printers()
+            self.setup_completed.emit()
 
     def update_connection_status(self, is_online: bool):
         if api_client.last_subscription_error:

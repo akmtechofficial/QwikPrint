@@ -121,6 +121,10 @@ class AgentWorker(QObject):
     def stop(self):
         self._running = False
 
+    def force_heartbeat(self):
+        """Forces an immediate heartbeat and connection status refresh."""
+        self.last_heartbeat = 0
+
     def on_job_completed(self, job_id: str):
         if job_id in self.active_print_jobs:
             self.active_print_jobs.remove(job_id)
@@ -152,6 +156,11 @@ class AgentWorker(QObject):
                     self.is_fetching = True
                     try:
                         queued_jobs, cash_pending_jobs = api_client.fetch_queue()
+                        if api_client.last_subscription_error is None:
+                            self.connection_changed.emit(True)
+                        else:
+                            self.connection_changed.emit(False)
+
                         self.queue_updated.emit(queued_jobs + cash_pending_jobs)
 
                         # Trigger Cash Approval Popup for new cash pending jobs
@@ -252,6 +261,7 @@ def main():
     worker.connection_changed.connect(main_window.update_connection_status)
     worker.queue_updated.connect(main_window.update_queue_table)
     main_window.agent_toggle_requested.connect(worker.set_active)
+    main_window.setup_completed.connect(worker.force_heartbeat)
 
     def handle_cash_approval(cash_job):
         dlg = CashApprovalDialog(cash_job, None)

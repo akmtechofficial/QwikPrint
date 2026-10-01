@@ -86,13 +86,15 @@ class SetupDialog(QDialog):
             QApplication.processEvents()
 
         try:
-            server_url = self.url_input.text().strip()
+            raw_url = self.url_input.text().strip()
             api_key = self.api_key_input.text().strip()
             selected_printer = self.printer_combo.currentText()
 
-            if not server_url or not api_key:
+            if not raw_url or not api_key:
                 QMessageBox.warning(self, "Missing API Key", "Please paste your Secret API Key from your Web Dashboard.")
                 return
+
+            server_url = api_client.clean_url(raw_url)
 
             # Call verify_api_key endpoint
             success, msg, data = api_client.verify_api_key(server_url, api_key)

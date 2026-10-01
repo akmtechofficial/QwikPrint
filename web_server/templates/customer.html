@@ -1660,10 +1660,8 @@
         formData.append('copies', document.getElementById('copies').value);
         formData.append('color_mode', document.getElementById('color-mode-val').value);
         formData.append('duplex', duplexVal);
-        formData.append('page_range',
-            document.getElementById('paper-size-val').value + " / " +
-            document.getElementById('layout-grid-val').value
-        );
+        formData.append('paper_size', document.getElementById('paper-size-val').value || 'A4');
+        formData.append('page_range', 'all');
         formData.append('payment_method', paymentMethod);
         formData.append('total_cost', totalCost);
 

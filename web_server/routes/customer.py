@@ -300,23 +300,27 @@ async def submit_print_job(
 
     # 🔒 5. Page Range Validation
     clean_page_range = (page_range or "all").strip()
+    if "/" in clean_page_range:
+        clean_page_range = "all"
+
     if clean_page_range.lower() != "all":
         if not re.match(r"^[\d\s,\-]+$", clean_page_range):
-            raise HTTPException(status_code=400, detail="Invalid page range format. Allowed: 'all' or comma-separated numbers/ranges like '1-5,7'.")
-        try:
-            for part in clean_page_range.split(","):
-                part = part.strip()
-                if not part:
-                    continue
-                if "-" in part:
-                    sp, ep = part.split("-", 1)
-                    if not sp.isdigit() or not ep.isdigit() or int(sp) < 1 or int(ep) > authoritative_page_count or int(sp) > int(ep):
-                        raise HTTPException(status_code=400, detail=f"Page range '{part}' is invalid or exceeds document page count ({authoritative_page_count}).")
-                elif part.isdigit():
-                    if int(part) < 1 or int(part) > authoritative_page_count:
-                        raise HTTPException(status_code=400, detail=f"Page number {part} exceeds document page count ({authoritative_page_count}).")
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid page range syntax.")
+            clean_page_range = "all"
+        else:
+            try:
+                for part in clean_page_range.split(","):
+                    part = part.strip()
+                    if not part:
+                        continue
+                    if "-" in part:
+                        sp, ep = part.split("-", 1)
+                        if not sp.isdigit() or not ep.isdigit() or int(sp) < 1 or int(ep) > authoritative_page_count or int(sp) > int(ep):
+                            raise HTTPException(status_code=400, detail=f"Page range '{part}' is invalid or exceeds document page count ({authoritative_page_count}).")
+                    elif part.isdigit():
+                        if int(part) < 1 or int(part) > authoritative_page_count:
+                            raise HTTPException(status_code=400, detail=f"Page number {part} exceeds document page count ({authoritative_page_count}).")
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid page range syntax.")
 
     # Authoritative Server-Side Price Calculation
     server_calculated_cost = db.calculate_print_cost(

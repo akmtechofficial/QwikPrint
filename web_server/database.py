@@ -780,10 +780,16 @@ class SupabaseDatabase:
         if is_pg:
             try:
                 cursor = conn.cursor()
-                cursor.execute("INSERT INTO users (user_id, email, password_hash, full_name, phone, role, created_at) VALUES (%s, %s, %s, %s, %s, %s, %s);",
-                               (user_id, clean_email, password_hash, user_data["full_name"], user_data["phone"], "shop_owner", now))
-                cursor.execute("INSERT INTO shops (shop_id, owner_id, api_key, name, owner_name, email, phone, address, bw_rate, color_rate, duplex_discount, created_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);",
-                               (shop_id, user_id, api_key, shop_data["name"], shop_data["owner_name"], clean_email, shop_data["phone"], shop_data["address"], 2.0, 10.0, 0.5, now))
+                cursor.execute(
+                    """INSERT INTO users (user_id, email, password_hash, full_name, phone, role, created_at, registration_ip, device_fingerprint)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);""",
+                    (user_id, clean_email, password_hash, user_data["full_name"], user_data["phone"], "shop_owner", now, registration_ip, device_fingerprint)
+                )
+                cursor.execute(
+                    """INSERT INTO shops (shop_id, owner_id, api_key, name, owner_name, email, phone, address, bw_rate, color_rate, duplex_discount, created_at, subscription_status, plan_name, plan_expires_at, registration_ip, device_fingerprint)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);""",
+                    (shop_id, user_id, api_key, shop_data["name"], shop_data["owner_name"], clean_email, shop_data["phone"], shop_data["address"], 2.0, 10.0, 0.5, now, "active", "7-Day Free Trial", trial_exp, registration_ip, device_fingerprint)
+                )
                 conn.commit()
                 conn.close()
             except Exception as e:

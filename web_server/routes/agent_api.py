@@ -252,10 +252,29 @@ async def download_file(
         print(f"[Download 404] File for job {job_id} not found at {file_path}")
         raise HTTPException(status_code=404, detail="Print file not found on server")
 
+    lower_path = file_path.lower()
+    lower_orig = job.get("original_filename", "").lower()
+
+    if lower_path.endswith(".pdf") or lower_orig.endswith(".pdf"):
+        media_type = "application/pdf"
+    elif lower_path.endswith(".png") or lower_orig.endswith(".png"):
+        media_type = "image/png"
+    elif lower_path.endswith((".jpg", ".jpeg")) or lower_orig.endswith((".jpg", ".jpeg")):
+        media_type = "image/jpeg"
+    else:
+        media_type = "application/octet-stream"
+
+    filename = job.get("original_filename", os.path.basename(file_path))
+    headers = {
+        "Content-Disposition": f'inline; filename="{filename}"',
+        "X-Content-Type-Options": "nosniff"
+    }
+
     return FileResponse(
         path=file_path,
-        filename=job["original_filename"],
-        media_type="application/octet-stream"
+        filename=filename,
+        media_type=media_type,
+        headers=headers
     )
 
 @router.post("/api/agent/update-status")

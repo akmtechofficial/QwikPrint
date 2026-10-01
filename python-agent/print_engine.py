@@ -249,9 +249,16 @@ class PrintEngine:
                     sumatra_exe,
                     "-print-to", printer_name,
                     "-print-settings", settings_str,
-                    "-silent",
-                    file_path,
                 ]
+
+                # 🖨️ Handle Virtual PDF Printers (e.g. Microsoft Print to PDF) without blocking UI prompts
+                if "pdf" in printer_name.lower():
+                    out_dir = os.path.join(os.path.expanduser("~"), "Documents", "QwikPrint_Outputs")
+                    os.makedirs(out_dir, exist_ok=True)
+                    out_file = os.path.join(out_dir, f"Print_{int(time.time())}.pdf")
+                    cmd.extend(["-print-to-file", out_file])
+
+                cmd.extend(["-silent", file_path])
                 print(f"[PrintEngine] SumatraPDF command: {' '.join(cmd)}")
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
 

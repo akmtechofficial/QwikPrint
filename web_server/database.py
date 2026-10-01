@@ -507,7 +507,7 @@ class SupabaseDatabase:
                     subscription_status = 'active',
                     plan_name = %s,
                     plan_expires_at = %s,
-                    is_suspended = 0
+                    is_suspended = FALSE
                 WHERE shop_id = %s;
                 """, (actual_plan_name, new_exp_str, shop_id))
                 conn.commit()

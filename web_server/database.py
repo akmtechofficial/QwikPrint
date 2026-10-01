@@ -3,6 +3,7 @@ import json
 import uuid
 import datetime
 import time
+import re
 from dotenv import load_dotenv
 
 # Load environment variables from .env.local
@@ -523,12 +524,15 @@ class SupabaseDatabase:
         }
 
     def get_shop_by_id(self, shop_id: str):
+        if not shop_id:
+            return None
+        clean_id = str(shop_id).strip().lstrip("/")
         conn, is_pg = self.get_connection()
         shop = None
         try:
             cursor = conn.cursor(cursor_factory=RealDictCursor) if is_pg else conn.cursor()
-            query = "SELECT * FROM shops WHERE shop_id = %s;" if is_pg else "SELECT * FROM shops WHERE shop_id = ?;"
-            cursor.execute(query, (shop_id,))
+            query = "SELECT * FROM shops WHERE LOWER(shop_id) = LOWER(%s);" if is_pg else "SELECT * FROM shops WHERE LOWER(shop_id) = LOWER(?);"
+            cursor.execute(query, (clean_id,))
             row = cursor.fetchone()
             conn.close()
             if row:
@@ -540,7 +544,7 @@ class SupabaseDatabase:
             try:
                 s_conn = self.get_sqlite_conn()
                 s_cursor = s_conn.cursor()
-                s_cursor.execute("SELECT * FROM shops WHERE shop_id = ?;", (shop_id,))
+                s_cursor.execute("SELECT * FROM shops WHERE LOWER(shop_id) = LOWER(?);", (clean_id,))
                 row = s_cursor.fetchone()
                 s_conn.close()
                 if row:
@@ -1158,6 +1162,66 @@ class SupabaseDatabase:
                 conn.close()
             except Exception:
                 pass
+
+    def update_shop_id(self, current_shop_id: str, new_shop_id: str) -> tuple[bool, str]:
+        """
+        Updates a shop's static shop_id / slug across all database tables.
+        Ensures new_shop_id is valid, unique, and non-empty.
+        """
+        if not new_shop_id or not current_shop_id:
+            return False, "Shop ID cannot be empty."
+
+        clean_new_id = new_shop_id.strip().lstrip("/")
+        clean_current_id = current_shop_id.strip().lstrip("/")
+
+        # Validate character format
+        if not re.match(r"^[a-zA-Z0-9_-]{3,50}$", clean_new_id):
+            return False, "Shop ID must be 3-50 characters long and contain only letters, numbers, hyphens (-), and underscores (_)."
+
+        reserved_words = {"api", "admin", "dashboard", "download", "login", "register", "logout", "static", "pricing", "subscription", "s", "app"}
+        if clean_new_id.lower() in reserved_words:
+            return False, f"Shop ID '{clean_new_id}' is a reserved system path. Please choose a different Shop ID."
+
+        if clean_new_id.lower() == clean_current_id.lower():
+            if clean_new_id == clean_current_id:
+                return True, "Shop ID is unchanged."
+
+        # Check uniqueness
+        existing = self.get_shop_by_id(clean_new_id)
+        if existing and str(existing.get("shop_id")).lower() != clean_current_id.lower():
+            return False, f"Shop ID '{clean_new_id}' is already taken by another store. Please choose a unique Shop ID."
+
+        # Update SQLite
+        try:
+            s_conn = self.get_sqlite_conn()
+            s_cursor = s_conn.cursor()
+            s_cursor.execute("UPDATE shops SET shop_id = ? WHERE LOWER(shop_id) = LOWER(?);", (clean_new_id, clean_current_id))
+            s_cursor.execute("UPDATE devices SET shop_id = ? WHERE LOWER(shop_id) = LOWER(?);", (clean_new_id, clean_current_id))
+            s_cursor.execute("UPDATE print_jobs SET shop_id = ? WHERE LOWER(shop_id) = LOWER(?);", (clean_new_id, clean_current_id))
+            s_cursor.execute("UPDATE subscriptions SET shop_id = ? WHERE LOWER(shop_id) = LOWER(?);", (clean_new_id, clean_current_id))
+            s_cursor.execute("UPDATE payment_orders SET shop_id = ? WHERE LOWER(shop_id) = LOWER(?);", (clean_new_id, clean_current_id))
+            s_conn.commit()
+            s_conn.close()
+        except Exception as e:
+            print(f"[Database Error] SQLite update_shop_id failed: {e}")
+            return False, f"Failed to update Shop ID: {str(e)}"
+
+        # Update PostgreSQL
+        conn, is_pg = self.get_connection()
+        if is_pg:
+            try:
+                cursor = conn.cursor()
+                cursor.execute("UPDATE shops SET shop_id = %s WHERE LOWER(shop_id) = LOWER(%s);", (clean_new_id, clean_current_id))
+                cursor.execute("UPDATE devices SET shop_id = %s WHERE LOWER(shop_id) = LOWER(%s);", (clean_new_id, clean_current_id))
+                cursor.execute("UPDATE print_jobs SET shop_id = %s WHERE LOWER(shop_id) = LOWER(%s);", (clean_new_id, clean_current_id))
+                cursor.execute("UPDATE subscriptions SET shop_id = %s WHERE LOWER(shop_id) = LOWER(%s);", (clean_new_id, clean_current_id))
+                cursor.execute("UPDATE payment_orders SET shop_id = %s WHERE LOWER(shop_id) = LOWER(%s);", (clean_new_id, clean_current_id))
+                conn.commit()
+                conn.close()
+            except Exception as e:
+                print(f"[Database Warning] PostgreSQL update_shop_id failed: {e}")
+
+        return True, f"Shop ID updated successfully to '{clean_new_id}'!"
 
     def regenerate_shop_api_key(self, shop_id: str) -> str:
         new_key = f"QWIK_KEY_{shop_id}_{uuid.uuid4().hex[:6].upper()}"

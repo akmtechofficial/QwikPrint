@@ -39,13 +39,28 @@
         </form>
     </div>
 
-    <div style="background-color: var(--qp-bg-subtle); border: 1px solid var(--qp-border); border-radius: var(--qp-radius-lg); padding: 24px;">
+    <div style="background-color: var(--qp-bg-subtle); border: 1px solid var(--qp-border); border-radius: var(--qp-radius-lg); padding: 24px; margin-bottom: 24px;">
         <h4 style="font-size: 15px; font-weight: 700; color: var(--qp-text-primary); margin-bottom: 12px;">Desktop Spooler Installation & Pairing Guide:</h4>
         <ol style="color: var(--qp-text-secondary); font-size: 14px; padding-left: 20px; display: flex; flex-direction: column; gap: 10px;">
             <li>Download and install the official <strong>QwikPrint Windows Desktop Spooler (.exe)</strong> on your counter PC.</li>
             <li>Launch the spooler app and paste your unique <strong>API License Key</strong> displayed above.</li>
             <li>Select your connected USB or Network Printer and click <strong>"Start Automated Spooling"</strong>.</li>
         </ol>
+    </div>
+
+    <div style="background-color: var(--qp-bg-subtle); border: 1px solid var(--qp-border); border-radius: var(--qp-radius-lg); padding: 24px;">
+        <h4 style="font-size: 15px; font-weight: 700; color: var(--qp-text-primary); margin-bottom: 8px;">🔗 Custom Static Shop ID & Upload Link Slug</h4>
+        <p style="color: var(--qp-text-secondary); font-size: 13px; margin-bottom: 14px;">Set a permanent, static Shop ID (e.g. <code>shop-Akm</code>) so your customer upload URL never changes.</p>
+        <form action="/api/shop/update-slug" method="POST" style="max-width: 600px;">
+            <input type="hidden" name="shop_id" value="{{ shop.shop_id }}">
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                <span style="color: var(--qp-text-muted); font-family: monospace; font-size: 13px; font-weight: 600;">/s/</span>
+                <input type="text" name="new_shop_id" class="qp-input" value="{{ shop.shop_id }}" required pattern="[a-zA-Z0-9_-]{3,50}" title="3-50 characters: letters, numbers, hyphens, and underscores (e.g. shop-Akm)" style="flex: 1; min-width: 200px; font-family: monospace; font-weight: 700; font-size: 15px; color: var(--qp-primary);">
+                <button type="submit" class="qp-btn qp-btn-primary">
+                    <span>Save Shop ID</span>
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 {% endblock %}

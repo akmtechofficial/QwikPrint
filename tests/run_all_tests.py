@@ -405,6 +405,25 @@ def run_tests():
         log_test("SECURITY 9: Strict Page Range Format & Upper Bound Rejection", False, f"{type(e).__name__}: {e}")
 
     # ----------------------------------------------------
+    # TEST 18: Custom Static Shop ID Updating & Lookup
+    # ----------------------------------------------------
+    try:
+        new_custom_id = f"shop-AkmTest-{uuid.uuid4().hex[:4]}"
+        success, msg = db.update_shop_id(t_shop_id, new_custom_id)
+        assert success is True, f"Failed to update shop id: {msg}"
+        
+        # Verify lookup works by case-insensitive custom ID
+        updated_shop = db.get_shop(new_custom_id.lower())
+        assert updated_shop is not None, "Shop lookup by custom ID returned None"
+        assert updated_shop["shop_id"] == new_custom_id, f"Expected {new_custom_id}, got {updated_shop.get('shop_id')}"
+        
+        # Revert shop_id back to t_shop_id for consistency
+        db.update_shop_id(new_custom_id, t_shop_id)
+        log_test("DB 2: Custom Static Shop ID Updating & Case-Insensitive Lookup", True)
+    except Exception as e:
+        log_test("DB 2: Custom Static Shop ID Updating & Case-Insensitive Lookup", False, f"{type(e).__name__}: {e}")
+
+    # ----------------------------------------------------
     # FINAL SUMMARY
     # ----------------------------------------------------
     print("\n==================================================")

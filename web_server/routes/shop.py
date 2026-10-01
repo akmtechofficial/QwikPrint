@@ -209,11 +209,32 @@ async def update_shop_details(
     owner_name: str = Form(...),
     phone: str = Form(...),
     address: str = Form(...),
-    email: str = Form(...)
+    email: str = Form(...),
+    new_shop_id: str = Form(None)
 ):
     verify_shop_authorization(request, shop_id)
-    db.update_shop_details(shop_id, name, owner_name, phone, address, email)
+    target_shop_id = shop_id
+    if new_shop_id and new_shop_id.strip() and new_shop_id.strip().lower() != shop_id.lower():
+        success, msg = db.update_shop_id(shop_id, new_shop_id.strip())
+        if not success:
+            raise HTTPException(status_code=400, detail=msg)
+        target_shop_id = new_shop_id.strip()
+
+    db.update_shop_details(target_shop_id, name, owner_name, phone, address, email)
     return RedirectResponse(url="/dashboard/profile", status_code=303)
+
+@router.post("/api/shop/update-slug")
+@router.post("/api/shop/update-id")
+async def update_shop_id_route(
+    request: Request,
+    shop_id: str = Form(...),
+    new_shop_id: str = Form(...)
+):
+    verify_shop_authorization(request, shop_id)
+    success, msg = db.update_shop_id(shop_id, new_shop_id)
+    if not success:
+        raise HTTPException(status_code=400, detail=msg)
+    return RedirectResponse(url="/dashboard/spooler", status_code=303)
 
 @router.post("/api/shop/pricing")
 async def update_pricing(

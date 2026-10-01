@@ -13,8 +13,14 @@
         <input type="hidden" name="shop_id" value="{{ shop.shop_id }}">
         
         <div class="qp-form-item">
-            <label class="qp-label">Store System ID</label>
-            <input type="text" class="qp-input" value="{{ shop.shop_id }}" readonly style="background-color: var(--qp-bg-subtle); font-family: monospace; font-weight: 600;">
+            <label class="qp-label">Custom Static Shop ID & Upload Link Slug</label>
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                <span style="color: var(--qp-text-muted); font-family: monospace; font-size: 13px; font-weight: 600;">https://qwikprint.onrender.com/s/</span>
+                <input type="text" name="new_shop_id" class="qp-input" value="{{ shop.shop_id }}" required pattern="[a-zA-Z0-9_-]{3,50}" title="3 to 50 characters: letters, numbers, hyphens, and underscores (e.g. shop-Akm)" style="flex: 1; min-width: 180px; font-family: monospace; font-weight: 700; font-size: 15px; color: var(--qp-primary);">
+            </div>
+            <small style="color: var(--qp-text-muted); font-size: 12px; margin-top: 4px; display: block;">
+                Set your static Shop ID (e.g. <code>shop-Akm</code>). Customers visit <strong>/s/shop-Akm</strong> to upload files.
+            </small>
         </div>
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px;">

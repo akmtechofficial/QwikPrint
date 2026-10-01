@@ -6,12 +6,19 @@ from web_server.r2_storage import r2_storage
 
 router = APIRouter()
 
-def validate_agent_auth(x_device_id: str = Header(None), x_device_token: str = Header(None)):
-    if not x_device_id or not x_device_token:
-        raise HTTPException(status_code=401, detail="Authentication headers X-Device-Id and X-Device-Token are required")
+def validate_agent_auth(
+    x_device_id: str = Header(None),
+    x_device_token: str = Header(None),
+    device_id: str = None,
+    device_token: str = None
+):
+    dev_id = x_device_id or device_id
+    dev_token = x_device_token or device_token
+    if not dev_id or not dev_token:
+        raise HTTPException(status_code=401, detail="Authentication headers X-Device-Id/X-Device-Token or query parameters device_id/device_token are required")
     
-    device = db.get_device(x_device_id)
-    if not device or device.get("secret_token") != x_device_token:
+    device = db.get_device(dev_id)
+    if not device or device.get("secret_token") != dev_token:
         raise HTTPException(status_code=401, detail="Unauthorized device credentials")
     
     if device.get("status", "active").lower() in ["disabled", "revoked"]:
@@ -174,8 +181,16 @@ async def claim_job(payload: dict, x_device_id: str = Header(None), x_device_tok
 
 @router.get("/api/agent/download-url")
 @router.post("/api/agent/download-url")
-async def get_download_url(request: Request, jobId: str = None, payload: dict = None, x_device_id: str = Header(None), x_device_token: str = Header(None)):
-    device = validate_agent_auth(x_device_id, x_device_token)
+async def get_download_url(
+    request: Request,
+    jobId: str = None,
+    payload: dict = None,
+    x_device_id: str = Header(None),
+    x_device_token: str = Header(None),
+    device_id: str = None,
+    device_token: str = None
+):
+    device = validate_agent_auth(x_device_id=x_device_id, x_device_token=x_device_token, device_id=device_id, device_token=device_token)
     j_id = jobId or (payload.get("jobId") if payload else None)
     if not j_id:
         raise HTTPException(status_code=400, detail="jobId required")
@@ -193,13 +208,19 @@ async def get_download_url(request: Request, jobId: str = None, payload: dict = 
             return {"success": True, "downloadUrl": r2_presigned_url}
 
     base_url = str(request.base_url).rstrip("/")
-    file_download_url = f"{base_url}/api/agent/download-file/{j_id}"
+    file_download_url = f"{base_url}/api/agent/download-file/{j_id}?device_id={device['device_id']}&device_token={device['secret_token']}"
     return {"success": True, "downloadUrl": file_download_url}
 
 @router.get("/api/agent/download-file/{job_id}")
-async def download_file(job_id: str, x_device_id: str = Header(None), x_device_token: str = Header(None)):
-    # 🔒 Mandatory Device Authentication
-    device = validate_agent_auth(x_device_id, x_device_token)
+async def download_file(
+    job_id: str,
+    x_device_id: str = Header(None),
+    x_device_token: str = Header(None),
+    device_id: str = None,
+    device_token: str = None
+):
+    # 🔒 Mandatory Device Authentication (supports HTTP headers or browser query params)
+    device = validate_agent_auth(x_device_id=x_device_id, x_device_token=x_device_token, device_id=device_id, device_token=device_token)
     
     job = db.get_job(job_id)
     if not job:

@@ -203,7 +203,9 @@ class CashApprovalDialog(QDialog):
     def open_download_view(self):
         from config_manager import config_mgr
         server_url = config_mgr.get("server_url", "https://qwikprint.onrender.com").rstrip("/")
-        url = f"{server_url}/api/agent/download-file/{self.job_id}"
+        device_id = config_mgr.get("device_id", "")
+        device_token = config_mgr.get("device_token", "")
+        url = f"{server_url}/api/agent/download-file/{self.job_id}?device_id={device_id}&device_token={device_token}"
         QDesktopServices.openUrl(QUrl(url))
 
     def reject_cash(self):

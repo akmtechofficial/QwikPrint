@@ -1087,6 +1087,145 @@ class SupabaseDatabase:
             except Exception as e:
                 print(f"[Database Warning] PostgreSQL update_job_status failed: {e}")
 
+    def get_queued_and_pending_jobs(self, shop_id: str):
+        """
+        Returns (queued_jobs, cash_pending_jobs) for the given shop_id.
+        Queued jobs include status 'QUEUED'.
+        Cash pending jobs include status 'PENDING_CASH'.
+        Matches shop_id case-insensitively.
+        """
+        if not shop_id:
+            return [], []
+
+        clean_shop_id = str(shop_id).strip().lstrip("/")
+        conn, is_pg = self.get_connection()
+        all_jobs = []
+
+        try:
+            cursor = conn.cursor(cursor_factory=RealDictCursor) if is_pg else conn.cursor()
+            query = """
+            SELECT * FROM print_jobs 
+            WHERE LOWER(shop_id) = LOWER(%s) AND status IN ('QUEUED', 'PENDING_CASH') 
+            ORDER BY created_at ASC;
+            """ if is_pg else """
+            SELECT * FROM print_jobs 
+            WHERE LOWER(shop_id) = LOWER(?) AND status IN ('QUEUED', 'PENDING_CASH') 
+            ORDER BY created_at ASC;
+            """
+            cursor.execute(query, (clean_shop_id,))
+            rows = cursor.fetchall()
+            conn.close()
+            all_jobs = [dict(r) for r in rows]
+        except Exception as e:
+            print(f"[Database Warning] PostgreSQL get_queued_and_pending_jobs failed: {e}")
+
+        if not all_jobs:
+            try:
+                s_conn = self.get_sqlite_conn()
+                s_cursor = s_conn.cursor()
+                s_cursor.execute("""
+                SELECT * FROM print_jobs 
+                WHERE LOWER(shop_id) = LOWER(?) AND status IN ('QUEUED', 'PENDING_CASH') 
+                ORDER BY created_at ASC;
+                """, (clean_shop_id,))
+                rows = s_cursor.fetchall()
+                s_conn.close()
+                all_jobs = [dict(r) for r in rows]
+            except Exception as e:
+                print(f"[Database Error] SQLite get_queued_and_pending_jobs failed: {e}")
+
+        queued = [j for j in all_jobs if j.get("status") == "QUEUED"]
+        pending_cash = [j for j in all_jobs if j.get("status") == "PENDING_CASH"]
+        return queued, pending_cash
+
+    def claim_job(self, job_id: str, device_id: str) -> tuple[bool, dict]:
+        """
+        Atomically claims a QUEUED print job for a specific device_id.
+        Prevents multiple devices from claiming the same job simultaneously.
+        """
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        job = self.get_job(job_id)
+        if not job or job.get("status") != "QUEUED":
+            return False, {}
+
+        # Update SQLite
+        try:
+            s_conn = self.get_sqlite_conn()
+            s_cursor = s_conn.cursor()
+            s_cursor.execute("""
+            UPDATE print_jobs SET status = 'CLAIMED', device_id = ?, updated_at = ?
+            WHERE job_id = ? AND status = 'QUEUED';
+            """, (device_id, now, job_id))
+            s_conn.commit()
+            s_conn.close()
+        except Exception as e:
+            print(f"[Database Error] SQLite claim_job failed: {e}")
+
+        # Update PostgreSQL
+        conn, is_pg = self.get_connection()
+        if is_pg:
+            try:
+                cursor = conn.cursor()
+                cursor.execute("""
+                UPDATE print_jobs SET status = 'CLAIMED', device_id = %s, updated_at = %s
+                WHERE job_id = %s AND status = 'QUEUED';
+                """, (device_id, now, job_id))
+                conn.commit()
+                conn.close()
+            except Exception as e:
+                print(f"[Database Warning] PostgreSQL claim_job failed: {e}")
+
+        updated_job = self.get_job(job_id)
+        return True, updated_job or job
+
+    def confirm_cash_payment(self, job_id: str) -> bool:
+        """Confirms cash payment for a job, updating status to QUEUED and payment_status to paid."""
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        try:
+            s_conn = self.get_sqlite_conn()
+            s_cursor = s_conn.cursor()
+            s_cursor.execute("UPDATE print_jobs SET status = 'QUEUED', payment_status = 'paid', updated_at = ? WHERE job_id = ?;", (now, job_id))
+            s_conn.commit()
+            s_conn.close()
+        except Exception as e:
+            print(f"[Database Error] SQLite confirm_cash_payment failed: {e}")
+
+        conn, is_pg = self.get_connection()
+        if is_pg:
+            try:
+                cursor = conn.cursor()
+                cursor.execute("UPDATE print_jobs SET status = 'QUEUED', payment_status = 'paid', updated_at = %s WHERE job_id = %s;", (now, job_id))
+                conn.commit()
+                conn.close()
+            except Exception as e:
+                print(f"[Database Warning] PostgreSQL confirm_cash_payment failed: {e}")
+
+        return True
+
+    def reject_cash_payment(self, job_id: str) -> bool:
+        """Rejects cash payment for a job, updating status to REJECTED."""
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        try:
+            s_conn = self.get_sqlite_conn()
+            s_cursor = s_conn.cursor()
+            s_cursor.execute("UPDATE print_jobs SET status = 'REJECTED', payment_status = 'failed', updated_at = ? WHERE job_id = ?;", (now, job_id))
+            s_conn.commit()
+            s_conn.close()
+        except Exception as e:
+            print(f"[Database Error] SQLite reject_cash_payment failed: {e}")
+
+        conn, is_pg = self.get_connection()
+        if is_pg:
+            try:
+                cursor = conn.cursor()
+                cursor.execute("UPDATE print_jobs SET status = 'REJECTED', payment_status = 'failed', updated_at = %s WHERE job_id = %s;", (now, job_id))
+                conn.commit()
+                conn.close()
+            except Exception as e:
+                print(f"[Database Warning] PostgreSQL reject_cash_payment failed: {e}")
+
+        return True
+
     def update_shop_pricing(self, shop_id: str, bw_rate: float, color_rate: float, duplex_discount: float):
         # Update SQLite
         try:

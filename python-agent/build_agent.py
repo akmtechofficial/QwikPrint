@@ -94,19 +94,30 @@ def build_exe():
         print("\n[Build 3/4] Compiling Production Inno Setup Installer...")
         subprocess.run([iscc_path, iss_file])
 
-    # 4. Sign Final Setup Executable in static/downloads
+    # 4. Copy & Sign Final Setup Executable in static/downloads
     downloads_dir = os.path.join(os.path.dirname(current_dir), "web_server", "static", "downloads")
     os.makedirs(downloads_dir, exist_ok=True)
-    final_setup_exe = os.path.join(downloads_dir, "QwikPrint_Desktop_Spooler_v2.4.exe")
-    if os.path.exists(final_setup_exe):
-        print("\n[Build 4/4] Authenticode Code-Signing final QwikPrint_Desktop_Spooler_v2.4.exe...")
-        subprocess.run(["powershell", "-ExecutionPolicy", "Bypass", "-File", sign_script, "-FilePath", final_setup_exe])
-        # Also mirror to main dist folder
-        shutil.copy(final_setup_exe, os.path.join(main_dist, "QwikPrint_Desktop_Spooler_v2.4.exe"))
+    inno_setup_exe = os.path.join(dist_dir, "QwikPrint_Setup.exe")
+    if not os.path.exists(inno_setup_exe):
+        inno_setup_exe = os.path.join(main_dist, "QwikPrint_Setup.exe")
+
+    target_setup_name = os.path.join(downloads_dir, "QwikPrint_Setup.exe")
+    target_spooler_v24 = os.path.join(downloads_dir, "QwikPrint_Desktop_Spooler_v2.4.exe")
+
+    if os.path.exists(inno_setup_exe):
+        shutil.copy(inno_setup_exe, target_setup_name)
+        shutil.copy(inno_setup_exe, target_spooler_v24)
+        target_main_dist_setup = os.path.join(main_dist, "QwikPrint_Setup.exe")
+        if os.path.abspath(inno_setup_exe) != os.path.abspath(target_main_dist_setup):
+            shutil.copy(inno_setup_exe, target_main_dist_setup)
+
+        print("\n[Build 4/4] Authenticode Code-Signing final Setup Executables...")
+        subprocess.run(["powershell", "-ExecutionPolicy", "Bypass", "-File", sign_script, "-FilePath", target_setup_name])
+        subprocess.run(["powershell", "-ExecutionPolicy", "Bypass", "-File", sign_script, "-FilePath", target_spooler_v24])
 
     print("\n==========================================================")
     print("[SUCCESS] Production Signed QwikPrint Desktop Spooler Built!")
-    print(f"-> Installer: {final_setup_exe}")
+    print(f"-> Setup Installer: {target_setup_name}")
     print("==========================================================")
 
 if __name__ == "__main__":

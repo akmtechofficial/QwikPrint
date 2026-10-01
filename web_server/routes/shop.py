@@ -167,13 +167,21 @@ async def download_shop_poster_pdf(request: Request):
 
 @router.get("/download/agent")
 @router.get("/api/download/agent")
+@router.get("/download/setup")
+@router.get("/api/download/setup")
 async def download_desktop_agent():
-    exe_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "static", "downloads", "QwikPrint_Desktop_Spooler_v2.4.exe"))
+    exe_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "static", "downloads", "QwikPrint_Setup.exe"))
+    out_filename = "QwikPrint_Setup.exe"
+
     if not os.path.exists(exe_path):
-        # Fallback search root dist
-        fallback = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "dist", "PrintAgent.exe"))
+        exe_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "static", "downloads", "QwikPrint_Desktop_Spooler_v2.4.exe"))
+        out_filename = "QwikPrint_Desktop_Spooler_v2.4.exe"
+
+    if not os.path.exists(exe_path):
+        fallback = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "dist", "QwikPrint_Setup.exe"))
         if os.path.exists(fallback):
             exe_path = fallback
+            out_filename = "QwikPrint_Setup.exe"
         else:
             raise HTTPException(status_code=404, detail="Desktop agent installer file not found")
 
@@ -185,7 +193,7 @@ async def download_desktop_agent():
         content=content,
         media_type="application/vnd.microsoft.portable-executable",
         headers={
-            "Content-Disposition": 'attachment; filename="QwikPrint_Desktop_Spooler_v2.4.exe"',
+            "Content-Disposition": f'attachment; filename="{out_filename}"',
             "Content-Length": str(file_size),
             "X-Content-Type-Options": "nosniff",
             "Cache-Control": "public, max-age=86400"
